@@ -1,0 +1,11 @@
+services:
+  secure-invoke:
+    image: ${SECURE_INVOKE_IMAGE:-${REGISTRY:-ispirt.azurecr.io/tools}/secure_invoke:${TAG:-test}}
+    network_mode: "host"
+    environment:
+      KMS_HOST: ${KMS_HOST:-https://127.0.0.1:8000}
+      BUYER_HOST: ${BUYER_HOST:-https://127.0.0.1:50051}
+      OPERATION: ${OPERATION:-invoke}
+      TARGET_SERVICE: ${TARGET_SERVICE:-bfe}
+      REQUEST_PATH: ${REQUEST_PATH:-requests/get_bids_request.json}
+      RETRIES: ${RETRIES:-1}
