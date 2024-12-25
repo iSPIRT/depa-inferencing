@@ -55,7 +55,3 @@ module "app_gw" {
   frontend_service_name = local.frontend_service_name
   frontend_service_ip   = module.aks.frontend_service_ip
 }
-
-output "aks_spec" {
-  value = module.aks.frontend_service_spec
-}

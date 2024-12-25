@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-output "frontend_service_spec" {
-  value = data.kubernetes_service.frontend_service.status[0].load_balancer[0].ingress[0].ip
-}
-
 output "frontend_service_ip" {
   value = data.kubernetes_service.frontend_service.status[0].load_balancer[0].ingress[0].ip
 }
