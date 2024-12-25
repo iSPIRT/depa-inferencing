@@ -49,6 +49,7 @@ services:
         port: 50051
     healthCheck: {}
     resources: {}
+    internalLB: true
     nodeSelector: {}
     env:
       BFE_INGRESS_TLS: ""
@@ -77,6 +78,7 @@ services:
         port: 50051
     healthCheck: {}
     resources: {}
+    internalLB: true
     nodeSelector: {}
     volumeName: "data-vol"
     volumeMounts:
