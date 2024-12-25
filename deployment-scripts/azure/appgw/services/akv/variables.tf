@@ -12,14 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-output "vnet_name" {
-  value = azurerm_virtual_network.vnet.name
+variable "operator" {
+  description = "Operator name used to identify the resource owner."
+  type        = string
 }
 
-output "public_ip" {
-  value = azurerm_public_ip.public_ip.ip_address
+variable "environment" {
+  description = "Assigned environment name to group related resources."
+  type        = string
 }
 
-output "subnet_id" {
-  value = azurerm_subnet.subnet.id
+variable "region" {
+  description = "Azure region"
+  type        = string
+}
+
+variable "region_short" {
+  description = "Azure region shorthand"
+  type        = string
+}
+
+variable "resource_group_name" {
+  description = "Resource group name"
+  type        = string
+}
+
+variable "frontend_service_name" {
+  description = "Name of the service"
+  type        = string
 }

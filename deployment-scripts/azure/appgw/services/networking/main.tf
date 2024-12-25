@@ -13,7 +13,7 @@
 # limitations under the License.
 
 resource "azurerm_virtual_network" "vnet" {
-  name                = "${var.operator}-${var.environment}-${var.frontend_service_name}-${var.region_short}-waf-vnet"
+  name                = "${var.operator}-${var.environment}-${var.frontend_service_name}-${var.region_short}-appgw-vnet"
   location            = var.region
   resource_group_name = var.resource_group_name
   address_space       = [var.vnet_address_space]
@@ -30,5 +30,5 @@ resource "azurerm_public_ip" "public_ip" {
   name                = "public-ip"
   location            = var.region
   resource_group_name = var.resource_group_name
-  allocation_method   = "Dynamic"
+  allocation_method   = "Static"
 }

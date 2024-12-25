@@ -42,6 +42,15 @@ module "aks" {
   region                = module.regions.location_cli
   region_short          = module.regions.location_short
 }
+module "akv" {
+  source                = "../../services/akv"
+  operator              = var.operator
+  environment           = var.environment
+  region                = module.regions.location_cli
+  region_short          = module.regions.location_short
+  resource_group_name   = local.resource_group_name
+  frontend_service_name = local.frontend_service_name
+}
 
 module "app_gw" {
   source                = "../../services/app_gw"
@@ -50,8 +59,10 @@ module "app_gw" {
   region                = module.regions.location_cli
   region_short          = module.regions.location_short
   resource_group_name   = local.resource_group_name
-  appgw_public_ip       = module.networking.public_ip
-  appgw_subnet_id       = module.networking.subnet_id
+  public_ip_address_id  = module.networking.public_ip_address_id
+  subnet_id             = module.networking.subnet_id
   frontend_service_name = local.frontend_service_name
   frontend_service_ip   = module.aks.frontend_service_ip
+  certificate_secret_id = module.akv.appgw_certificate_secret_id
+  user_identity_id      = module.akv.keyvault_user_identity_id
 }

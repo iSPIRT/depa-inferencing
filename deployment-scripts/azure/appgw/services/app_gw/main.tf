@@ -17,6 +17,11 @@ resource "azurerm_application_gateway" "appgw" {
   location            = var.region
   resource_group_name = var.resource_group_name
 
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [ var.user_identity_id ]
+  }
+
   sku {
     name = "WAF_v2"
     tier = "WAF_v2"
@@ -39,7 +44,7 @@ resource "azurerm_application_gateway" "appgw" {
     cookie_based_affinity = "Disabled"
     path                  = "/"
     request_timeout       = 30
-    protocol              = "Https"
+    protocol              = "Http"
     port                  = 50051
   }
 
@@ -49,6 +54,7 @@ resource "azurerm_application_gateway" "appgw" {
     http_listener_name         = "appgw-http-listener"
     backend_address_pool_name  = "appgw-backend-address-pool"
     backend_http_settings_name = "appgw-backend-http-settings"
+    priority                   = 1
   }
 
   http_listener {
@@ -56,19 +62,40 @@ resource "azurerm_application_gateway" "appgw" {
     frontend_port_name             = "appgw-frontend-port"
     frontend_ip_configuration_name = "appgw-frontend-ip-configuration"
     protocol                       = "Https"
+    ssl_certificate_name           = "appgw-cert"
   }
 
   gateway_ip_configuration {
     name      = "appgw-gateway-ip-configuration"
-    subnet_id = var.appgw_subnet_id
+    subnet_id = var.subnet_id
   }
 
   frontend_ip_configuration {
-    name = "appgw-frontend-ip-configuration"
+    name                 = "appgw-frontend-ip-configuration"
+    public_ip_address_id = var.public_ip_address_id
   }
 
   frontend_port {
     name = "appgw-frontend-port"
-    port = 80
+    port = 443
   }
+
+  # SSL Certificate Block
+  ssl_certificate {
+    name                = "appgw-cert"
+    key_vault_secret_id = var.certificate_secret_id
+  }
+
+  ssl_profile {
+    name = "ssl-profile"
+    ssl_policy {
+      policy_name = "AppGwSslPolicy20220101"
+      policy_type = "Predefined"
+    }
+  }
+
+  ssl_policy {
+    policy_name = "AppGwSslPolicy20220101"
+    policy_type = "Predefined"
+  }  
 }

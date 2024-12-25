@@ -37,12 +37,12 @@ variable "resource_group_name" {
   type        = string
 }
 
-variable "appgw_public_ip" {
-  description = "Application gateway public ip"
+variable "public_ip_address_id" {
+  description = "Application gateway public ip id"
   type        = string
 }
 
-variable "appgw_subnet_id" {
+variable "subnet_id" {
   description = "Application gateway subnet"
   type        = string
 }
@@ -54,5 +54,15 @@ variable "frontend_service_name" {
 
 variable "frontend_service_ip" {
   description = "Internal IP of frontend service"
+  type        = string
+}
+
+variable "certificate_secret_id" {
+  description = "Application gateway server authentication certificate secret"
+  type        = string
+}
+
+variable "user_identity_id" {
+  description = "User assigned managed identity for accessing key vault"
   type        = string
 }
