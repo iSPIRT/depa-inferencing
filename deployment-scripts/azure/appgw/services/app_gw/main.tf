@@ -12,6 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+resource "azurerm_web_application_firewall_policy" "policy" {
+  name                = "waf-policy"
+  location            = var.region
+  resource_group_name = var.resource_group_name
+  managed_rules {
+    managed_rule_set {
+      type    = "OWASP"
+      version = "3.2"
+    }
+  }
+}
+
 resource "azurerm_application_gateway" "appgw" {
   name                = "${var.operator}-${var.environment}-${var.frontend_service_name}-${var.region_short}-appgw"
   location            = var.region
@@ -97,5 +109,7 @@ resource "azurerm_application_gateway" "appgw" {
   ssl_policy {
     policy_name = "AppGwSslPolicy20220101"
     policy_type = "Predefined"
-  }  
+  }
+
+  firewall_policy_id = azurerm_web_application_firewall_policy.policy.id
 }
