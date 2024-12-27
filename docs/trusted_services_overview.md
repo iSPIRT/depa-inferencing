@@ -2,7 +2,7 @@
 [Kapil Vaswani][1], iSPIRT<br>
 [Pavan Adukuri][2], iSPIRT<br>
 
-# Overview of DEPA inferencing 
+# Overview
 
 DEPA Inferencing supports a broad class data sharing scenarios where a service provider (Data Provider) wishes to share sensitive data about a specific customer (Data Principal) with a partner (Data Consumer). Current privacy laws such as the DPDP Act require that data sharing respect the data principal's right to privacy e.g., using a consent manager to obtain explicit, fine-grained, timely, and revocable consent from the data principal. In scenarios where fine-grained consent is not feasible, DEPA Inferencing enables data sharing through the use of privacy-preserving technologies.
 
@@ -32,41 +32,27 @@ concepts:
 
 ### Trusted execution environment
 
-A [trusted execution environment (TEE)](https://queue.acm.org/detail.cfm?id=3456125)
-provides a level of assurance for data integrity, data confidentiality, and
-code integrity. A hardware-based TEE uses hardware-backed techniques to
-provide increased security guarantees for code execution and data protection
-within that environment.
+A [trusted execution environment (TEE)](https://queue.acm.org/detail.cfm?id=3456125) provides a level of assurance for data integrity, data confidentiality, and code integrity. A hardware-based TEE uses hardware-backed techniques to provide increased security guarantees for code execution and data protection within that environment.
 
 Some of the key properties of a TEE include:
 
-*   Applications that run in a TEE cannot be observed or modified by any other
-    process running on the host machine.
-*   Protect data-in-use. Data processed in-memory within the service is
-    encrypted.
+*   Applications that run in a TEE cannot be observed or modified by any other process running on the host machine.
+*   Protect data-in-use. Data processed in-memory within the service is encrypted.
 
 ### Cloud platform
 
-Services running in TEE should be deployed on a cloud platform that supports
-necessary security features. See the [Public Cloud TEE requirements explainer][9] for more details.
+Services running in TEE should be deployed on a cloud platform that supports necessary security features. See the [Public Cloud TEE requirements explainer][9] for more details.
 
 ## Privacy considerations
 
 In the proposed architecture for the DEPA inferencing services, we’ve made the following
 privacy considerations:
 
-*   Service operators can run real-time services on a public cloud platform
-    that supports the necessary security features. 
-*   Privacy protection of the DEPA inferencing service and the binary version of the
-    virtual machine’s guest operating system are externally verifiable.
+*   Service operators can run real-time services on a public cloud platform that supports the necessary security features. 
+*   Privacy protection of the DEPA inferencing service and the binary version of the virtual machine’s guest operating system are externally verifiable.
 *   DEPA inferencing services run in a TEE.
-*   Service code, APIs, and configurations are open source and externally
-    verifiable.
-    *   Note: Closed-source proprietary code can run within a TEE. In this
-        trust model, closed-source proprietary code execution is allowed for
-        certain use cases where execution is limited to another sandbox in
-        the same TEE that preserves the same privacy considerations and
-        security goals.
+*   Service code, APIs, and configurations are open source and externally verifiable.
+    *   Note: Closed-source proprietary code can run within a TEE. In this trust model, closed-source proprietary code execution is allowed for certain use cases where execution is limited to another sandbox in the same TEE that preserves the same privacy considerations and security goals.
 *   The service code is attested. 
 *   Data sent from the client is not persisted.
 *   Sensitive data will not be exfiltrated out of the service.
@@ -90,8 +76,6 @@ privacy considerations:
 
 This section describes the trust model for DEPA inferencing services. In this context, trust is based on cryptographic verification by external parties. The model is expected to be trusted by all entities.
 
-![Illustration of the trust model](images/trust-model.png)
-
 ### Root of trust
 
 A root of trust in this context implies that all other trust in the system can be logically derived from it. For the DEPA inferencing services, the cloud platform and hardware manufacturers are at the root of trust.
@@ -107,15 +91,11 @@ The cloud platform as an entity is considered trusted in this model:
 
 Data consumers can use DEPA inferencing services to perform several different actions (such as lookup real-time data as well as executing inferencing). There are several entities that operate together in the systems.
 
-![System overview diagram](images/system-overview-final.png)
+![System overview diagram](images/depa_inferencing_system_overview.png)
 
 *   The [clients](#clients) send encrypted requests to a DEPA inferencing service. To encrypt these requests, the client prefetches and caches the public key from a key management system.
-*   The DEPA inferencing services
-    [communicates with the client](#client-to-service-communication) to
-    return encrypted responses.
-*   [DEPA inferencing services](#depa-inferencing-services) runs within a TEE, and
-    communicates with two key management systems to prefetch private keys to
-    decrypt and process the request.
+*   The DEPA inferencing services [communicates with the client](#client-to-service-communication) to return encrypted responses.
+*   [DEPA inferencing services](#depa-inferencing-services) runs within a TEE, and communicates with two key management systems to prefetch private keys to decrypt and process the request.
 *   A trusted and confidential [key management system](#key-management-systems) maintain services and databases to generate and distribute public and private keys.
 
 ### Clients
@@ -129,15 +109,12 @@ The client encrypts the request payload with a version of the public key. Then, 
 
 ### Client-to-service communication
 
-![Diagram showing encrypted request and response](images/encrypt.png)
-
 Client to DEPA inferencing service communication is encrypted using
 [Bidirectional Hybrid Public Key Encryption (HPKE)](https://www.rfc-editor.org/rfc/rfc9180.html#name-bidirectional-encryption).
 
 #### Request encryption
 
-To encrypt the request, the client establishes a connection with the DEPA inferencing service endpoint. This ensures that the client is talking to the correct
-operator and server instance. This alone does not guarantee that the operator can be trusted to handle the request.
+To encrypt the request, the client establishes a connection with the DEPA inferencing service endpoint. This ensures that the client is talking to the correct operator and server instance. This alone does not guarantee that the operator can be trusted to handle the request.
 
 The client encrypts the request with the public key. The client sends the request, which includes a clear text message indicating the version of the public key, to the DEPA inferencing service.
 
@@ -151,19 +128,13 @@ The DEPA inferencing service decrypts the request using split private keys, proc
 
 #### Response protection
 
-The response is encrypted  with a
-[key material and nonce derived from HPKE context](https://www.rfc-editor.org/rfc/rfc9180.html#name-bidirectional-encryption).
-
-HPKE does not require additional round trips or have extra latency overhead.
+The response is encrypted  with a [key material and nonce derived from HPKE context](https://www.rfc-editor.org/rfc/rfc9180html#name-bidirectional-encryption). HPKE does not require additional round trips or have extra latency overhead.
 
 ### DEPA inferencing services
 
 Each DEPA inferencing service is hosted in a secure virtual machine (TEE). Secure virtual machines run on physical hosts powered by secure hardware processors. 
 
-![FLEDGE key exchange diagram](images/fledge-keys.png)
-
-The FLEDGE service sends requests to the key management system to fetch private keys and public keys at service bootstrap. Before such keys are
-granted to the service, measurements of the DEPA inferencing service binaries and guest operating system running on the virtual machine are validated against a hash of the open source image; this validation process is termed an attestation.
+The FLEDGE service sends requests to the key management system to fetch private keys and public keys at service bootstrap. Before such keys are granted to the service, measurements of the DEPA inferencing service binaries and guest operating system running on the virtual machine are validated against a hash of the open source image; this validation process is termed an attestation.
 
 *   The DEPA inferencing service sends requests to private key hosting services to pre-fetch private keys. Private keys are granted to a DEPA inferencing service only after attestation.
 *   DEPA inferencing services can send requests to other FLEDGE services or other trusted entities. Requests to other DEPA inferencing services would be encrypted using a public key and decrypted at the destination using the
@@ -172,8 +143,6 @@ as an example of an architecture where a DEPA inferencing service communicates w
 *   Public and private keys are periodically prefetched and cached. The key caching TTL within the service is in the order of hours.
 
 ### Key management systems
-
-![Diagram of key management systems](images/kms.png)
 
 A _key management system_ includes multiple services that are tasked with:
 
