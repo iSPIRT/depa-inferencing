@@ -23,11 +23,12 @@ provider "azurerm" {
 }
 
 resource "azurerm_key_vault" "keyvault" {
-  name                = "${var.operator}-${var.environment}-${var.frontend_service_name}-${var.region_short}-akv"
-  location            = var.region
-  resource_group_name = var.resource_group_name
-  sku_name            = "standard"
-  tenant_id           = data.azurerm_client_config.current.tenant_id
+  name                      = "${var.operator}-${var.environment}-${var.frontend_service_name}-${var.region_short}-akv"
+  location                  = var.region
+  resource_group_name       = var.resource_group_name
+  sku_name                  = "standard"
+  tenant_id                 = data.azurerm_client_config.current.tenant_id
+  enable_rbac_authorization = true
 }
 
 resource "azurerm_key_vault_certificate" "cert" {
@@ -90,17 +91,8 @@ resource "azurerm_user_assigned_identity" "identity" {
   resource_group_name = var.resource_group_name
 }
 
-resource "azurerm_key_vault_access_policy" "policy" {
-  key_vault_id = azurerm_key_vault.keyvault.id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = azurerm_user_assigned_identity.identity.principal_id
-
-  certificate_permissions = [
-    "Get",
-    "Recover",
-  ]
-
-  secret_permissions = [
-    "Get",
-  ]
+resource "azurerm_role_assignment" "reader" {
+  principal_id         = azurerm_user_assigned_identity.identity.principal_id
+  role_definition_name = "Key Vault Certificate User"
+  scope                = azurerm_key_vault.keyvault.id
 }
