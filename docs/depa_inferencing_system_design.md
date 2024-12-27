@@ -9,9 +9,9 @@ This explainer describes the system design of DEPA inferencing.
 
 ## Overview 
 
-![Architecture diagram.](images/unified-contextual-remarketing-bidding-auction-services.png)
+![Architecture diagram.](images/depa_inferencing_system_overview.png)
 
-When a data principal visits the data provider's web application (in browser) or phone application (e.g., in android), data provider's code in the application sends HTTPS request to the data consumer's service endpoint. The request includes encrypted data pertaining to the data principal. The service endpoint is typically an application gateway, which terminates TLS requests and forwards the HTTP request to a TEE based [Frontend service][12]. The Frontend service decrypts encrypted data using decryption keys prefetched from [Key Management System][13]. Then Frontend service looks up real-time bidding inferencing from [data consumer's key/value service][16] and calls TEE based [inferencing service][15]. After inferencing response is are received, the frontend service returns an encrypted response to the data consumer's service, which sends the encrypted response back to the client. 
+When a data principal visits the data provider's web application (in browser) or phone application (e.g., in android), data provider's code in the application sends HTTPS request to the data consumer's service endpoint. The request includes encrypted data pertaining to the data principal. The service endpoint is typically an application gateway, which terminates TLS requests and forwards the HTTP request to a TEE based [Frontend service][12]. The Frontend service decrypts encrypted data using decryption keys prefetched from [Key Management Service][13]. Then Frontend service looks up real-time bidding inferencing from [data consumer's key/value service][16] and calls TEE based [inferencing service][15]. After inferencing response is are received, the frontend service returns an encrypted response to the data consumer's service, which sends the encrypted response back to the client. 
 
 DEPA inferencing services are based on the gRPC framework. The server code is developed in C++ and configurations are based on [Terraform][19]. The server code and configurations will be open sourced by iSPIRT.
 
@@ -20,8 +20,6 @@ DEPA inferencing services also allows execution of data consumer owned code for 
 The communication between services in the [DEPA inferencing system][4] is protected by TLS / SSL and additionally, request-response payloads are encrypted by [Hybrid Public Key Encryption][20] (HPKE). Also, request/response payload sent over the wire will be compressed by gzip.
 
 ## Design
-  
-![seq_1](images/ba-system-seq-11.png)
   
 ### Data consumer
 Following services will be operated by the data consumer.
@@ -46,13 +44,13 @@ The front-end service of the system that runs in the [TEE][5] on a supported clo
 * The frontend returns all bids ([AdWithBid][35]) to the client.
 
 #### Inferencing service
-The inferencing service runs in the TEE on a supported cloud platform. The service is based on the gRPC framework and provides an endpoint [GenerateBids][34], that receives requests from BuyerFrontEnd service to initiate the bidding flow. This service responds to requests from the frontend service and has limited outbound access over the public network. 
+The inferencing service runs in the TEE on a supported cloud platform. In the current implementation designed for advertising scenarios, the service is based on the gRPC framework and provides an endpoint [GenerateBids][34]. It receives requests from frontend service to initiate the inferencing flow. This service responds to requests from the frontend service and has limited outbound access over the public network. 
 
-Inferencing service allows data consumer owned code to execute in a custom code execution engine within the TEE. The custom code execution engine is based on V8 sandbox and has tighter security restrictions; the sandbox can not log information and doesn't have disk or network access. Refer to the [Adtech code execution Engine][30] section for more details. 
+Inferencing service allows data consumer owned code modules containing inferencing models to execute in a custom code execution engine within the TEE. The custom code execution engine is based on V8 sandbox and has tighter security restrictions; the sandbox can not log information and doesn't have disk or network access. 
 
 * Inferencing server instances load configured data in memory at server startup. This includes the endpoint from where data consumer's code modules are prefetched and address of key management service; for more details [refer here][36].
   
-* Server instances prefetch [code blobs][29] owned by data consumers from a cloud storage instance at server startup and periodically. The code modules are cached in memory by the custom code execution sandbox. Refer to the [Adtech code execution][30] section for more details.
+* Server instances prefetch [code blobs][29] owned by data consumers from a cloud storage instance at server startup and periodically. The code modules are cached in memory by the custom code execution sandbox.
     
 * Frontend service sends GenerateBids request to inferencing service for generating bids. The request payload includes interest groups, per buyer signals, real time bidding signals and other required data.
   
@@ -63,8 +61,6 @@ Inferencing service allows data consumer owned code to execute in a custom code 
 
 #### Data consumer's key/value Service
 A data consumer's Key/Value service receives requests from the [Frontend service][14] and returns real-time buyer data required for inferencing, corresponding to lookup keys. The Key/Value service is also hosted within TEEs. 
-
-![seq_2](images/ba-system-seq-22.png)
 
 ## Cryptographic protocol & key fetching
 The cryptographic protocol is bidirectional [Hybrid Public Key Encryption][13](HPKE). In this mechanism, public key and private key pairs are versioned. The private keys have sufficiently longer validity than public keys for the same version. Public keys are fetched from public key hosting service and private keys are fetched from private key hosting services in [Key Management Systems][20]. 
@@ -94,7 +90,6 @@ Server to server communication over a public unsecured network is protected by T
 
 ## Data consumer Code Execution Engine 
 ### Roma
-![roma](images/roma.png)
 
 The data consumer code execution engine is called [Roma][40] that provides a sandbox environment for untrusted, closed source, self contained code. Roma provides two backend engines for execution - 
 1. [V8][41], Google's open source high-performance JavaScript & WebAssembly engine written in C++. 
@@ -210,8 +205,6 @@ non-request path periodically from Azure Blob Container, AWS S3 and GCP GCS buck
 
 #### Lifecycle of the code storage bucket 
 The following is an overview of the lifecycle of a bucket update. The inferencing service queries the bucket for its objects (code modules) and then updates Roma with code module additions and code module deletions.
-
-![code_blob2](images/blob_fetch22.png)
 
 #### Code module fetch
 The code modules can be prefetched from arbitrary endpoints provided by the data consumer. The url endpoints must be configured in inferencing server configuration. If a data consumer requires both Javascript and WASM, they must provide two different url endpoints that will be set in inferencing service configuration. The inferencing services would prefetch data consumer code modules at server startup and periodically every few hours.*
