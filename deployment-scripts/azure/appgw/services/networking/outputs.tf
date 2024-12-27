@@ -16,10 +16,22 @@ output "vnet_name" {
   value = azurerm_virtual_network.vnet.name
 }
 
+output "vnet_id" {
+  value = azurerm_virtual_network.vnet.id
+}
+
 output "public_ip_address_id" {
   value = azurerm_public_ip.public_ip.id
 }
 
 output "subnet_id" {
   value = azurerm_subnet.subnet.id
+}
+
+output "aks_vnet_name" {
+  value = data.azurerm_virtual_network.aks_vnet.name
+}
+
+output "aks_vnet_id" {
+  value = data.azurerm_virtual_network.aks_vnet.id
 }

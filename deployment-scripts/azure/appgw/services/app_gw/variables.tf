@@ -66,3 +66,19 @@ variable "user_identity_id" {
   description = "User assigned managed identity for accessing key vault"
   type        = string
 }
+
+variable "vnet_name" {
+  description = "vnet in which appgw is deployed"
+}
+
+variable "vnet_id" {
+  description = "vnet id of the appgw vnet"
+}
+
+variable "backend_vnet_name" {
+  description = "vnet in which backend services have been deployed"
+}
+
+variable "backend_vnet_id" {
+  description = "vnet id in which backend services have been deployed"
+}

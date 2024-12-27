@@ -113,3 +113,23 @@ resource "azurerm_application_gateway" "appgw" {
 
   firewall_policy_id = azurerm_web_application_firewall_policy.policy.id
 }
+
+resource "azurerm_virtual_network_peering" "vnet_peering" {
+  name                      = "vnet-peering"
+  resource_group_name       = var.resource_group_name
+  virtual_network_name      = var.vnet_name
+  remote_virtual_network_id = var.backend_vnet_id
+  allow_forwarded_traffic   = true
+  allow_gateway_transit     = false
+  use_remote_gateways       = false
+}
+
+resource "azurerm_virtual_network_peering" "vnet_peering_remote" {
+  name                      = "vnet-peering-remote"
+  resource_group_name       = var.resource_group_name
+  virtual_network_name      = var.backend_vnet_name
+  remote_virtual_network_id = var.vnet_id
+  allow_forwarded_traffic   = true
+  allow_gateway_transit     = false
+  use_remote_gateways       = false
+}

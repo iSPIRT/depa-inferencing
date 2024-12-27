@@ -65,4 +65,8 @@ module "app_gw" {
   frontend_service_ip   = module.aks.frontend_service_ip
   certificate_secret_id = module.akv.appgw_certificate_secret_id
   user_identity_id      = module.akv.keyvault_user_identity_id
+  vnet_name             = module.networking.vnet_name
+  vnet_id               = module.networking.vnet_id
+  backend_vnet_name     = module.networking.aks_vnet_name
+  backend_vnet_id       = module.networking.aks_vnet_id
 }
