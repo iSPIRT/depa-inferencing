@@ -313,7 +313,3 @@ server instances to a supported cloud platform, would decide the availability of
 [54]: https://github.com/privacysandbox/protected-auction-services-docs/blob/main/roma_bring_your_own_binary.md#example
 [55]: https://github.com/privacysandbox/data-plane-shared-libraries/blob/619fc5d4b6383422e54a3624d49a574e56313bc8/docs/roma/byob/sdk/docs/udf/Execution%20Environment%20and%20Interface.
 
-
-## Related Material 
-
-[1]: https://github.com/depa-inferencing/docs/blob/main/trusted_services_overview.md#trusted-execution-environment
