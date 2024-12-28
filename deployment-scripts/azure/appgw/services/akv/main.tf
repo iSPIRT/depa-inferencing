@@ -31,8 +31,41 @@ resource "azurerm_key_vault" "keyvault" {
   enable_rbac_authorization = true
 }
 
+resource "azurerm_role_assignment" "officer" {
+  principal_id         = data.azurerm_client_config.current.object_id
+  role_definition_name = "Key Vault Certificates Officer"
+  scope                = azurerm_key_vault.keyvault.id
+}
+
+resource "azurerm_role_assignment" "user" {
+  principal_id         = data.azurerm_client_config.current.object_id
+  role_definition_name = "Key Vault Certificate User"
+  scope                = azurerm_key_vault.keyvault.id
+}
+
+resource "azurerm_user_assigned_identity" "identity" {
+  name                = "appgw-key-vault-user-identity"
+  location            = var.region
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_role_assignment" "managed_identity_user" {
+  principal_id         = azurerm_user_assigned_identity.identity.principal_id
+  role_definition_name = "Key Vault Certificate User"
+  scope                = azurerm_key_vault.keyvault.id
+}
+
+resource "azurerm_role_assignment" "managed_identity_secrets_user" {
+  principal_id         = azurerm_user_assigned_identity.identity.principal_id
+  role_definition_name = "Key Vault Secrets User"
+  scope                = azurerm_key_vault.keyvault.id
+}
+
+resource "random_uuid" "cert_id" {
+}
+
 resource "azurerm_key_vault_certificate" "cert" {
-  name         = "generated-cert"
+  name         = "generated-cert-${random_uuid.cert_id.result}"
   key_vault_id = azurerm_key_vault.keyvault.id
 
   certificate_policy {
@@ -83,16 +116,4 @@ resource "azurerm_key_vault_certificate" "cert" {
       validity_in_months = 12
     }
   }
-}
-
-resource "azurerm_user_assigned_identity" "identity" {
-  name                = "appgw-key-vault-user-identity"
-  location            = var.region
-  resource_group_name = var.resource_group_name
-}
-
-resource "azurerm_role_assignment" "reader" {
-  principal_id         = azurerm_user_assigned_identity.identity.principal_id
-  role_definition_name = "Key Vault Certificate User"
-  scope                = azurerm_key_vault.keyvault.id
 }
