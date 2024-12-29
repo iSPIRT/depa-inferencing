@@ -81,3 +81,4 @@ variable "node_pool_settings" {
     vm_size    = string
   })
 }
+

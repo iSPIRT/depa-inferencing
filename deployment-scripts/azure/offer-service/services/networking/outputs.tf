@@ -16,6 +16,11 @@ output "aks_subnet_id" {
   value = azurerm_subnet.aks.id
 }
 
+output "cg_subnet_id" {
+  value = azurerm_subnet.cg.id 
+
+}
+
 output "vnet_id" {
   value = azurerm_virtual_network.vnet.id
 }
