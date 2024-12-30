@@ -38,6 +38,10 @@ resource "azurerm_kubernetes_cluster" "aks" {
   identity {
     type = "SystemAssigned"
   }
+
+  depends_on = [
+    var.aks_subnet_rtbl_assoc_id
+  ]
 }
 
 resource "azurerm_role_assignment" "aks_identity_rg_contributor" {

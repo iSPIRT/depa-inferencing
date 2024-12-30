@@ -83,8 +83,8 @@ services:
       - name: data-vol
         mountPath: /data
     env:
-      PORT: ""
-      HEALTHCHECK_PORT: ""
+      KV_PORT: ""
+      KV_HEALTHCHECK_PORT: ""
       AZURE_LOCAL_DATA_DIR: ""
       AZURE_LOCAL_REALTIME_DATA_DIR: ""
 env:
