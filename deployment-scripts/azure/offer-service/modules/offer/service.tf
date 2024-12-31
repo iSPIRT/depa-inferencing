@@ -120,6 +120,7 @@ module "storage_account" {
   region                = module.regions.location_cli
   region_short          = module.regions.location_short
   resource_group_name   = module.resource_group.name
+  cg_subnet_id          = module.networking.cg_subnet_id
 }
 
 module "egress_proxy" {
@@ -130,8 +131,8 @@ module "egress_proxy" {
   frontend_service_name = local.frontend_service_name
   region                = module.regions.location_cli
   region_short          = module.regions.location_short
-  aks_vnet_name	        = module.networking.vnet_name
-  aks_vnet_id           = module.networking.vnet_id
+  aks_vnet_name	            = module.networking.vnet_name
+  aks_vnet_id               = module.networking.vnet_id
 }
 
 module "route_table" {
