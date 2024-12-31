@@ -58,4 +58,7 @@ resource "azurerm_subnet" "cg" {
   depends_on = [
     azurerm_virtual_network.vnet,
   ]
+
+  # Add the service endpoint for Microsoft.Storage
+  service_endpoints = ["Microsoft.Storage"]
 }
