@@ -38,3 +38,16 @@ resource "azurerm_storage_share_directory" "realtime" {
   name             = "realtime"
   storage_share_id = azurerm_storage_share.this.id
 }
+
+# allow access to storage only from AKS VNET and CG Subnet
+
+resource "azurerm_storage_account_network_rules" "this" {
+  storage_account_id = azurerm_storage_account.this.id
+  default_action = "Deny"
+  virtual_network_subnet_ids = [var.cg_subnet_id]
+  bypass = ["AzureServices"]
+
+  depends_on = [
+    azurerm_storage_share.this, azurerm_storage_share_directory.deltas, azurerm_storage_share_directory.realtime 
+  ]
+}

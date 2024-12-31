@@ -56,6 +56,13 @@ variable "resource_group_name" {
   description = "Resource group name"
   type        = string
 }
+
 variable "frontend_service_name" {
   type = string
 }
+
+variable "cg_subnet_id" {
+  description = "cg vnet subnet id"
+  type       = string
+}
+
