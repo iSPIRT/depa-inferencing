@@ -53,7 +53,7 @@ variable "region_short" {
 variable "vnet_address_space" {
   description = "VNET address space"
   type        = string
-  default     = "10.4.0.0/16"
+  default     = "10.12.0.0/16"
 }
 
 variable "resource_group_name" {

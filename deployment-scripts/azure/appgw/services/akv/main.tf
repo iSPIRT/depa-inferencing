@@ -68,6 +68,11 @@ resource "azurerm_key_vault_certificate" "cert" {
   name         = "generated-cert-${random_uuid.cert_id.result}"
   key_vault_id = azurerm_key_vault.keyvault.id
 
+  depends_on = [ 
+    azurerm_role_assignment.officer, 
+    azurerm_role_assignment.user 
+  ]
+
   certificate_policy {
     issuer_parameters {
       name = "Self"
