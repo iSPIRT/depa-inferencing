@@ -131,8 +131,8 @@ module "egress_proxy" {
   frontend_service_name = local.frontend_service_name
   region                = module.regions.location_cli
   region_short          = module.regions.location_short
-  aks_vnet_name	            = module.networking.vnet_name
-  aks_vnet_id               = module.networking.vnet_id
+  aks_vnet_name         = module.networking.vnet_name
+  aks_vnet_id           = module.networking.vnet_id
 }
 
 module "route_table" {
