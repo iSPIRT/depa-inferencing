@@ -69,6 +69,11 @@ variable "subnet_id" {
   type        = string
 }
 
+variable "aks_subnet_rtbl_assoc_id" {
+  description = "AKS_subnet_route_table_association"
+  type		  = string
+}
+
 variable "virtual_network_id" {
   description = "Virtual network ID"
   type        = string
@@ -81,3 +86,4 @@ variable "node_pool_settings" {
     vm_size    = string
   })
 }
+

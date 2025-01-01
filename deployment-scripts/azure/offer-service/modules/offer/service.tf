@@ -44,17 +44,18 @@ module "networking" {
 }
 
 module "aks" {
-  source                = "../../services/aks"
-  resource_group_id     = module.resource_group.id
-  resource_group_name   = module.resource_group.name
-  frontend_service_name = local.frontend_service_name
-  operator              = var.operator
-  environment           = var.environment
-  region                = module.regions.location_cli
-  subnet_id             = module.networking.aks_subnet_id
-  virtual_network_id    = module.networking.vnet_id
-  region_short          = module.regions.location_short
-  node_pool_settings    = var.node_pool_settings
+  source                   = "../../services/aks"
+  resource_group_id        = module.resource_group.id
+  resource_group_name      = module.resource_group.name
+  frontend_service_name    = local.frontend_service_name
+  operator                 = var.operator
+  environment              = var.environment
+  region                   = module.regions.location_cli
+  subnet_id                = module.networking.aks_subnet_id
+  virtual_network_id       = module.networking.vnet_id
+  aks_subnet_rtbl_assoc_id = module.route_table.aks_subnet_route_table_association
+  region_short             = module.regions.location_short
+  node_pool_settings       = var.node_pool_settings
 }
 
 module "external_dns" {
@@ -119,4 +120,28 @@ module "storage_account" {
   region                = module.regions.location_cli
   region_short          = module.regions.location_short
   resource_group_name   = module.resource_group.name
+  cg_subnet_id          = module.networking.cg_subnet_id
+}
+
+module "egress_proxy" {
+  source 		        = "../../services/egress_proxy"
+  resource_group_name   = module.resource_group.name
+  operator		        = var.operator
+  environment           = var.environment
+  frontend_service_name = local.frontend_service_name
+  region                = module.regions.location_cli
+  region_short          = module.regions.location_short
+  aks_vnet_name         = module.networking.vnet_name
+  aks_vnet_id           = module.networking.vnet_id
+}
+
+module "route_table" {
+  source                = "../../services/route_table"
+  resource_group_name   = module.resource_group.name
+  operator		        = var.operator
+  environment           = var.environment
+  region                = module.regions.location_cli
+  https_proxy_ip 	    = module.egress_proxy.egress_proxy_ip_address
+  aks_subnet_id         = module.networking.aks_subnet_id
+  cg_subnet_id          = module.networking.cg_subnet_id
 }
