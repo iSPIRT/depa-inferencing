@@ -3,7 +3,7 @@
 
 DEPA inferencing supports real-time sharing and processing of sensitive data in a way that protects privacy of consumers. To meet such goals, DEPA inferencing requires that inferencing be done in an attested and isolated environment (also referred to as Trusted Execution Environment, or TEE), using software provided and approved for this purpose by DEPA inferencing. 
 
-DEPA inferencing initially supports TEEs on Azure, but will also support TEEs in AWS, GCP and potentially other Cloud Service Providers (CSPs). Support in multiple clouds is critical for many organizations to meet regulatory requirements around business continuity. In this document, we describe the requirements that TEEs must satisfy in order to host DEPA inferencing, and describe the TEE platforms in public platforms that meet these requirements.
+In this document, we describe the requirements that TEEs must satisfy in order to host DEPA inferencing, and describe the TEE platforms in Azure, GCP and AWS that meet these requirements. Support in multiple clouds is critical for many organizations to meet regulatory requirements around business continuity. 
 
 ## TEE Requirements
 
@@ -24,7 +24,7 @@ TEEs must satisfy the following requirements to be eligible for running trusted 
 *   The TEE must be commercially available to a wide range of customers, including academic and security researchers. 
 *   The TEE must be able to run a Linux-based containerized workload with access to functionality such as networking, load balancing, and object storage.
 
-## Public Cloud Support
+## Public Cloud TEEs
 DEPA inferencing will support deployments on Azure, GCP and AWS using the following commercially available TEE platforms that meet the above requirements. 
 
 ### Azure 
