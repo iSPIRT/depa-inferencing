@@ -25,7 +25,9 @@ This explainer describe the end-to-end flow of requests through DEPA inferencing
 1. The inferencing service invokes the rule-engine to generate an offer. 
 1. The inferencing service encrypts the offer using HPKE encryption.
 1. The inferencing service sends the offer back to the Frontend service. 
-1. The Frontend service sends this offer back to the client. 
+1. The Frontend service decrypts the encrypted offer. 
+1. The Frontend service re-encrypts the offer with keys that are shared with the client. 
+1. The Frontend service send the encrypted offer to the client. 
 1. The client decrypts the offer and shows the offer to the data consumer. 
 
 At this point, the data consumer may choose to accept the offer by clicking on the offer. At this point, if the data provider wishes to share personal data with the data consumer, the data provider should obtain the data principal's explicit and granular consent.
