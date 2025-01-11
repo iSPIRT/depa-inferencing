@@ -56,8 +56,8 @@ Inferencing service allows data consumer owned code modules containing inferenci
   
 * For privacy, inferencing service deserializes and splits bidding signals such that GenerateBid() can only ingest bidding signals required to generate bid(s) per Interest Group.
   
-* Within the Bidding service, a request is dispatched to a custom code execution engine / sandbox with all inputs required for data consumer's code execution. 
-  * Within the sandbox, the data consumer's GenerateBid() code is executed within a separate worker thread for generating bids for an Interest Group. The execution within worker threads can happen in parallel. Refer to the [Adtech code execution][30] section for more details.
+* Within the inferencing service, a request is dispatched to a custom code execution engine / sandbox with all inputs required for data consumer's code execution. 
+  * Within the sandbox, the data consumer's GenerateBid() code is executed within a separate worker thread for generating bids for an Interest Group. The execution within worker threads can happen in parallel. Refer to the [code execution][30] section for more details.
 
 #### Data consumer's key/value Service
 A data consumer's Key/Value service receives requests from the [Frontend service][14] and returns real-time buyer data required for inferencing, corresponding to lookup keys. The Key/Value service is also hosted within TEEs. 
@@ -66,7 +66,7 @@ A data consumer's Key/Value service receives requests from the [Frontend service
 The cryptographic protocol is bidirectional [Hybrid Public Key Encryption][13](HPKE). In this mechanism, public key and private key pairs are versioned. The private keys have sufficiently longer validity than public keys for the same version. Public keys are fetched from public key hosting service and private keys are fetched from private key hosting services in [Key Management Systems][20]. 
 
 ### Key fetching in client 
-Client (browser, android) periodically fetches a set of public keys from the public key hosting service in Key Management Systems every 7 days and may be cached client-side with a fixed TTL in order of days. Clients should pre-fetch new versions of public keys before the expiration time of the previous set of keys. 
+Clients periodically fetches a set of public keys from the public key hosting service in Key Management Systems every 7 days and may be cached client-side with a fixed TTL in order of days. Clients should pre-fetch new versions of public keys before the expiration time of the previous set of keys. 
 
 ### Key fetching in server
 Server instances running in TEE prefetch all valid private keys from the Key Management System at service startup and periodically in the non critical path. The private keys are cached in-memory and have a caching TTL in order of hours; therefore these keys are refreshed periodically every few hours. This ensures if any private key is compromised for some reason,

@@ -3,7 +3,7 @@ This explainer describe the end-to-end flow of requests through DEPA inferencing
 
 ![Request Flow](images/depa_inferencing_request_flow.png)
 
-1. The key-value service periodically loads real-time signals data from storage into its memory. This data is formatted as a set of key-value pairs. It can be provided as full snapshots, or as delta files which are merged with existing data. 
+1. The key-value service periodically loads real-time signals data from storage into its memory. This data is formatted as a set of key-value pairs. It can be provided as full snapshots for full table rewrite, or as delta files which are merged with existing data. 
 1. The inferencing service periodically loads code modules containing the business-rule engine (BRE) from storage. Code modules can be a combination of Javascript, WASM, and Tensorflow/Pytorch models. 
 1. Clients (data providers) who wish to show offers obtain public HPKE keys from the KMS hosted by the SRO. 
 1. The KMS responds with a list of active public keys. 
