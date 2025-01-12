@@ -56,8 +56,8 @@ Inferencing service allows data consumer owned code modules containing inferenci
   
 * For privacy, inferencing service deserializes and splits bidding signals such that GenerateBid() can only ingest bidding signals required to generate bid(s) per Interest Group.
   
-* Within the Bidding service, a request is dispatched to a custom code execution engine / sandbox with all inputs required for data consumer's code execution. 
-  * Within the sandbox, the data consumer's GenerateBid() code is executed within a separate worker thread for generating bids for an Interest Group. The execution within worker threads can happen in parallel. Refer to the [Adtech code execution][30] section for more details.
+* Within the inferencing service, a request is dispatched to a custom code execution engine / sandbox with all inputs required for data consumer's code execution. 
+  * Within the sandbox, the data consumer's GenerateBid() code is executed within a separate worker thread for generating bids for an Interest Group. The execution within worker threads can happen in parallel. Refer to the [code execution][30] section for more details.
 
 #### Data consumer's key/value Service
 A data consumer's Key/Value service receives requests from the [Frontend service][14] and returns real-time buyer data required for inferencing, corresponding to lookup keys. The Key/Value service is also hosted within TEEs. 
@@ -66,7 +66,7 @@ A data consumer's Key/Value service receives requests from the [Frontend service
 The cryptographic protocol is bidirectional [Hybrid Public Key Encryption][13](HPKE). In this mechanism, public key and private key pairs are versioned. The private keys have sufficiently longer validity than public keys for the same version. Public keys are fetched from public key hosting service and private keys are fetched from private key hosting services in [Key Management Systems][20]. 
 
 ### Key fetching in client 
-Client (browser, android) periodically fetches a set of public keys from the public key hosting service in Key Management Systems every 7 days and may be cached client-side with a fixed TTL in order of days. Clients should pre-fetch new versions of public keys before the expiration time of the previous set of keys. 
+Clients periodically fetches a set of public keys from the public key hosting service in Key Management Systems every 7 days and may be cached client-side with a fixed TTL in order of days. Clients should pre-fetch new versions of public keys before the expiration time of the previous set of keys. 
 
 ### Key fetching in server
 Server instances running in TEE prefetch all valid private keys from the Key Management System at service startup and periodically in the non critical path. The private keys are cached in-memory and have a caching TTL in order of hours; therefore these keys are refreshed periodically every few hours. This ensures if any private key is compromised for some reason,
@@ -234,3 +234,55 @@ The code modules can be prefetched from arbitrary endpoints provided by the data
 The concurrency model is based on asynchronous thread pool and callbacks. The thread pool
 library is based on [EventEngine][49]. The Input / Output (IO) processing model is asynchronous IO.
 
+[1]: https://github.com/ispirt/depa-inferencing/blob/main/trusted_services_overview.md#trusted-execution-environment
+[4]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md
+[6]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#supported-public-cloud-platforms
+[7]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#unified-contextual-and-fledge-auction-flow-with-bidding-and-auction-services
+[8]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#specifications-for-adtechs
+[9]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#service-apis
+[10]: https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md
+[11]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#protectedaudienceinput
+[12]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#sellerfrontend-service
+[13]: https://github.com/ispirt/depa-inferencing/blob/main/trusted_services_overview.md#key-management-systems
+[14]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#buyerfrontend-service
+[15]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#bidding-service
+[16]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#buyers-keyvalue-service
+[17]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#auction-service
+[18]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#sellers-keyvalue-service
+[19]: https://www.terraform.io/
+[20]: https://datatracker.ietf.org/doc/rfc9180/
+[21]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#metadata-for-filtering-in-buyer-keyvalue-service
+[22]: https://www.envoyproxy.io/
+[23]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#auctionresult
+[24]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#sellerfrontend-service-and-api-endpoints
+[25]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#sellerfrontend-service-1
+[26]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#auction-service-and-api-endpoints
+[27]: https://en.wikipedia.org/wiki/Universally_unique_identifier
+[28]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#auction-service-1
+[29]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#adtech-code
+[30]: #adtech-code-execution-engine
+[31]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#alpha-testing
+[32]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#buyerfrontend-service-and-api-endpoints
+[33]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#buyerfrontend-service-1
+[34]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#bidding-service-and-api-endpoints
+[35]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#adwithbid
+[36]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#bidding-service-1
+[37]: https://github.com/ispirt/depa-inferencing/blob/main/trusted_services_overview.md#deployment-by-coordinators
+[38]: https://github.com/ispirt/depa-inferencing/blob/main/trusted_services_overview.md#system-overview
+[39]: https://datatracker.ietf.org/wg/ohttp/about/
+[40]: https://github.com/privacysandbox/control-plane-shared-libraries/tree/main/cc/roma
+[41]: https://v8.dev/
+[42]: https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Module
+[43]: https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Instance
+[44]: https://developer.mozilla.org/en-US/docs/WebAssembly/Exported_functions
+[45]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#generatebid
+[46]: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#scoread
+[47]: https://aws.amazon.com/what-is/pub-sub-messaging/
+[48]: https://cloud.google.com/pubsub
+[49]: https://grpc.github.io/grpc/core/classgrpc__event__engine_1_1experimental_1_1_event_engine.html
+[50]: https://developers.google.com/privacy-sandbox/relevance/protected-audience/android/bidding-and-auction-services
+[51]: https://github.com/privacysandbox/protected-auction-services-docs/blob/main/roma_bring_your_own_binary.md
+[52]: https://gvisor.dev/
+[53]: https://github.com/privacysandbox/data-plane-shared-libraries/blob/619fc5d4b6383422e54a3624d49a574e56313bc8/docs/roma/byob/sdk/docs/udf/Communication%20Interface.md
+[54]: https://github.com/privacysandbox/protected-auction-services-docs/blob/main/roma_bring_your_own_binary.md#example
+[55]: https://github.com/privacysandbox/data-plane-shared-libraries/blob/619fc5d4b6383422e54a3624d49a574e56313bc8/docs/roma/byob/sdk/docs/udf/Execution%20Environment%20and%20Interface.md
