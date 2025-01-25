@@ -56,6 +56,15 @@ variable "resource_group_name" {
   description = "Resource group name"
   type        = string
 }
+
 variable "frontend_service_name" {
+  type = string
+}
+
+variable "private_endpoint_subnet_id" {
+  type = string
+}
+
+variable "virtual_network_id" {
   type = string
 }

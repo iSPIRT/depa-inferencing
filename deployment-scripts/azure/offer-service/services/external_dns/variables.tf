@@ -12,9 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+variable "operator" {
+  description = "Operator"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9]*$", var.operator))
+    error_message = "The input_variable can only contain alphanumeric characters (a-z, A-Z, 0-9)."
+  }
+}
+
+variable "environment" {
+  description = "Environment"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9]*$", var.environment))
+    error_message = "The input_variable can only contain alphanumeric characters (a-z, A-Z, 0-9)."
+  }
+}
+
+variable "frontend_service_name" {
+  type = string
+}
+
 variable "region" {
   description = "Azure region"
   type        = string
+}
+
+variable "region_short" {
+  description = "Azure region short name"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9]*$", var.region_short))
+    error_message = "The input_variable can only contain alphanumeric characters (a-z, A-Z, 0-9)."
+  }
 }
 
 variable "private_domain_name" {
@@ -72,5 +106,10 @@ variable "tenant_id" {
 
 variable "subscription_id" {
   description = "Azure subscription ID"
+  type        = string
+}
+
+variable "storage_private_ip" {
+  description = "IP address of the private connection to storage endpoint"
   type        = string
 }

@@ -60,6 +60,12 @@ variable "cg_subnet_cidr" {
   default     = "10.2.0.0/16"
 }
 
+variable "storage_subnet_cidr" {
+  description = "Container groups subnet CIDR"
+  type        = string
+  default     = "10.3.0.0/16"
+}
+
 variable "resource_group_name" {
   description = "Resource group name"
   type        = string

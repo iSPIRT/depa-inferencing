@@ -59,3 +59,10 @@ resource "azurerm_subnet" "cg" {
     azurerm_virtual_network.vnet,
   ]
 }
+
+resource "azurerm_subnet" "private_endpoint_subnet" {
+  name                 = "storage_private_endpoint_subnet"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = [var.storage_subnet_cidr]
+}

@@ -24,6 +24,15 @@ resource "azurerm_private_dns_zone_virtual_network_link" "this" {
   virtual_network_id    = var.vnet_id
 }
 
+# Create a DNS Record for the storage private endpoint
+resource "azurerm_private_dns_a_record" "storage_file_record" {
+  name                = "${var.operator}${var.environment}${substr(var.frontend_service_name, 0, 3)}${var.region_short}storage.file.core.windows.net"
+  zone_name           = azurerm_private_dns_zone.this.name
+  resource_group_name = var.resource_group_name
+  ttl                 = 300
+  records             = [var.storage_private_ip]
+}
+
 resource "azurerm_user_assigned_identity" "externaldns" {
   name                = "externaldns-identity"
   location            = var.region

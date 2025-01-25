@@ -31,3 +31,8 @@ output "access_key" {
   description = "Storage account access key"
   value       = azurerm_storage_account.this.primary_access_key
 }
+
+output "storage_private_ip" {
+  description = "IP address of the private connection"
+  value = azurerm_private_endpoint.storage_private_endpoint.private_service_connection[0].private_ip_address
+}
