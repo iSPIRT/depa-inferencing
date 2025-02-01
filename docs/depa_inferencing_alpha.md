@@ -80,9 +80,9 @@ The function takes the following arguments.
 - **browserSignals**. **browser_signals*** in the request from the data provider. 
 
 The function can perform any computation using these3 arguments, including invocation of wasm modules or TensorFlow/PyTorch models. However, it does not have access to any IO. It must return an object with the following attributes. 
-- **bid**: Reserved for future. 
-- **render**: A URL that identifies the offer that can be presented to the data principal. 
-- **ad**: An optional opaque object returns to the data provider. Can be any value. 
+- **render**. A URL that identifies the offer that can be presented to the data principal. 
+- **bid**. Reserved for future. 
+- **ad**. An optional opaque object returns to the data provider. Can be any value. 
 
 ### Deployment
 
