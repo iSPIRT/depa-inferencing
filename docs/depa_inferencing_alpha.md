@@ -56,7 +56,33 @@ Data consumers can use the [data_cli][7] tool to convert this CSV file into a SN
 
 ### Developing inferencing models
 
-Data consumers can use custom models and rule engines to process requests and generate offers. We currently support rule engines in a combination of Javascript, WASM, and Tensorflow/PyTorch models. 
+Data consumers can create and deploy their own models and rule engines to process requests and generate offers. DEPA inferencing supports rule engines in a combination of Javascript, WASM, and Tensorflow/PyTorch models. 
+
+Javascript models must implement the ```generateBids``` function with the following signatures. 
+
+```Javascript
+async function generateBids(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
+ ...
+  return {
+    bid: "",
+    render: ""
+    ad: {
+    },
+  };
+}
+```
+
+The function takes the following arguments. 
+- **interestGroup**. An interest group in the request from the data provider. 
+- **auctionSignals**. Reserved for future use. 
+- **perBuyerSignals**. user_bidding_signals in the request from the data provider. 
+- **trustedBiddingSignals**. Key-values retrieved from the key-value service.
+- **browserSignals**. **browser_signals*** in the request from the data provider. 
+
+The function can perform any computation using these3 arguments, including invocation of wasm modules or TensorFlow/PyTorch models. However, it does not have access to any IO. It must return an object with the following attributes. 
+- **bid**: Reserved for future. 
+- **render**: A URL that identifies the offer that can be presented to the data principal. 
+- **ad**: An optional opaque object returns to the data provider. Can be any value. 
 
 ### Deployment
 
@@ -114,7 +140,6 @@ Requests contain the following fields:
 - **seller**. _Reserved for future use._
 - **log_context**. _Reserved for future use._
 - **consented_debug_config**. _Reserved for future use._
-
 Next, data providers encrypt the payload using [HPKE][3] and send encrypted requests to data consumer's inferencing services. Data providers can use the [secure_invoke][4] tool to encrypt and send requests. 
 
 [1]: https://developers.google.com/privacy-sandbox/private-advertising/protected-audience#interest-group-detail
