@@ -18,6 +18,6 @@ output "name" {
   value = azurerm_key_vault.this.name
 }
 
-output "certificate_name" {
-  value = azurerm_key_vault_certificate.sfe_cert.name
+output "kv_certificate_name" {
+  value = azurerm_key_vault_certificate.kv_cert.name
 }

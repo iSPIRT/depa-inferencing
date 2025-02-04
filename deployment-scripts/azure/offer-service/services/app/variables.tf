@@ -38,8 +38,8 @@ variable "key_vault_name" {
   type        = string
 }
 
-variable "sfe_certificate_name" {
-  description = "SFE Certificate name"
+variable "kv_certificate_name" {
+  description = "KV Certificate name"
   type        = string
 }
 

@@ -75,6 +75,8 @@ services:
     containerPorts:
       - name: grpc
         port: 50051
+      - name: envoy
+        port: 51052
     healthCheck: {}
     resources: {}
     nodeSelector: {}

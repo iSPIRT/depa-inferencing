@@ -86,7 +86,7 @@ resource "azurerm_role_assignment" "key_vault_cert_user" {
   principal_id         = var.virtual_node_identity_principal_id
 }
 
-resource "azurerm_key_vault_certificate" "sfe_cert" {
+resource "azurerm_key_vault_certificate" "kv_cert" {
   name         = "${var.operator}-${var.environment}-${var.frontend_service_name}-${var.region_short}-cert"
   key_vault_id = azurerm_key_vault.this.id
 

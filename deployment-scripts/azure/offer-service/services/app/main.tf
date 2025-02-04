@@ -153,7 +153,7 @@ resource "helm_release" "ba_services" {
   set {
     name  = "env.AZURE_CERT"
     type  = "string"
-    value = var.sfe_certificate_name
+    value = var.kv_certificate_name
   }
 
   set {
