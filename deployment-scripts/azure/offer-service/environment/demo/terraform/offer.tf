@@ -134,7 +134,7 @@ module "offer" {
         BIDDING_SIGNALS_LOAD_TIMEOUT_MS               = "60000"
         BUYER_FRONTEND_HEALTHCHECK_PORT               = "50552"                                        # Do not change unless you are modifying the default Azure architecture.
         BUYER_FRONTEND_PORT                           = "50051"                                        # Do not change unless you are modifying the default Azure architecture.
-        BUYER_KV_SERVER_ADDR                          = "https://wonderful-smoke-f7f0a95bd29f428f8933d258d315c801.azurewebsites.net"
+        BUYER_KV_SERVER_ADDR                          = "https://kv.ad_selection.microsoft:51052/v1/getvalues"
         BYOS_AD_RETRIEVAL_SERVER                      = "false"
         CREATE_NEW_EVENT_ENGINE                       = "false"
         ENABLE_BIDDING_COMPRESSION                    = "false"
