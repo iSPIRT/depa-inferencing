@@ -33,16 +33,6 @@ variable "side" {
   type        = string
 }
 
-variable "key_vault_name" {
-  description = "Key Vault"
-  type        = string
-}
-
-variable "kv_certificate_name" {
-  description = "KV Certificate name"
-  type        = string
-}
-
 variable "containers" {
   description = "Containers to deploy"
   type = list(object({

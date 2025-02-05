@@ -89,25 +89,12 @@ module "app" {
   resource_group_name               = module.resource_group.name
   virtual_node_identity_id          = module.aks.virtual_node_identity_id
   containers                        = var.containers
-  key_vault_name                    = module.keyvault.name
-  kv_certificate_name               = module.keyvault.kv_certificate_name
   global_runtime_flags              = var.global_runtime_flags
   virtual_node_identity_id_override = var.custom_aks_workload_identity_id
   instrumentation_key               = module.app_insights.instrumentation_key
   storage_account_name              = module.storage_account.name
   file_share_name                   = module.storage_account.file_share
   storage_account_access_key        = module.storage_account.access_key
-}
-
-module "keyvault" {
-  source                             = "../../services/keyvault"
-  resource_group_name                = module.resource_group.name
-  frontend_service_name              = local.frontend_service_name
-  operator                           = var.operator
-  environment                        = var.environment
-  region                             = module.regions.location_cli
-  region_short                       = module.regions.location_short
-  virtual_node_identity_principal_id = module.aks.virtual_node_identity_principal_id
 }
 
 module "app_insights" {

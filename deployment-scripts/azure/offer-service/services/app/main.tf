@@ -145,18 +145,6 @@ resource "helm_release" "ba_services" {
   }
 
   set {
-    name  = "env.AZURE_KEYVAULT_NAME"
-    type  = "string"
-    value = var.key_vault_name
-  }
-
-  set {
-    name  = "env.AZURE_CERT"
-    type  = "string"
-    value = var.kv_certificate_name
-  }
-
-  set {
     name  = "virtualNodeIdentity"
     value = coalesce(var.virtual_node_identity_id_override, var.virtual_node_identity_id)
   }
