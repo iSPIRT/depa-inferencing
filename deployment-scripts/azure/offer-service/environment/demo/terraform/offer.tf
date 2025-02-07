@@ -162,8 +162,8 @@ module "offer" {
         }
       }
       runtime_flags = {
-        KV_PORT                          = "50051"          # Do not change unless you are modifying the default Azure architecture.
-        KV_HEALTHCHECK_PORT              = "50051"          # Do not change unless you are modifying the default Azure architecture.
+        KV_PORT                       = "50051"          # Do not change unless you are modifying the default Azure architecture.
+        KV_HEALTHCHECK_PORT           = "50051"          # Do not change unless you are modifying the default Azure architecture.
         AZURE_LOCAL_DATA_DIR          = "/data/deltas"   # Do not change unless you are modifying the default Azure architecture.
         AZURE_LOCAL_REALTIME_DATA_DIR = "/data/realtime" # Do not change unless you are modifying the default Azure architecture.
       }
@@ -198,7 +198,7 @@ module "offer" {
     SELECTION_KV_SERVER_EGRESS_TLS     = ""
     SELECTION_KV_SERVER_TIMEOUT_MS     = "60000"
     TEE_AD_RETRIEVAL_KV_SERVER_ADDR    = ""
-    TEE_KV_SERVER_ADDR                 = "kv-service.ad_selection.microsoft:50051"
+    TEE_KV_SERVER_ADDR                 = "kv.ad_selection.microsoft:50051"
     TELEMETRY_CONFIG                   = "mode: EXPERIMENT"
 
     AZURE_BA_PARAM_GET_TOKEN_URL             = "http://169.254.169.254/metadata/identity/oauth2/token"
