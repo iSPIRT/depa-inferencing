@@ -1,7 +1,7 @@
 # Secure Invoke Tool
 
 ## Overview
-The **Secure Invoke Tool** is a script designed to securely invoke an inference service using specified environment variables.
+The **Secure Invoke Tool** is used to send **inference request** directly to **Offer Front End(ofe)** service. The tool takes as input an unencrypted request in JSON format and then serializes, compresses, pads and then encrypts it with keys obtained from KMS service. The response returned by the target service is then similarly decrypted, decompressed, deserialized and printed to console.
 
 ## Usage
 To execute the `secure-invoke-test.sh` script, run:
@@ -17,7 +17,10 @@ Before running the script, ensure that:
   ```sh
   chmod +x secure-invoke-test.sh
   ```
+- Create a directory and create the **inference-request** as JSON object in "get_bids_request.json" file under the directory. Sample JSON can be found [here](https://github.com/iSPIRT/depa-inferencing/blob/main/docs/depa_inferencing_alpha.md#data-provider). This directory will be passed as environment variable as shown below to mount the /requests path of the container, where the tool expects to have "get_bids_request.json" file.
+
 - A `.env` file is set up with the following environment variables.
+
 
 ## Configurable Parameters
 Set the following parameters in the `.env` file:
