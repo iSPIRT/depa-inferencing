@@ -1,33 +1,36 @@
-# Secure Invoke Tool
+
+# Secure Invoke Tool - README
 
 ## Overview
-The **Secure Invoke** is used to send **inference requests** directly to **Frontend** service. The tool takes as input an unencrypted request in JSON format and then serializes, compresses, pads and then encrypts it with keys obtained from KMS service. The response returned by the target service is then similarly decrypted, decompressed, deserialized and printed to console.
+The **Secure Invoke Tool** is a script used to test secure invocation of inference service with specified environment variables. 
 
 ## Usage
-To execute the `secure-invoke-test.sh` script, run:
+To run the `secure-invoke-test.sh` script, use the following command format:
 
 ```sh
-./secure-invoke-test.sh
+./secure-invoke-test.sh BUYER_HOST="<buyer_host_address>" INFERENCE_REQUESTS_DIR=<requests_directory>
 ```
 
+## Example Execution
+```sh
+./secure-invoke-test.sh BUYER_HOST="127.0.0.1:50051" INFERENCE_REQUESTS_DIR=/home/user/requests
+```
+
+### Explanation of Arguments
+- **`BUYER_HOST`**: Specifies the host and port of the buyer service.
+  - Example: `127.0.0.1:50051`
+- **`INFERENCE_REQUESTS_DIR`**: Path to the directory containing inference request files.
+  - Example: `/home/user/requests`
+
 ## Prerequisites
-Before running the script, ensure that:
+Ensure the following before running the script:
+- The `secure-invoke-test.sh` script has **execute permissions**:
+  ```sh
+  chmod +x secure-invoke-test.sh
+  ```
+- The specified **BUYER_HOST** is reachable.
+- The **INFERENCE_REQUESTS_DIR** contains valid request files.
 
-- Create a directory and create the **inference-request** as JSON object in "get_bids_request.json" file under the directory. Sample JSON can be found [here](https://github.com/iSPIRT/depa-inferencing/blob/main/docs/depa_inferencing_alpha.md#data-provider). This directory will be passed as environment variable as shown below to mount the /requests path of the container, where the tool expects to have "get_bids_request.json" file.
 
-- A `.env` file is set up with the following environment variables.
+### 📌 **For further information, refer to the tool's documentation or contact the support team.**
 
-
-## Configurable Parameters
-Set the following parameters in the `.env` file:
-
-| Parameter         | Description                                                 | Example |
-|------------------|-------------------------------------------------------------|---------|
-| **`KMS_HOST`**   | Host and port of the KMS service.                           | `127.0.0.1:8000` |
-| **`BUYER_HOST`** | Host and port of the Buyer service.                         | `127.0.0.1:50051` |
-| **`HOST_REQUESTS_DIR`** | Directory containing inference request files.       | `/home/user/requests` |
-| **`RETRIES`**    | Number of retries before failing the transaction.          | Default: `1` |
-
-## Additional Notes
-- Ensure **BUYER_HOST** and **KMS_HOST** are reachable.
-- Verify that **HOST_REQUESTS_DIR** contains valid request files.
