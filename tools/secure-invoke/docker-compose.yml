@@ -1,0 +1,14 @@
+services:
+  secure_invoke:
+    image: ${SECURE_INVOKE_IMAGE:-${REGISTRY:-ispirt.azurecr.io/depa-inferencing/tools}/secure_invoke:${TAG:-test}}
+    network_mode: "host"
+    container_name: secure_invoke_container
+    volumes:
+      - ${INFERENCE_REQUESTS_DIR}:/requests  # Inference requests file dir - Send thru secure script argument or set env variable
+    environment:
+      KMS_HOST: ${KMS_HOST:-https://127.0.0.1:8000}
+      BUYER_HOST: ${BUYER_HOST:-https://127.0.0.1:50051}
+      OPERATION: ${OPERATION:-invoke}
+      TARGET_SERVICE: ${TARGET_SERVICE:-bfe}
+      REQUEST_PATH: ${REQUEST_PATH:-requests/get_bids_request.json} # Inference requests file name
+      RETRIES: ${RETRIES:-1}
