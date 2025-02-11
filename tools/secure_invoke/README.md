@@ -13,11 +13,7 @@ To execute the `secure-invoke-test.sh` script, run:
 ## Prerequisites
 Before running the script, ensure that:
 
-- The script has **executable permissions**:
-  ```sh
-  chmod +x secure-invoke-test.sh
-  ```
-- Create a directory and create the inference request as JSON object in "get_bids_request.json" file under the directory. Sample JSON can be found [here](https://github.com/iSPIRT/depa-inferencing/blob/main/docs/depa_inferencing_alpha.md#data-provider). This directory will be passed as environment variable as shown below to mount the /requests path of the container, where the tool expects to have "get_bids_request.json" file.
+- Create a directory and create the **inference-request** as JSON object in "get_bids_request.json" file under the directory. Sample JSON can be found [here](https://github.com/iSPIRT/depa-inferencing/blob/main/docs/depa_inferencing_alpha.md#data-provider). This directory will be passed as environment variable as shown below to mount the /requests path of the container, where the tool expects to have "get_bids_request.json" file.
 
 - A `.env` file is set up with the following environment variables.
 
