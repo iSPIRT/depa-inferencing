@@ -1,7 +1,11 @@
 # Secure Invoke Tool
 
 ## Overview
+<<<<<<< HEAD
 The **Secure Invoke** is used to send **inference requests** directly to **Frontend** service. The tool takes as input an unencrypted request in JSON format and then serializes, compresses, pads and then encrypts it with keys obtained from KMS service. The response returned by the target service is then similarly decrypted, decompressed, deserialized and printed to console.
+=======
+The **Secure Invoke Tool** is used to send **inference request** directly to **Offer Front End(ofe)** service. The tool takes as input an unencrypted request in JSON format and then serializes, compresses, pads and then encrypts it with keys obtained from KMS service. The response returned by the target service is then similarly decrypted, decompressed, deserialized and printed to console.
+>>>>>>> 8ebee1c (add request file info and links)
 
 ## Usage
 To execute the `secure-invoke-test.sh` script, run:
@@ -13,6 +17,13 @@ To execute the `secure-invoke-test.sh` script, run:
 ## Prerequisites
 Before running the script, ensure that:
 
+<<<<<<< HEAD
+=======
+- The script has **executable permissions**:
+  ```sh
+  chmod +x secure-invoke-test.sh
+  ```
+>>>>>>> 8ebee1c (add request file info and links)
 - Create a directory and create the **inference-request** as JSON object in "get_bids_request.json" file under the directory. Sample JSON can be found [here](https://github.com/iSPIRT/depa-inferencing/blob/main/docs/depa_inferencing_alpha.md#data-provider). This directory will be passed as environment variable as shown below to mount the /requests path of the container, where the tool expects to have "get_bids_request.json" file.
 
 - A `.env` file is set up with the following environment variables.
