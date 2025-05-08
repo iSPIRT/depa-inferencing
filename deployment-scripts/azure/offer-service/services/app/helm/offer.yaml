@@ -47,6 +47,8 @@ services:
     containerPorts:
       - name: grpc
         port: 50051
+      - name: http
+        port: 51052
     healthCheck: {}
     resources: {}
     nodeSelector: {}
