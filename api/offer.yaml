@@ -1,0 +1,109 @@
+openapi: 3.0.4
+info:
+  title: DEPA Inferencing Offer Service - OpenAPI 3.0
+  description: |-
+    
+  termsOfService: https://swagger.io/terms/
+  contact:
+    email: kapil.vaswani@ispirt.in
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.12
+tags:
+  - name: offers
+    description: Offer generation API
+    externalDocs:
+      description: Find out more
+      url: https://swagger.io
+paths:
+  /v1/getbids:
+    post:
+      tags:
+        - offers
+      summary: Generate an offer 
+      description: Generate an offer
+      operationId: getbids
+      requestBody:
+        description: getbids request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetBidsRequest'
+        required: true
+      parameters:
+        - name: x-bna-client-ip
+          in: header
+          description: Client IP address
+          required: true
+          schema:
+            type: string
+        - name: x-user-agent
+          in: header
+          description: User agent
+          required: true
+          schema:
+            type: string
+        - name: x-accept-language
+          in: header
+          description: Accept language
+          required: true
+          schema:
+            type: string
+        - name: api-key
+          in: header
+          description: API key for authorization
+          required: true
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          description: Bearer token for authorization
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetBidsResponse'
+        '400':
+          description: Invalid operation
+        '422':
+          description: Validation exception
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    GetBidsRequest:
+      type: object
+      properties:
+        requestCiphertext:
+          type: string
+          example: nnfE3tQBWHmb7nUjx8ETJRU9k47haF3jLzaSUnq071Z3rgznik4HAF6PA22CS26moZ41lYJA8LWy2kRU9Ll8UbSGT76ksuLz476n4mrBI06LbjXFx9cemWH89nYl0mmef/FFcbRTiMktKpftUbucsK3AgN1mx/MphZPUwuN8Mf8LoVqEhN1s1p4q
+        kId:
+          type: integer
+          format: int32
+          example: 17
+    GetBidsResponse:
+      type: object
+      properties:
+        responseCiphertext:
+          type: string
+          example: jDkweMB+reCgxkLf/jQFTbnA4v0g/rOT1R96717h
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+        - code
+        - message
