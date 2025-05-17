@@ -8,7 +8,9 @@ services:
     environment:
       KMS_HOST: ${KMS_HOST}
       BUYER_HOST: ${BUYER_HOST}
-      OPERATION: ${OPERATION:-invoke}
+      OPERATION: ${OPERATION:-rest_invoke}
       TARGET_SERVICE: ${TARGET_SERVICE:-bfe}
       REQUEST_PATH: ${REQUEST_PATH:-requests/get_bids_request.json} # Inference requests file name
       RETRIES: ${RETRIES:-1}
+      INSECURE: $(INSECURE}
+      HEADERS: $(HEADERS}

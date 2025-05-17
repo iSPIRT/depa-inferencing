@@ -1,0 +1,94 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Custom options definitions for Service, RPC and request/response fields.
+// These services are used specifically to define a Roma Application API
+// https://protobuf.dev/programming-guides/proto2/#customoptions
+
+syntax = "proto3";
+
+package privacysandbox.apis.roma.app_api.v1;
+
+import "google/protobuf/descriptor.proto";
+
+//option go_package = "github.com/privacysandbox/data-plane-shared/apis/roma/v1";
+
+extend google.protobuf.ServiceOptions {
+  RomaServiceAnnotation roma_svc_annotation = 50000;
+}
+
+extend google.protobuf.MethodOptions {
+  RomaFunctionAnnotation roma_rpc_annotation = 50001;
+}
+
+extend google.protobuf.FieldOptions {
+  RomaFieldAnnotation roma_field_annotation = 50002;
+}
+
+extend google.protobuf.MessageOptions {
+  RomaMessageAnnotation roma_mesg_annotation = 50003;
+}
+
+extend google.protobuf.EnumOptions {
+  RomaFieldAnnotation roma_enum_annotation = 50004;
+}
+
+extend google.protobuf.EnumValueOptions {
+  RomaFieldAnnotation roma_enumval_annotation = 50005;
+}
+
+message RomaServiceAnnotation {
+  string name = 1;
+  string code_id = 2;
+  string description = 3;
+  // Each namespace can only have a single Roma Host api
+  string cpp_namespace = 4;
+  string roma_app_name = 5;
+  string csharp_namespace = 7;
+  string go_package = 8;
+  // Include paths for all cpp_host_process_callback defined on
+  // RomaFunctionAnnotation. For example, if the below cpp_host_process_callback
+  // was defined in `foo/bar/foobar_native_functions.h`,
+  // cpp_host_process_callback_includes would contain
+  // `foo/bar/foobar_native_functions.h`.
+  repeated string cpp_host_process_callback_includes = 6;
+}
+
+message RomaFunctionAnnotation {
+  string description = 1;
+  // The fully-qualified name of the C++ function invoked for this rpc.
+  // This function is invoked with metadata and a RPC request message.
+  // For example, if the specified string is "::some_namespace::MyFunction",
+  // and the function is associated with `rpc TestMethod(TestMethodRequest)
+  // returns (TestMethodResponse)`, the expected callback function's signature
+  // would be:
+  // ```
+  // namespace some_namespace {
+  // TMetadata is the metadata type passed as a template parameter to Roma
+  // std::pair<TestMethodResponse, absl::Status> MyFunction(
+  //    const TMetadata& metadata, const TestMethodRequest&) {
+  //    ...
+  // }  // namespace some_namespace
+  // ```
+  string cpp_host_process_callback = 2;
+}
+
+message RomaFieldAnnotation {
+  string description = 1;
+}
+
+message RomaMessageAnnotation {
+  string description = 1;
+}
+

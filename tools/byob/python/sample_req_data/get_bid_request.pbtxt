@@ -1,0 +1,17 @@
+{
+        "interest_groups": [
+            {
+                "name": "Maya Kausalya",
+                "bidding_signals_keys": [
+                    "9999999999"
+                ],
+                "user_bidding_signals": "{\"age\":29, \"avg_amount_spent\":10000, \"total_spent\": 20000}",
+                "browser_signals": {
+                    "join_count": 1,
+                    "bid_count": 1,
+                    "recency": 0,
+                    "prev_wins": "[]"
+                }
+            }
+        ]
+}
