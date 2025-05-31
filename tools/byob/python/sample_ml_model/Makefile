@@ -10,7 +10,7 @@ run-udf-binary: json-proto
 	&& ./credit_card_inference.bin 3 
 
 gen-udf:
-	python -m nuitka --standalone credit_card_inference.py	--include-data-dir=./models=./models 
+	python -m nuitka --standalone credit_card_inference.py	--include-package=sklearn --include-data-dir=./models=models 
 
 gen-archive:
 	cd credit_card_inference.dist && \

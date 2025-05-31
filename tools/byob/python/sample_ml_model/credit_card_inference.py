@@ -20,6 +20,8 @@ import os
 import pickle
 from serdes_utils import read_request_from_fd, write_response_to_fd
 import generate_bid_pb2
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
 
 def determine_card_tier_and_limit(credit_score):
     """Determine card tier and credit limit based on credit score"""
@@ -39,23 +41,35 @@ def determine_card_tier_and_limit(credit_score):
         rounded_limit = round(raw_limit / 1000) * 1000
         return "platinum", int(rounded_limit)
 
-def load_model(model_dir='./models'):
+def load_model(model_dir):
     """Load the trained model and scaler"""
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    model_dir = os.path.join(base_path, model_dir)
     try:
         with open(os.path.join(model_dir, 'credit_card_model.pkl'), 'rb') as f:
-            model = pickle.load(f)
-        
+            try:
+                print(f"Loading model from {os.path.join(model_dir, 'credit_card_model.pkl')}")
+                model = pickle.load(f)
+            except ImportError as e:
+                print(f"Import Error loading model: {e}")
+                sys.exit(1)
+    except FileNotFoundError as e:        
+        print(f"Model file not found: {e}")
+        sys.exit(1) 
+    
+    try:
         with open(os.path.join(model_dir, 'credit_card_scaler.pkl'), 'rb') as f:
-            scaler = pickle.load(f)
+            try:
+                print(f"Loading scaler from {os.path.join(model_dir, 'credit_card_scaler.pkl')}")
+                scaler = pickle.load(f)
+            except ImportError as e:
+                print(f"Import Error loading scaler: {e}")
+                sys.exit(1)
+    except FileNotFoundError as e:
+        print(f"Scaler file not found: {e}")
+        sys.exit(1)
         
-        return model, scaler
-    except Exception as e:
-        print(f"Error loading model: {str(e)}")
-        # Fall back to training a new model if loading fails
-        print("Training a new model as fallback...")
-        from train_credit_card_model import train_model
-        model, scaler = train_model(model_dir)
-        return model, scaler
+    return model, scaler
 
 def main():
     if len(sys.argv) < 2:
@@ -63,7 +77,7 @@ def main():
         return -1
     
     fd = int(sys.argv[1])
-    model_dir = './models'
+    model_dir = 'models'
     if len(sys.argv) > 2:
         model_dir = sys.argv[2]
     
