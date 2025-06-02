@@ -14,11 +14,11 @@
             "extensions": [
                 "ms-python.python",
                 "ms-python.vscode-pylance"
-            ]
+            ],
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash"
+            }
         }
-    },
-    "settings": {
-        "terminal.integrated.defaultProfile.linux": "bash"
     }
 }
 

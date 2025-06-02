@@ -32,7 +32,7 @@ Privacy sandbox supports BYOB natively for compiled languages - c++, go, rust. T
 7. Install serdes_utils
 
    ```
-   pip install -e .
+   pip install .
    ```
 
 ## Steps to generate binary (With Generate Bid UDF Example)

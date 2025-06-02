@@ -20,6 +20,8 @@ import os
 import pickle
 from serdes_utils import read_request_from_fd, write_response_to_fd
 import generate_bid_pb2
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
 
 def determine_card_tier_and_limit(credit_score):
     """Determine card tier and credit limit based on credit score"""
@@ -39,31 +41,35 @@ def determine_card_tier_and_limit(credit_score):
         rounded_limit = round(raw_limit / 1000) * 1000
         return "platinum", int(rounded_limit)
 
-def load_model(model_dir='./models'):
+def load_model(model_dir):
     """Load the trained model and scaler"""
-    try:
-        with open(os.path.join(model_dir, 'credit_card_model.pkl'), 'rb') as f:
-            model = pickle.load(f)
-        
-        with open(os.path.join(model_dir, 'credit_card_scaler.pkl'), 'rb') as f:
-            scaler = pickle.load(f)
-        
-        return model, scaler
-    except Exception as e:
-        print(f"Error loading model: {str(e)}")
-        # Fall back to training a new model if loading fails
-        print("Training a new model as fallback...")
-        from train_credit_card_model import train_model
-        model, scaler = train_model(model_dir)
-        return model, scaler
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    model_dir = os.path.join(base_path, model_dir)
 
+    def load_pickle(filename):
+        file_path = os.path.join(model_dir)
+        try:
+            with open(file_path, 'rb') as f:
+                return pickle.load(f)
+        except FileNotFoundError:
+            print(f"file not found: {file_path}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error loading {file_path}: {e}")
+            sys.exit(1)
+
+    model = load_pickle('credit_card_model.pkl')
+    scaler = load_pickle('credit_card_scaler.pkl')
+
+    return model, scaler
+        
 def main():
     if len(sys.argv) < 2:
         sys.stderr.write("Not enough arguments!\n")
         return -1
     
     fd = int(sys.argv[1])
-    model_dir = './models'
+    model_dir = 'models'
     if len(sys.argv) > 2:
         model_dir = sys.argv[2]
     
@@ -105,18 +111,8 @@ def main():
         bid.render = f"https://creditcard/offers/{card_tier}?limit={credit_limit}"
         bid.ad_cost = 1.0
         bid.bid_currency = 'Rupees'
-        
-        # Add metadata with details about the offer
-        # metadata = {
-        #     "card_tier": card_tier,
-        #     "credit_limit": credit_limit,
-        #     "customer_name": interest_group.name,
-        #     "credit_score": float(credit_score)
-        # }
-        # bid.metadata = json.dumps(metadata)
-        
+
         response.bids.append(bid)
-        
         print(f"Generated offer for {interest_group.name}: {card_tier.upper()} card with limit ${credit_limit}")
     
     except Exception as e:

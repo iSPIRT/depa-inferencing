@@ -10,7 +10,7 @@ run-udf: json-proto
 	./run_udf.sh
 
 gen-udf:
-	python -m nuitka --standalone credit_card_inference.py	--include-data-dir=./models=./models 
+	python -m nuitka --standalone credit_card_inference.py	--include-package=sklearn --include-data-dir=./models=models 
 
 run-udf-binary: json-proto
 	cd credit_card_inference.dist && exec 3<>../sample_req_data/get_bid_request.proto \
