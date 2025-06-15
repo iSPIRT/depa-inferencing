@@ -4,8 +4,8 @@ services:
     network_mode: "host"
     container_name: secure_invoke_container
     volumes:
-      - ${HOST_REQUESTS_DIR}:/requests  # Inference requests file dir - Send thru secure script argument or set env variable
-      - ${HOST_CERTS_DIR}:/certs # Certificates dir - Send thru secure script argument or set env variable
+      - ${HOST_REQUESTS_DIR}: /requests  # Inference requests file dir - Send thru secure script argument or set env variable
+      - ${HOST_CERTS_DIR}: /etc/ssl/certs # Certificates dir - Send thru secure script argument or set env variable
     environment:
       KMS_HOST: ${KMS_HOST}
       BUYER_HOST: ${BUYER_HOST}
@@ -15,7 +15,8 @@ services:
       RETRIES: ${RETRIES:-1}
       INSECURE: $(INSECURE}
       HEADERS: $(HEADERS}
-      CLIENT_KEY: /certs/${CLIENT_KEY}
-      CLIENT_CERT: /certs/${CLIENT_CERT}
-      CA_CERT: /certs/${CA_CERT}
+      CLIENT_KEY: /etc/ssl/certs/${CLIENT_KEY}
+      CLIENT_CERT: /etc/ssl/certs/${CLIENT_CERT}
+      CA_CERT: /etc/ssl/certs/${CA_CERT}
       ENABLE_VERBOSE: "${ENABLE_VERBOSE:-false}" # Controls verbose output
+      MAX_CONCURRENT_REQUESTS: ${MAX_CONCURRENT_REQUESTS} # Maximum concurrent requests for batch processing
