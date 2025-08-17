@@ -16,10 +16,10 @@ on:
       build_flavor:
         description: 'Build flavor'
         required: true
-        default: 'non_prod'
+        default: 'nonprod'
         type: choice
         options:
-        - non_prod
+        - nonprod
         - prod
       services:
         description: 'Services to build (comma-separated)'
@@ -197,8 +197,6 @@ jobs:
       run: |
         BUILD_FLAVOR="${{ github.event.inputs.build_flavor }}"
         RELEASE_VERSION="${{ github.event.inputs.release_tag }}"
-
-        BUILD_FLAVOR="${BUILD_FLAVOR//_/-}"  # Convert non_prod to non-prod
 
         # Generate service-specific tags
         BIDDING_SERVICE_IMAGE="bidding-service:${BUILD_FLAVOR}-${RELEASE_VERSION}"
