@@ -134,7 +134,7 @@ jobs:
         ./production/packaging/build_and_test_all_in_docker \
         --instance azure_microsoft \
         --platform azure_microsoft \
-        --build-flavor ${{ github.event.inputs.build_flavor }}
+        --mode ${{ github.event.inputs.build_flavor }}
           
     - name: List Generated Tar Files
       run: |
