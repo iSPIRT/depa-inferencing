@@ -16,10 +16,10 @@ on:
       build_flavor:
         description: 'Build flavor'
         required: true
-        default: 'non_prod'
+        default: 'nonprod'
         type: choice
         options:
-        - non_prod
+        - nonprod
         - prod
       services:
         description: 'Services to build (comma-separated)'
