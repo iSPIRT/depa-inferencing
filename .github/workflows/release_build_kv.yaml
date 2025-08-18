@@ -200,7 +200,7 @@ jobs:
         # Load the key value service image from tar file
         if [ -f "./dist/azure/key_value_service_image.tar" ]; then
           echo "Loading key_value_service_image.tar..."
-          LOAD_OUTPUT=$(docker load -i ./dist/azure/key_value_service_image.tar)
+          LOAD_OUTPUT=$(docker load -i ./dist/key_value_service_image.tar)
 
           # Get the loaded image name
           LOADED_IMAGE=$(echo "$LOAD_OUTPUT" | grep "Loaded image:" | sed 's/Loaded image: //')
