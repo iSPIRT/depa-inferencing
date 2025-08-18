@@ -189,10 +189,10 @@ jobs:
         # Generate service-specific tags
         KV_SERVICE_IMAGE="key-value-service:${BUILD_FLAVOR}-${RELEASE_VERSION}"
 
-        echo "key_value_service=$KV_SERVICE_IMAGE" >> $GITHUB_OUTPUT
+        echo "key_value_service_image=$KV_SERVICE_IMAGE" >> $GITHUB_OUTPUT
 
         echo "✅ Service-specific Docker tags generated:"
-        echo "  Key Value Service: $KV_SERVICE_IMAGE"
+        echo "Key Value Service image: $KV_SERVICE_IMAGE"
 
     - name: Load and Push Key Value Service Image
       if: contains(github.event.inputs.services, 'key_value_service')
@@ -210,14 +210,14 @@ jobs:
           SERVICE_REPO_NAME="azure/depa-inferencing"
 
           # Service-specific tag: key-value-service:non-prod:1.0.0.0
-          docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service}}
+          docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service_image}}
             
           # Push all tags to Azure Container Registry
           echo "Pushing key value service to ACR with service-specific tags..."
           docker push ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service_image }}
 
           echo "✅ Successfully pushed key value service image with tags:"
-          echo "  - ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service }}"
+          echo "  - ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service_image }}"
         else
           echo "❌ key_value_service_image.tar not found"
           exit 1
