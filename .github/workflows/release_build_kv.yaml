@@ -24,10 +24,10 @@ on:
       services:
         description: 'Services to build (comma-separated)'
         required: true
-        default: 'key-value-service'
+        default: 'key_value_service'
         type: string
       release_tag:
-        description: 'Release version for Docker images (e.g., 4.8.0.0)'
+        description: 'Release version for Docker images (e.g., 1.0.0.0)'
         required: true
         default: '1.0.0.0'
         type: string
@@ -189,13 +189,13 @@ jobs:
         # Generate service-specific tags
         KV_SERVICE_IMAGE="key-value-service:${BUILD_FLAVOR}-${RELEASE_VERSION}"
 
-        echo "key-value-service=$KV_SERVICE_IMAGE" >> $GITHUB_OUTPUT
+        echo "key_value_service=$KV_SERVICE_IMAGE" >> $GITHUB_OUTPUT
 
         echo "✅ Service-specific Docker tags generated:"
         echo "  Key Value Service: $KV_SERVICE_IMAGE"
 
     - name: Load and Push Key Value Service Image
-      if: contains(github.event.inputs.services, 'bidding_service')
+      if: contains(github.event.inputs.services, 'key_value_service')
       run: |
         # Load the key value service image from tar file
         if [ -f "./dist/azure/key_value_service_image.tar" ]; then
