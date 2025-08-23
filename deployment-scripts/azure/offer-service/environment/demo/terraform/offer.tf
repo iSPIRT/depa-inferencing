@@ -13,20 +13,20 @@
 # limitations under the License.
 
 locals {
-  environment = "demo"
+  environment = "demoinf"
   operator    = "tf"
-
   # Please refer to https://github.com/claranet/terraform-azurerm-regions/blob/master/REGIONS.md for region codes. Check the "Region Deployments" section in https://github.com/microsoft/virtualnodesOnAzureContainerInstances for regions that support confidential pods.
-  region = "northeurope"
+  region = "centralindia"
+  region_short = "cin"
 
-  subscription_id = "<your_subscription_id>"
-  tenant_id       = "<your_tenant_id>"
+  subscription_id = "a8eb34c2-6598-49ca-8838-8456fb01374d"
+  tenant_id       = "6a15113e-45c7-434f-b430-96c6d0a41911"
 
-  image_registry = "kapilvaswani"
+  image_registry = "ispirt.azurecr.io"
   registry_path  = "depa-inferencing/azure"
-  image_tag      = "prod-4.3.0.0"
-  kv_image_tag   = "prod-1.0.0.0"
-  kms_url        = "https://depa-inferencing-kms.centralindia.cloudapp.azure.com"
+  image_tag      = "nonprod-4.8.0.0"
+  kv_image_tag   = "nonprod-1.0.0.0"
+  kms_url        = "https://depa-inferencing-kms.confidential-ledger.azure.com"
 }
 
 module "offer" {
@@ -45,8 +45,8 @@ module "offer" {
   containers = [
     {
       name      = "offer-service"
-      image     = "${local.image_registry}/bidding-service:${local.image_tag}"
-      ccepolicy = "${file("../cce-policies/offer.base64")}"
+      image     = "${local.image_registry}/${local.registry_path}/bidding-service:${local.image_tag}"
+      ccepolicy = "${file("../cce-policies/allow_all.base64")}"
       replicas  = 3
       resources = {
         requests = {
@@ -106,8 +106,8 @@ module "offer" {
     },
     {
       name      = "ofe"
-      image     = "${local.image_registry}/buyer-frontend-service:${local.image_tag}"
-      ccepolicy = "${file("../cce-policies/ofe.base64")}"
+      image     = "${local.image_registry}/${local.registry_path}/buyer-frontend-service:${local.image_tag}"
+      ccepolicy = "${file("../cce-policies/allow_all.base64")}"
       replicas  = 3
       resources = {
         requests = {
@@ -148,8 +148,8 @@ module "offer" {
     },
     {
       name      = "kv"
-      image     = "${local.image_registry}/key-value-service:${local.kv_image_tag}"
-      ccepolicy = "${file("../cce-policies/kv.base64")}"
+      image     = "${local.image_registry}/${local.registry_path}/key-value-service:${local.kv_image_tag}"
+      ccepolicy = "${file("../cce-policies/allow_all.base64")}"
       replicas  = 1
       resources = {
         requests = {
