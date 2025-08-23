@@ -16,10 +16,10 @@ on:
       build_flavor:
         description: 'Build flavor'
         required: true
-        default: 'nonprod'
+        default: 'non_prod'
         type: choice
         options:
-        - nonprod
+        - non_prod
         - prod
       services:
         description: 'Services to build (comma-separated)'
@@ -195,7 +195,10 @@ jobs:
     - name: Generate Service-Specific Docker Tags
       id: generate_tags
       run: |
-        BUILD_FLAVOR="${{ github.event.inputs.build_flavor }}"
+        BUILD_FLAVOR_INPUT="${{ github.event.inputs.build_flavor }}"
+        if [ "$BUILD_FLAVOR_INPUT" = "non_prod" ]; then
+          BUILD_FLAVOR="nonprod"
+        fi
         RELEASE_VERSION="${{ github.event.inputs.release_tag }}"
 
         # Generate service-specific tags
@@ -224,7 +227,7 @@ jobs:
           # Tag the image with service-specific naming following Azure best practices
           SERVICE_REPO_NAME="azure/depa-inferencing"
           
-          # Service-specific tag: bidding-service:non-prod:4.8.0.0
+          # Service-specific tag: bidding-service:nonprod:4.8.0.0
           docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.bidding_service_image}}
             
           # Push all tags to Azure Container Registry
@@ -253,7 +256,7 @@ jobs:
           # Tag the image with service-specific naming following Azure best practices
           SERVICE_REPO_NAME="azure/depa-inferencing"
           
-          # Service-specific tag: buyer-frontend-service:non-prod:4.8.0.0
+          # Service-specific tag: buyer-frontend-service:nonprod:4.8.0.0
           docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.buyer_frontend_image}}
           
           # Push all tags to Azure Container Registry
