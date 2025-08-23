@@ -207,7 +207,7 @@ jobs:
           echo "Loaded image: $LOADED_IMAGE"
           
           # Tag the image with service-specific naming following Azure best practices
-          SERVICE_REPO_NAME="azure/depa-inferencing"
+          SERVICE_REPO_NAME="depa-inferencing/azure"
 
           # Service-specific tag: key-value-service:non-prod:1.0.0.0
           docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service_image}}
