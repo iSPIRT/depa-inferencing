@@ -13,7 +13,7 @@
 # limitations under the License.
 
 locals {
-  environment = "demoinf"
+  environment = "demo"
   operator    = "tf"
   # Please refer to https://github.com/claranet/terraform-azurerm-regions/blob/master/REGIONS.md for region codes. Check the "Region Deployments" section in https://github.com/microsoft/virtualnodesOnAzureContainerInstances for regions that support confidential pods.
   region = "centralindia"
@@ -26,7 +26,7 @@ locals {
   registry_path  = "depa-inferencing/azure"
   image_tag      = "nonprod-4.8.0.0"
   kv_image_tag   = "nonprod-1.0.0.0"
-  kms_url        = "https://depa-inferencing-kms.confidential-ledger.azure.com"
+  kms_url        = "https://depa-inferencing-kms.centralindia.cloudapp.azure.com"
 }
 
 module "offer" {
@@ -47,7 +47,7 @@ module "offer" {
       name      = "offer-service"
       image     = "${local.image_registry}/${local.registry_path}/bidding-service:${local.image_tag}"
       ccepolicy = "${file("../cce-policies/allow_all.base64")}"
-      replicas  = 3
+      replicas  = 1
       resources = {
         requests = {
           cpu    = "0.75"
@@ -150,7 +150,7 @@ module "offer" {
       name      = "kv"
       image     = "${local.image_registry}/${local.registry_path}/key-value-service:${local.kv_image_tag}"
       ccepolicy = "${file("../cce-policies/allow_all.base64")}"
-      replicas  = 1
+      replicas  = 3
       resources = {
         requests = {
           cpu    = "0.75"
@@ -216,6 +216,7 @@ module "offer" {
       }),
     ",", "\\,")}"
     TEST_MODE = "false"
+    HTTPS_FETCH_SKIPS_TLS_VERIFICATION = "true"
   }
 
 }
