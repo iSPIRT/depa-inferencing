@@ -1,0 +1,195 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "containerGroupName": {
+      "value": "ofe-aci"
+    },
+    "location": {
+      "value": "centralindia"
+    },
+    "cpu": {
+      "value": 4
+    },
+    "memoryInGb": {
+      "value": "16"
+    },
+    "port": {
+      "value": 50051
+    },
+    "dnsLabelPrefix": {
+      "value": ""
+    },
+    "registryServer": {
+      "value": "ispirt.azurecr.io"
+    },
+    "env_BFE_INGRESS_TLS": {
+      "value": ""
+    },
+    "env_BFE_TCMALLOC_BACKGROUND_RELEASE_RATE_BYTES_PER_SECOND": {
+      "value": "4096"
+    },
+    "env_BFE_TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES": {
+      "value": "10737418240"
+    },
+    "env_BFE_TLS_CERT": {
+      "value": ""
+    },
+    "env_BFE_TLS_KEY": {
+      "value": ""
+    },
+    "env_BIDDING_EGRESS_TLS": {
+      "value": ""
+    },
+    "env_BIDDING_SERVER_ADDR": {
+      "value": "offer-service.ad_selection.microsoft:50057"
+    },
+    "env_BIDDING_SIGNALS_LOAD_TIMEOUT_MS": {
+      "value": "60000"
+    },
+    "env_BUYER_FRONTEND_HEALTHCHECK_PORT": {
+      "value": "50552"
+    },
+    "env_BUYER_FRONTEND_PORT": {
+      "value": "50051"
+    },
+    "env_BUYER_KV_SERVER_ADDR": {
+      "value": "kv.ad_selection.microsoft:50051"
+    },
+    "env_ENABLE_TKV_V2": {
+      "value": "true"
+    },
+    "env_TKV_EGRESS_TLS": {
+      "value": "false"
+    },
+    "env_BYOS_AD_RETRIEVAL_SERVER": {
+      "value": "false"
+    },
+    "env_CREATE_NEW_EVENT_ENGINE": {
+      "value": "false"
+    },
+    "env_ENABLE_BIDDING_COMPRESSION": {
+      "value": "false"
+    },
+    "env_ENABLE_BUYER_FRONTEND_BENCHMARKING": {
+      "value": "false"
+    },
+    "env_GENERATE_BID_TIMEOUT_MS": {
+      "value": "60000"
+    },
+    "env_GRPC_ARG_DEFAULT_AUTHORITY": {
+      "value": ""
+    },
+    "env_PROTECTED_APP_SIGNALS_GENERATE_BID_TIMEOUT_MS": {
+      "value": "60000"
+    },
+    "env_AZURE_BA_PARAM_GET_TOKEN_URL": {
+      "value": "http://169.254.169.254/metadata/identity/oauth2/token"
+    },
+    "env_ENABLE_PROTECTED_AUDIENCE": {
+      "value": "true"
+    },
+    "env_KEY_REFRESH_FLOW_RUN_FREQUENCY_SECONDS": {
+      "value": "10800"
+    },
+    "env_PRIMARY_COORDINATOR_ACCOUNT_IDENTITY": {
+      "value": ""
+    },
+    "env_PRIMARY_COORDINATOR_REGION": {
+      "value": ""
+    },
+    "env_PRIVATE_KEY_CACHE_TTL_SECONDS": {
+      "value": "3888000"
+    },
+    "env_TELEMETRY_CONFIG": {
+      "value": "mode: EXPERIMENT"
+    },
+    "env_COLLECTOR_ENDPOINT": {
+      "value": "otel-collector-service.ad_selection.microsoft:4317"
+    },
+    "env_BUYER_EGRESS_TLS": {
+      "value": ""
+    },
+    "env_CONSENTED_DEBUG_TOKEN": {
+      "value": "test-token"
+    },
+    "env_ENABLE_AUCTION_COMPRESSION": {
+      "value": "false"
+    },
+    "env_ENABLE_BUYER_COMPRESSION": {
+      "value": "false"
+    },
+    "env_ENABLE_CHAFFING": {
+      "value": "false"
+    },
+    "env_ENABLE_OTEL_BASED_LOGGING": {
+      "value": "false"
+    },
+    "env_ENABLE_PROTECTED_APP_SIGNALS": {
+      "value": "false"
+    },
+    "env_KV_SERVER_EGRESS_TLS": {
+      "value": ""
+    },
+    "env_MAX_ALLOWED_SIZE_DEBUG_URL_BYTES": {
+      "value": "65536"
+    },
+    "env_MAX_ALLOWED_SIZE_ALL_DEBUG_URLS_KB": {
+      "value": "3000"
+    },
+    "env_PS_VERBOSITY": {
+      "value": "10"
+    },
+    "env_ROMA_TIMEOUT_MS": {
+      "value": ""
+    },
+    "env_TEE_AD_RETRIEVAL_KV_SERVER_ADDR": {
+      "value": ""
+    },
+    "env_TEE_KV_SERVER_ADDR": {
+      "value": "kv.ad_selection.microsoft:50051"
+    },
+    "env_AD_RETRIEVAL_KV_SERVER_ADDR": {
+      "value": ""
+    },
+    "env_AD_RETRIEVAL_KV_SERVER_EGRESS_TLS": {
+      "value": ""
+    },
+    "env_AD_RETRIEVAL_TIMEOUT_MS": {
+      "value": "60000"
+    },
+    "env_INFERENCE_MODEL_BUCKET_NAME": {
+      "value": ""
+    },
+    "env_INFERENCE_MODEL_BUCKET_PATHS": {
+      "value": ""
+    },
+    "env_INFERENCE_MODEL_CONFIG_PATH": {
+      "value": ""
+    },
+    "env_INFERENCE_MODEL_FETCH_PERIOD_MS": {
+      "value": "60000"
+    },
+    "env_INFERENCE_MODEL_LOCAL_PATHS": {
+      "value": ""
+    },
+    "env_INFERENCE_SIDECAR_BINARY_PATH": {
+      "value": ""
+    },
+    "env_K_ANONYMITY_SERVER_ADDR": {
+      "value": ""
+    },
+    "env_K_ANONYMITY_SERVER_TIMEOUT_MS": {
+      "value": "60000"
+    },
+    "env_SELECTION_KV_SERVER_ADDR": {
+      "value": ""
+    },
+    "env_SELECTION_KV_SERVER_EGRESS_TLS": {
+      "value": ""
+    },
+    "env_SELECTION_KV_SERVER_TIMEOUT_MS": {
+      "value": "60000"
+    }
+  }
+}
