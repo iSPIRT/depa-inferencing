@@ -39,7 +39,7 @@ jobs:
 
       - name: Install CCF client Python package
         run: |
-          pip install ccf-client==6.0.10
+          pip install ccf==6.0.10
 
       - name: Generate CCE policies for services
         run: |
