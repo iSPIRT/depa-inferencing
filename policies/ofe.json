@@ -580,9 +580,6 @@
         ],
         "osType": "Linux",
         "sku": "Confidential",
-        "confidentialComputeProperties": {
-          "ccePolicy": "ewo="
-        },
         "restartPolicy": "Always",
         "ipAddress": {
           "type": "Public",
