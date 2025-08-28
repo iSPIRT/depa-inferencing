@@ -37,9 +37,21 @@ jobs:
         run: |
           az extension add --name confcom
 
-      - name: Install CCF client Python package
+      - name: Setup Python virtual environment
         run: |
+          # Create virtual environment
+          python3 -m venv ccf_env
+          
+          # Activate virtual environment and install CCF
+          source ccf_env/bin/activate
+          pip install --upgrade pip
           pip install ccf==6.0.10
+          
+          # Verify installation
+          python -c "import ccf; print(f'CCF version: {ccf.__version__}')"
+          
+          # Add virtual environment to PATH for subsequent steps
+          echo "ccf_env/bin" >> $GITHUB_PATH
 
       - name: Generate CCE policies for services
         run: |
