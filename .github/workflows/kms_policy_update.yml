@@ -54,16 +54,23 @@ jobs:
         run: |
           # Generate CCE policy for KV service
           KV_POLICY=$(az confcom acipolicygen -a policies/kv.json --print-policy | base64 --decode | sha256sum)
-          
+          echo "KV_POLICY=$KV_POLICY" >> $GITHUB_ENV
+
           # Generate CCE policy for OFE service
           OFE_POLICY=$(az confcom acipolicygen -a policies/ofe.json --print-policy | base64 --decode | sha256sum)
-          
+          echo "OFE_POLICY=$OFE_POLICY" >> $GITHUB_ENV
+
           # Generate CCE policy for offer service
           OFFER_POLICY=$(az confcom acipolicygen -a policies/offer.json --print-policy | base64 --decode | sha256sum)
-          
+          echo "OFFER_POLICY=$OFFER_POLICY" >> $GITHUB_ENV
+
           echo "CCE policies generated for all services"
 
       - name: Generate key release policy JSON
+        env: 
+          KV_POLICY: ${{ env.KV_POLICY }}
+          OFE_POLICY: ${{ env.OFE_POLICY }}
+          OFFER_POLICY: ${{ env.OFFER_POLICY }}
         run: |
           # Extract just the hash values (remove the filename part from sha256sum output)
           KV_HASH=$(echo "$KV_POLICY" | cut -d' ' -f1)
