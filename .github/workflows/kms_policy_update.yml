@@ -1,5 +1,10 @@
 name: Update KMS policy
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -32,6 +37,10 @@ jobs:
         run: |
           az extension add --name confcom
 
+      - name: Install CCF client Python package
+        run: |
+          pip install ccf-client==6.0.10
+
       - name: Generate CCE policies for services
         run: |
           # Generate CCE policy for KV service
@@ -44,3 +53,35 @@ jobs:
           OFFER_POLICY=$(az confcom acipolicygen -a policies/offer.json --print-policy | base64 --decode | sha256sum)
           
           echo "CCE policies generated for all services"
+
+      - name: Generate key release policy JSON
+        run: |
+          # Extract just the hash values (remove the filename part from sha256sum output)
+          KV_HASH=$(echo "$KV_POLICY" | cut -d' ' -f1)
+          OFE_HASH=$(echo "$OFE_POLICY" | cut -d' ' -f1)
+          OFFER_HASH=$(echo "$OFFER_POLICY" | cut -d' ' -f1)
+          
+          # Generate the JSON structure
+          cat > key_release_policy.json << EOF
+          {
+            "actions": [
+              {
+                "name": "set_key_release_policy",
+                "args": {
+                  "service": "offer-services",
+                  "type": "add",
+                  "claims": {
+                    "x-ms-sevsnpvm-hostdata": [
+                      "$KV_HASH",
+                      "$OFE_HASH",
+                      "$OFFER_HASH"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+          EOF
+          
+          echo "Key release policy JSON generated: key_release_policy.json"
+          cat key_release_policy.json
