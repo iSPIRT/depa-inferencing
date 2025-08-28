@@ -46,10 +46,7 @@ jobs:
           source ccf_env/bin/activate
           pip install --upgrade pip
           pip install ccf==6.0.10
-          
-          # Verify installation
-          python -c "import ccf; print(f'CCF version: {ccf.__version__}')"
-          
+                    
           # Add virtual environment to PATH for subsequent steps
           echo "ccf_env/bin" >> $GITHUB_PATH
 
