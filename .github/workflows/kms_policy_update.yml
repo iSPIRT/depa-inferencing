@@ -18,6 +18,16 @@ on:
         required: true
         type: string
         default: '1.2.0.0'
+      azure-vault-name:
+        description: 'Azure Key Vault'
+        required: true
+        type: string
+        default: 'depa-inferencing-vault'
+      deployment-name:
+        description: 'Azure Confidential Ledger deployment name'
+        required: true
+        type: string
+        default: 'depa-inferencing-kms'
 
 jobs:
   azure-login:
@@ -101,3 +111,20 @@ jobs:
           
           echo "Key release policy JSON generated: key_release_policy.json"
           cat key_release_policy.json
+    
+      - name: Sign key release policy
+        env:
+          AZURE_VAULT_NAME: ${{ inputs.azure-vault-name }}
+          KMS_DEPLOYMENT_NAME: ${{ inputs.deployment-name }}
+        run: |
+          # Run the signing script
+          ./tools/signing/sign.sh
+
+      - name: Display key release policy
+        env: 
+          KMS_DEPLOYMENT_NAME: ${{ inputs.deployment-name }}
+        run: | 
+          # Display the key release policy
+          KMS_URL="https://${KMS_DEPLOYMENT_NAME}.confidential-ledger.azure.com"
+          TOKEN=$(az account get-access-token --resource https://confidential-ledger.azure.com | jq -r '.accessToken')
+          curl $KMS_URL/app/keyReleasePolicy -k -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" | jq
