@@ -118,6 +118,9 @@ jobs:
           KMS_DEPLOYMENT_NAME: ${{ inputs.deployment-name }}
           PROPOSAL: ${{ github.workspace }}/key_release_policy.json
         run: |
+          # Activate the virtual environment
+          source ccf_env/bin/activate
+
           # Run the signing script
           ./tools/signing/sign.sh
 
