@@ -4,15 +4,6 @@ name: Release Build for BA services
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        default: 'dev'
-        type: choice
-        options:
-        - dev
-        - staging
-        - prod
       build_flavor:
         description: 'Build flavor'
         required: true
