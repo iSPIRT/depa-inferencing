@@ -4,15 +4,6 @@ name: Release build for Key-Value Service
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        default: 'dev'
-        type: choice
-        options:
-        - dev
-        - staging
-        - prod
       build_flavor:
         description: 'Build flavor'
         required: true
@@ -49,7 +40,6 @@ jobs:
     - name: Display Manual Trigger Parameters
       run: |
         echo "🚀 Manual Build Triggered on Self-Hosted Runner"
-        echo "Environment: ${{ github.event.inputs.environment }}"
         echo "Build Flavor: ${{ github.event.inputs.build_flavor }}"
         echo "Services: ${{ github.event.inputs.services }}"
         echo "Release Version: ${{ github.event.inputs.release_tag }}"
@@ -167,7 +157,6 @@ jobs:
     needs: build
     runs-on: self-hosted
     if: ${{ github.event.inputs.push_to_acr == 'true' }}
-    environment: ${{ github.event.inputs.environment }}
     
     steps:
     - name: Set up Docker Buildx
