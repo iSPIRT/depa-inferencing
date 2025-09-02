@@ -188,7 +188,7 @@ jobs:
     needs: build
     runs-on: self-hosted
     if: ${{ github.event.inputs.push_to_acr == 'true' }}    
-    
+
     steps:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -208,6 +208,7 @@ jobs:
           BUILD_FLAVOR="nonprod"
         else
           BUILD_FLAVOR="$BUILD_FLAVOR_INPUT"
+        fi
         RELEASE_VERSION="${{ github.event.inputs.release_tag }}"
 
         # Generate service-specific tags
