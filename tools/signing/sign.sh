@@ -74,7 +74,6 @@ download_member_certificate() {
     print_status "Downloading certificate '$AZURE_KEY_NAME' from Key Vault '$AZURE_VAULT_NAME'..."
     
     # Download the certificate
-    rm member0_cert.pem
     az keyvault certificate download \
         --vault-name "$AZURE_VAULT_NAME" \
         --name "$AZURE_KEY_NAME" \
