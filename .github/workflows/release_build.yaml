@@ -198,7 +198,8 @@ jobs:
         BUILD_FLAVOR_INPUT="${{ github.event.inputs.build_flavor }}"
         if [ "$BUILD_FLAVOR_INPUT" = "non_prod" ]; then
           BUILD_FLAVOR="nonprod"
-        fi
+        else
+          BUILD_FLAVOR="$BUILD_FLAVOR_INPUT"
         RELEASE_VERSION="${{ github.event.inputs.release_tag }}"
 
         # Generate service-specific tags
