@@ -1,5 +1,5 @@
 # .github/workflows/build.yml
-name: Build and Test
+name: Release Build for BA services
 
 on:
   workflow_dispatch:

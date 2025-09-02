@@ -1,5 +1,5 @@
 # .github/workflows/build.yml
-name: Build and Test for Key-Value Service
+name: Release build for Key-Value Service
 
 on:
   workflow_dispatch:
