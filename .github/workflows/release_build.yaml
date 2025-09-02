@@ -46,6 +46,25 @@ jobs:
     runs-on: self-hosted
     timeout-minutes: 1440 # 24 hours
     steps:
+    - name: Initial Cleanup (Pre-Build)
+      run: |
+        echo "🧹 Performing initial cleanup to ensure clean build environment..."
+        # Clean up any existing Docker artifacts
+        echo "Cleaning existing Docker containers and images..."
+        docker container prune -f || true
+        docker image prune -a -f || true
+        docker system prune -f || true
+        
+        # Clean up workspace from previous runs
+        echo "Cleaning workspace from previous runs..."
+        sudo rm -rf ${GITHUB_WORKSPACE}/* || true
+        sudo rm -rf ${GITHUB_WORKSPACE}/.* 2>/dev/null || true
+        
+        # Clean up dist directories from previous builds
+        echo "Cleaning up distribution directories..."
+        sudo rm -rf ./dist/ || true
+        sudo rm -rf ../dist/ || true
+
     - name: Display Manual Trigger Parameters
       run: |
         echo "🚀 Manual Build Triggered on Self-Hosted Runner"
@@ -275,8 +294,21 @@ jobs:
       if: always()
       run: |
         echo "🧹 Cleaning up build artifacts from docker push job..."
+
+        # Clean up any existing Docker artifacts
+        echo "Cleaning existing Docker containers and images..."
         docker container prune -f || true
-        docker image prune -f || true
-        sudo chown -R $(whoami):$(whoami) ${GITHUB_WORKSPACE} || true
-        echo "✅ Docker push job cleanup completed"
+        docker image prune -a -f || true
+        docker system prune -f || true
+        
+        # Clean up workspace from previous runs
+        echo "Cleaning workspace from previous runs..."
+        sudo rm -rf ${GITHUB_WORKSPACE}/* || true
+        sudo rm -rf ${GITHUB_WORKSPACE}/.* 2>/dev/null || true
+        
+        # Clean up dist directories from previous builds
+        echo "Cleaning up distribution directories..."
+        sudo rm -rf ./dist/ || true
+        sudo rm -rf ../dist/ || true
+
 
