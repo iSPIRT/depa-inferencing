@@ -1,4 +1,3 @@
-# .github/workflows/build.yml
 name: Release build for Key-Value Service
 
 on:
