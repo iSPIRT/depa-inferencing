@@ -10,291 +10,387 @@
     },
     "location": {
       "type": "string",
-      "defaultValue": "[resourceGroup().location]",
       "metadata": {
         "description": "Location for all resources. Defaults to the resource group's location."
       }
     },
     "cpu": {
       "type": "int",
-      "defaultValue": 4,
       "metadata": {
         "description": "CPU cores for the container"
       }
     },
     "memoryInGb": {
       "type": "string",
-      "defaultValue": "16",
       "metadata": {
         "description": "Memory (in GB) for the container"
       }
     },
     "port": {
       "type": "int",
-      "defaultValue": 50051,
       "metadata": {
         "description": "Container and public port to expose"
       }
     },
     "dnsLabelPrefix": {
       "type": "string",
-      "defaultValue": "",
       "metadata": {
         "description": "Public DNS label prefix for the container group's IP (must be globally unique in region). Leave empty to omit."
       }
     },
     "registryServer": {
       "type": "string",
-      "defaultValue": "ispirt.azurecr.io",
       "metadata": {
         "description": "Container registry login server"
       }
     },
-    "registryUsername": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Container registry username (leave empty if using managed identity)"
-      }
-    },
-    "registryPassword": {
-      "type": "secureString",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Container registry password (leave empty if using managed identity)"
-      }
-    },
     "env_BFE_INGRESS_TLS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "TLS configuration for BFE ingress traffic"
+      }
     },
     "env_BFE_TCMALLOC_BACKGROUND_RELEASE_RATE_BYTES_PER_SECOND": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Background release rate for TCMalloc memory management in BFE service"
+      }
     },
     "env_BFE_TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Maximum total thread cache size for TCMalloc in BFE service"
+      }
     },
     "env_BFE_TLS_CERT": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "TLS certificate for BFE ingress traffic"
+      }
     },
     "env_BFE_TLS_KEY": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "TLS key for BFE ingress traffic"
+      }
     },
     "env_BIDDING_EGRESS_TLS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "TLS configuration for BFE ingress traffic"
+      }
     },
     "env_BIDDING_SERVER_ADDR": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Bidding service address"
+      }
     },
     "env_BIDDING_SIGNALS_LOAD_TIMEOUT_MS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Bidding signals load timeout in milliseconds"
+      }
     },
     "env_BUYER_FRONTEND_HEALTHCHECK_PORT": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Buyer frontend healthcheck port"
+      }
     },
     "env_BUYER_FRONTEND_PORT": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Buyer frontend port"
+      }
     },
     "env_BUYER_KV_SERVER_ADDR": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Buyer KV server address"
+      }
     },
     "env_ENABLE_TKV_V2": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Enable TKV V2"
+      }
     },
     "env_ENABLE_TKV_V2_BROWSER": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Enable TKV V2 browser"
+      }
     },
     "env_BUYER_TKV_V2_SERVER_ADDR": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Buyer TKV V2 server address"
+      }
     },
     "env_TKV_EGRESS_TLS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "TLS configuration for TKV ingress traffic"
+      }
     },
     "env_BYOS_AD_RETRIEVAL_SERVER": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "BYOS ad retrieval server"
+      }
     },
     "env_CREATE_NEW_EVENT_ENGINE": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Create new event engine"
+      }
     },
     "env_ENABLE_BIDDING_COMPRESSION": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Enable bidding compression"
+      }
     },
     "env_ENABLE_BUYER_FRONTEND_BENCHMARKING": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Enable buyer frontend benchmarking"
+      }
     },
     "env_GENERATE_BID_TIMEOUT_MS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Generate bid timeout in milliseconds"
+      }
     },
     "env_GRPC_ARG_DEFAULT_AUTHORITY": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "gRPC arg default authority"
+      }
     },
     "env_PROTECTED_APP_SIGNALS_GENERATE_BID_TIMEOUT_MS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Protected app signals generate bid timeout in milliseconds"
+      }
     },
     "env_AZURE_BA_PARAM_GET_TOKEN_URL": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Azure BA param get token URL"
+      }
     },
     "env_ENABLE_PROTECTED_AUDIENCE": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Enable protected audience"
+      }
     },
     "env_KEY_REFRESH_FLOW_RUN_FREQUENCY_SECONDS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Key refresh flow run frequency seconds"
+      }
     },
     "env_PRIMARY_COORDINATOR_ACCOUNT_IDENTITY": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Primary coordinator account identity"
+      }
     },
     "env_PRIMARY_COORDINATOR_REGION": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Primary coordinator region"
+      }
     },
     "env_PRIVATE_KEY_CACHE_TTL_SECONDS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Private key cache TTL seconds"
+      }
     },
     "env_TELEMETRY_CONFIG": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Telemetry config"
+      }
     },
     "env_COLLECTOR_ENDPOINT": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Collector endpoint"
+      }
     },
     "env_BUYER_EGRESS_TLS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Buyer egress TLS"
+      }
     },
     "env_CONSENTED_DEBUG_TOKEN": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Consented debug token"
+      }
     },
     "env_ENABLE_AUCTION_COMPRESSION": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Enable auction compression"
+      }
     },
     "env_ENABLE_BUYER_COMPRESSION": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Enable buyer compression"
+      }
     },
     "env_ENABLE_CHAFFING": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Enable chaffing"
+      }
     },
     "env_ENABLE_OTEL_BASED_LOGGING": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Enable OTEL based logging"
+      }
     },
     "env_ENABLE_PROTECTED_APP_SIGNALS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Enable protected app signals"
+      }
     },
     "env_KV_SERVER_EGRESS_TLS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "KV server egress TLS"
+      }
     },
     "env_MAX_ALLOWED_SIZE_DEBUG_URL_BYTES": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Max allowed size for debug URL bytes"
+      }
     },
     "env_MAX_ALLOWED_SIZE_ALL_DEBUG_URLS_KB": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Max allowed size for all debug URLs in KB"
+      }
     },
     "env_PS_VERBOSITY": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "PS verbosity"
+      }
     },
     "env_ROMA_TIMEOUT_MS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Roma timeout in milliseconds"
+      }
     },
     "env_TEE_AD_RETRIEVAL_KV_SERVER_ADDR": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "TEE ad retrieval KV server address"
+      }
     },
     "env_TEE_KV_SERVER_ADDR": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "TEE KV server address"
+      }
     },
     "env_AD_RETRIEVAL_KV_SERVER_ADDR": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "AD retrieval KV server address"
+      }
     },
     "env_AD_RETRIEVAL_KV_SERVER_EGRESS_TLS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "AD retrieval KV server egress TLS"
+      }
     },
     "env_AD_RETRIEVAL_TIMEOUT_MS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "AD retrieval timeout in milliseconds"
+      }
     },
     "env_INFERENCE_MODEL_BUCKET_NAME": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Inference model bucket name"
+      }
     },
     "env_INFERENCE_MODEL_BUCKET_PATHS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Inference model bucket paths"
+      }
     },
     "env_INFERENCE_MODEL_CONFIG_PATH": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Inference model config path"
+      }
     },
     "env_INFERENCE_MODEL_FETCH_PERIOD_MS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Inference model fetch period in milliseconds"
+      }
     },
     "env_INFERENCE_MODEL_LOCAL_PATHS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Inference model local paths"
+      }
     },
     "env_INFERENCE_SIDECAR_BINARY_PATH": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Inference sidecar binary path"
+      }
     },
     "env_K_ANONYMITY_SERVER_ADDR": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "K anonymity server address"
+      }
     },
     "env_K_ANONYMITY_SERVER_TIMEOUT_MS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "K anonymity server timeout in milliseconds"
+      }
     },
     "env_SELECTION_KV_SERVER_ADDR": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Selection KV server address"
+      }
     },
     "env_SELECTION_KV_SERVER_EGRESS_TLS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Selection KV server egress TLS"
+      }
     },
     "env_SELECTION_KV_SERVER_TIMEOUT_MS": {
       "type": "string",
-      "defaultValue": ""
+      "metadata": {
+        "description": "Selection KV server timeout in milliseconds"
+      }
     }
   },
   "variables": {},
@@ -580,9 +676,6 @@
         ],
         "osType": "Linux",
         "sku": "Confidential",
-        "confidentialComputeProperties": {
-          "ccePolicy": "ewo="
-        },
         "restartPolicy": "Always",
         "ipAddress": {
           "type": "Public",
