@@ -39,7 +39,7 @@ jobs:
       - name: Update demo environment
         env: 
           AZURE_AKS_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
-          AZURE_AKV_TENANT_ID: ${{ secrets.AZURE_AKS_TENANT_ID }}
+          AZURE_AKS_TENANT_ID: ${{ secrets.AZURE_AKS_TENANT_ID }}
         run: |
            sed -i 's|<your_subscription_id>|'"$AZURE_AKS_SUBSCRIPTION_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
            sed -i 's|<your_tenant_id>|'"$AZURE_AKS_TENANT_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
