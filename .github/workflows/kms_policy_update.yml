@@ -1,0 +1,46 @@
+name: Update KMS policy
+
+on:
+  workflow_dispatch:
+    inputs:
+      bidding-auction-version:
+        description: 'DEPA Inferencing Release Version for Bidding and Auction Services'
+        required: true
+        type: string
+        default: '4.8.0.0'
+      kv-services-version:
+        description: 'DEPA Inferencing Release Version for KV Services'
+        required: true
+        type: string
+        default: '1.2.0.0'
+
+jobs:
+  azure-login:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Azure CLI Confcom extension
+        run: |
+          az extension add --name confcom
+
+      - name: Generate CCE policies for services
+        run: |
+          # Generate CCE policy for KV service
+          KV_POLICY=$(az confcom acipolicygen -a policies/kv.json --print-policy | base64 --decode | sha256sum)
+          
+          # Generate CCE policy for OFE service
+          OFE_POLICY=$(az confcom acipolicygen -a policies/ofe.json --print-policy | base64 --decode | sha256sum)
+          
+          # Generate CCE policy for offer service
+          OFFER_POLICY=$(az confcom acipolicygen -a policies/offer.json --print-policy | base64 --decode | sha256sum)
+          
+          echo "CCE policies generated for all services"

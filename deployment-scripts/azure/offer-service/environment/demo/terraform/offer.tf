@@ -19,6 +19,7 @@ locals {
   region = "centralindia"
   region_short = "cin"
 
+
   subscription_id = "<your_subscription_id>"
   tenant_id       = "<your_tenant_id>"
 
@@ -27,6 +28,7 @@ locals {
   image_tag      = "nonprod-4.8.0.0"
   kv_image_tag   = "nonprod-1.2.0.0"
   kms_url        = "https://depa-inferencing-kms.centralindia.cloudapp.azure.com"
+
 }
 
 module "offer" {
@@ -48,6 +50,7 @@ module "offer" {
       image     = "${local.image_registry}/${local.registry_path}/bidding-service:${local.image_tag}"
       ccepolicy = "${file("../cce-policies/allow_all.base64")}"
       replicas  = 1
+
       resources = {
         requests = {
           cpu    = "0.75"
@@ -109,6 +112,7 @@ module "offer" {
       image     = "${local.image_registry}/${local.registry_path}/buyer-frontend-service:${local.image_tag}"
       ccepolicy = "${file("../cce-policies/allow_all.base64")}"
       replicas  = 1
+
       resources = {
         requests = {
           cpu    = "0.75"
@@ -150,6 +154,7 @@ module "offer" {
     {
       name      = "kv"
       image     = "${local.image_registry}/${local.registry_path}/key-value-service:${local.kv_image_tag}"
+
       ccepolicy = "${file("../cce-policies/allow_all.base64")}"
       replicas  = 1
       resources = {

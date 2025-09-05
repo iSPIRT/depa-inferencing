@@ -1,0 +1,605 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-08-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "containerGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Azure Container Instance group"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Location for all resources. Defaults to the resource group's location."
+      }
+    },
+    "cpu": {
+      "type": "int",
+      "metadata": {
+        "description": "CPU cores for the container"
+      }
+    },
+    "memoryInGb": {
+      "type": "string",
+      "metadata": {
+        "description": "Memory (in GB) for the container"
+      }
+    },
+    "port": {
+      "type": "int",
+      "metadata": {
+        "description": "Container and public port to expose"
+      }
+    },
+    "dnsLabelPrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Public DNS label prefix for the container group's IP (must be globally unique in region). Leave empty to omit."
+      }
+    },
+    "registryServer": {
+      "type": "string",
+      "metadata": {
+        "description": "Container registry login server"
+      }
+    },
+    "registryUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "Container registry username (leave empty if using managed identity)"
+      }
+    },
+    "registryPassword": {
+      "type": "secureString",
+      "metadata": {
+        "description": "Container registry password (leave empty if using managed identity)"
+      }
+    },
+    "env_BIDDING_HEALTHCHECK_PORT": {
+      "type": "string",
+      "metadata": {
+        "description": "Bidding healthcheck port"
+      }
+    },
+    "env_BIDDING_PORT": {
+      "type": "string",
+      "metadata": {
+        "description": "Bidding port"
+      }
+    },
+    "env_BIDDING_TCMALLOC_BACKGROUND_RELEASE_RATE_BYTES_PER_SECOND": {
+      "type": "string",
+      "metadata": {
+        "description": "Background release rate for TCMalloc memory management in Bidding service"
+      }
+    },
+    "env_BIDDING_TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES": {
+      "type": "string",
+      "metadata": {
+        "description": "Maximum total thread cache size for TCMalloc in Bidding service"
+      }
+    },
+    "env_BUYER_CODE_FETCH_CONFIG": {
+      "type": "string",
+      "metadata": {
+        "description": "Buyer code fetch config"
+      }
+    },
+    "env_EGRESS_SCHEMA_FETCH_CONFIG": {
+      "type": "string",
+      "metadata": {
+        "description": "Egress schema fetch config"
+      }
+    },
+    "env_ENABLE_BIDDING_SERVICE_BENCHMARK": {
+      "type": "string",
+      "metadata": {
+        "description": "Enable bidding service benchmark"
+      }
+    },
+    "env_INFERENCE_SIDECAR_RUNTIME_CONFIG": {
+      "type": "string",
+      "metadata": {
+        "description": "Inference sidecar runtime config"
+      }
+    },
+    "env_UDF_NUM_WORKERS": {
+      "type": "string",
+      "metadata": {
+        "description": "UDF number of workers"
+      }
+    },
+    "env_JS_WORKER_QUEUE_LEN": {
+      "type": "string",
+      "metadata": {
+        "description": "JS worker queue length"
+      }
+    },
+    "env_SELECTION_KV_SERVER_ADDR": {
+      "type": "string",
+      "metadata": {
+        "description": "Selection KV server address"
+      }
+    },
+    "env_SELECTION_KV_SERVER_EGRESS_TLS": {
+      "type": "string",
+      "metadata": {
+        "description": "Selection KV server egress TLS"
+      }
+    },
+    "env_SELECTION_KV_SERVER_TIMEOUT_MS": {
+      "type": "string",
+      "metadata": {
+        "description": "Selection KV server timeout in milliseconds"
+      }
+    },
+    "env_TEE_AD_RETRIEVAL_KV_SERVER_GRPC_ARG_DEFAULT_AUTHORITY": {
+      "type": "string",
+      "metadata": {
+        "description": "TEE ad retrieval KV server gRPC arg default authority"
+      }
+    },
+    "env_TEE_KV_SERVER_GRPC_ARG_DEFAULT_AUTHORITY": {
+      "type": "string",
+      "metadata": {
+        "description": "TEE KV server gRPC arg default authority"
+      }
+    },
+    "env_AZURE_BA_PARAM_GET_TOKEN_URL": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure BA param get token URL"
+      }
+    },
+    "env_ENABLE_PROTECTED_AUDIENCE": {
+      "type": "string",
+      "metadata": {
+        "description": "Enable protected audience"
+      }
+    },
+    "env_KEY_REFRESH_FLOW_RUN_FREQUENCY_SECONDS": {
+      "type": "string",
+      "metadata": {
+        "description": "Key refresh flow run frequency seconds"
+      }
+    },
+    "env_PRIMARY_COORDINATOR_ACCOUNT_IDENTITY": {
+      "type": "string",
+      "metadata": {
+        "description": "Primary coordinator account identity"
+      }
+    },
+    "env_PRIMARY_COORDINATOR_REGION": {
+      "type": "string",
+      "metadata": {
+        "description": "Primary coordinator region"
+      }
+    },
+    "env_PRIVATE_KEY_CACHE_TTL_SECONDS": {
+      "type": "string",
+      "metadata": {
+        "description": "Private key cache TTL seconds"
+      }
+    },
+    "env_TELEMETRY_CONFIG": {
+      "type": "string",
+      "metadata": {
+        "description": "Telemetry config"
+      }
+    },
+    "env_COLLECTOR_ENDPOINT": {
+      "type": "string",
+      "metadata": {
+        "description": "Collector endpoint"
+      }
+    },
+    "env_BUYER_EGRESS_TLS": {
+      "type": "string",
+      "metadata": {
+        "description": "Buyer egress TLS"
+      }
+    },
+    "env_CONSENTED_DEBUG_TOKEN": {
+      "type": "string",
+      "metadata": {
+        "description": "Consented debug token"
+      }
+    },
+    "env_ENABLE_AUCTION_COMPRESSION": {
+      "type": "string",
+      "metadata": {
+        "description": "Enable auction compression"
+      }
+    },
+    "env_ENABLE_BUYER_COMPRESSION": {
+      "type": "string",
+      "metadata": {
+        "description": "Enable buyer compression"
+      }
+    },
+    "env_ENABLE_CHAFFING": {
+      "type": "string",
+      "metadata": {
+        "description": "Enable chaffing"
+      }
+    },
+    "env_ENABLE_OTEL_BASED_LOGGING": {
+      "type": "string",
+      "metadata": {
+        "description": "Enable OTEL based logging"
+      }
+    },
+    "env_ENABLE_PROTECTED_APP_SIGNALS": {
+      "type": "string",
+      "metadata": {
+        "description": "Enable protected app signals"
+      }
+    },
+    "env_INFERENCE_MODEL_BUCKET_NAME": {
+      "type": "string",
+      "metadata": {
+        "description": "Inference model bucket name"
+      }
+    },
+    "env_INFERENCE_MODEL_BUCKET_PATHS": {
+      "type": "string",
+      "metadata": {
+        "description": "Inference model bucket paths"
+      }
+    },
+    "env_INFERENCE_MODEL_CONFIG_PATH": {
+      "type": "string",
+      "metadata": {
+        "description": "Inference model config path"
+      }
+    },
+    "env_INFERENCE_MODEL_FETCH_PERIOD_MS": {
+      "type": "string",
+      "metadata": {
+        "description": "Inference model fetch period in milliseconds"
+      }
+    },
+    "env_INFERENCE_MODEL_LOCAL_PATHS": {
+      "type": "string",
+      "metadata": {
+        "description": "Inference model local paths"
+      }
+    },
+    "env_INFERENCE_SIDECAR_BINARY_PATH": {
+      "type": "string",
+      "metadata": {
+        "description": "Inference sidecar binary path"
+      }
+    },
+    "env_K_ANONYMITY_SERVER_ADDR": {
+      "type": "string",
+      "metadata": {
+        "description": "K anonymity server address"
+      }
+    },
+    "env_K_ANONYMITY_SERVER_TIMEOUT_MS": {
+      "type": "string",
+      "metadata": {
+        "description": "K anonymity server timeout in milliseconds"
+      }
+    },
+    "env_KV_SERVER_EGRESS_TLS": {
+      "type": "string",
+      "metadata": {
+        "description": "KV server egress TLS"
+      }
+    },
+    "env_MAX_ALLOWED_SIZE_DEBUG_URL_BYTES": {
+      "type": "string",
+      "metadata": {
+        "description": "Max allowed size for debug URL bytes"
+      }
+    },
+    "env_MAX_ALLOWED_SIZE_ALL_DEBUG_URLS_KB": {
+      "type": "string",
+      "metadata": {
+        "description": "Max allowed size for all debug URLs in KB"
+      }
+    },
+    "env_PS_VERBOSITY": {
+      "type": "string",
+      "metadata": {
+        "description": "PS verbosity"
+      }
+    },
+    "env_ROMA_TIMEOUT_MS": {
+      "type": "string",
+      "metadata": {
+        "description": "Roma timeout in milliseconds"
+      }
+    },
+    "env_TEE_AD_RETRIEVAL_KV_SERVER_ADDR": {
+      "type": "string",
+      "metadata": {
+        "description": "TEE ad retrieval KV server address"
+      }
+    },
+    "env_TEE_KV_SERVER_ADDR": {
+      "type": "string",
+      "metadata": {
+        "description": "TEE KV server address"
+      }
+    },
+    "env_AD_RETRIEVAL_KV_SERVER_ADDR": {
+      "type": "string",
+      "metadata": {
+        "description": "AD retrieval KV server address"
+      }
+    },
+    "env_AD_RETRIEVAL_KV_SERVER_EGRESS_TLS": {
+      "type": "string",
+      "metadata": {
+        "description": "AD retrieval KV server egress TLS"
+      }
+    },
+    "env_AD_RETRIEVAL_TIMEOUT_MS": {
+      "type": "string",
+      "metadata": {
+        "description": "AD retrieval timeout in milliseconds"
+      }
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "Microsoft.ContainerInstance/containerGroups",
+      "apiVersion": "2023-05-01",
+      "name": "[parameters('containerGroupName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "containers": [
+          {
+            "name": "[parameters('containerGroupName')]",
+            "properties": {
+              "image": "ispirt.azurecr.io/depa-inferencing/azure/bidding-service:nonprod-4.3.0.0",
+              "resources": {
+                "requests": {
+                  "cpu": "[parameters('cpu')]",
+                  "memoryInGB": "[json(parameters('memoryInGb'))]"
+                }
+              },
+              "ports": [
+                {
+                  "port": "[parameters('port')]"
+                }
+              ],
+              "environmentVariables": [
+                {
+                  "name": "BIDDING_HEALTHCHECK_PORT",
+                  "value": "[parameters('env_BIDDING_HEALTHCHECK_PORT')]"
+                },
+                {
+                  "name": "BIDDING_PORT",
+                  "value": "[parameters('env_BIDDING_PORT')]"
+                },
+                {
+                  "name": "BIDDING_TCMALLOC_BACKGROUND_RELEASE_RATE_BYTES_PER_SECOND",
+                  "value": "[parameters('env_BIDDING_TCMALLOC_BACKGROUND_RELEASE_RATE_BYTES_PER_SECOND')]"
+                },
+                {
+                  "name": "BIDDING_TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES",
+                  "value": "[parameters('env_BIDDING_TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES')]"
+                },
+                {
+                  "name": "BUYER_CODE_FETCH_CONFIG",
+                  "value": "[parameters('env_BUYER_CODE_FETCH_CONFIG')]"
+                },
+                {
+                  "name": "EGRESS_SCHEMA_FETCH_CONFIG",
+                  "value": "[parameters('env_EGRESS_SCHEMA_FETCH_CONFIG')]"
+                },
+                {
+                  "name": "ENABLE_BIDDING_SERVICE_BENCHMARK",
+                  "value": "[parameters('env_ENABLE_BIDDING_SERVICE_BENCHMARK')]"
+                },
+                {
+                  "name": "INFERENCE_SIDECAR_RUNTIME_CONFIG",
+                  "value": "[parameters('env_INFERENCE_SIDECAR_RUNTIME_CONFIG')]"
+                },
+                {
+                  "name": "UDF_NUM_WORKERS",
+                  "value": "[parameters('env_UDF_NUM_WORKERS')]"
+                },
+                {
+                  "name": "JS_WORKER_QUEUE_LEN",
+                  "value": "[parameters('env_JS_WORKER_QUEUE_LEN')]"
+                },
+                {
+                  "name": "SELECTION_KV_SERVER_ADDR",
+                  "value": "[parameters('env_SELECTION_KV_SERVER_ADDR')]"
+                },
+                {
+                  "name": "SELECTION_KV_SERVER_EGRESS_TLS",
+                  "value": "[parameters('env_SELECTION_KV_SERVER_EGRESS_TLS')]"
+                },
+                {
+                  "name": "SELECTION_KV_SERVER_TIMEOUT_MS",
+                  "value": "[parameters('env_SELECTION_KV_SERVER_TIMEOUT_MS')]"
+                },
+                {
+                  "name": "TEE_AD_RETRIEVAL_KV_SERVER_GRPC_ARG_DEFAULT_AUTHORITY",
+                  "value": "[parameters('env_TEE_AD_RETRIEVAL_KV_SERVER_GRPC_ARG_DEFAULT_AUTHORITY')]"
+                },
+                {
+                  "name": "TEE_KV_SERVER_GRPC_ARG_DEFAULT_AUTHORITY",
+                  "value": "[parameters('env_TEE_KV_SERVER_GRPC_ARG_DEFAULT_AUTHORITY')]"
+                },
+                {
+                  "name": "AD_RETRIEVAL_KV_SERVER_ADDR",
+                  "value": "[parameters('env_AD_RETRIEVAL_KV_SERVER_ADDR')]"
+                },
+                {
+                  "name": "AD_RETRIEVAL_KV_SERVER_EGRESS_TLS",
+                  "value": "[parameters('env_AD_RETRIEVAL_KV_SERVER_EGRESS_TLS')]"
+                },
+                {
+                  "name": "AD_RETRIEVAL_TIMEOUT_MS",
+                  "value": "[parameters('env_AD_RETRIEVAL_TIMEOUT_MS')]"
+                },
+                {
+                  "name": "BUYER_EGRESS_TLS",
+                  "value": "[parameters('env_BUYER_EGRESS_TLS')]"
+                },
+                {
+                  "name": "COLLECTOR_ENDPOINT",
+                  "value": "[parameters('env_COLLECTOR_ENDPOINT')]"
+                },
+                {
+                  "name": "CONSENTED_DEBUG_TOKEN",
+                  "value": "[parameters('env_CONSENTED_DEBUG_TOKEN')]"
+                },
+                {
+                  "name": "ENABLE_AUCTION_COMPRESSION",
+                  "value": "[parameters('env_ENABLE_AUCTION_COMPRESSION')]"
+                },
+                {
+                  "name": "ENABLE_BUYER_COMPRESSION",
+                  "value": "[parameters('env_ENABLE_BUYER_COMPRESSION')]"
+                },
+                {
+                  "name": "ENABLE_CHAFFING",
+                  "value": "[parameters('env_ENABLE_CHAFFING')]"
+                },
+                {
+                  "name": "ENABLE_OTEL_BASED_LOGGING",
+                  "value": "[parameters('env_ENABLE_OTEL_BASED_LOGGING')]"
+                },
+                {
+                  "name": "ENABLE_PROTECTED_APP_SIGNALS",
+                  "value": "[parameters('env_ENABLE_PROTECTED_APP_SIGNALS')]"
+                },
+                {
+                  "name": "INFERENCE_MODEL_BUCKET_NAME",
+                  "value": "[parameters('env_INFERENCE_MODEL_BUCKET_NAME')]"
+                },
+                {
+                  "name": "INFERENCE_MODEL_BUCKET_PATHS",
+                  "value": "[parameters('env_INFERENCE_MODEL_BUCKET_PATHS')]"
+                },
+                {
+                  "name": "INFERENCE_MODEL_CONFIG_PATH",
+                  "value": "[parameters('env_INFERENCE_MODEL_CONFIG_PATH')]"
+                },
+                {
+                  "name": "INFERENCE_MODEL_FETCH_PERIOD_MS",
+                  "value": "[parameters('env_INFERENCE_MODEL_FETCH_PERIOD_MS')]"
+                },
+                {
+                  "name": "INFERENCE_MODEL_LOCAL_PATHS",
+                  "value": "[parameters('env_INFERENCE_MODEL_LOCAL_PATHS')]"
+                },
+                {
+                  "name": "INFERENCE_SIDECAR_BINARY_PATH",
+                  "value": "[parameters('env_INFERENCE_SIDECAR_BINARY_PATH')]"
+                },
+                {
+                  "name": "K_ANONYMITY_SERVER_ADDR",
+                  "value": "[parameters('env_K_ANONYMITY_SERVER_ADDR')]"
+                },
+                {
+                  "name": "K_ANONYMITY_SERVER_TIMEOUT_MS",
+                  "value": "[parameters('env_K_ANONYMITY_SERVER_TIMEOUT_MS')]"
+                },
+                {
+                  "name": "KV_SERVER_EGRESS_TLS",
+                  "value": "[parameters('env_KV_SERVER_EGRESS_TLS')]"
+                },
+                {
+                  "name": "MAX_ALLOWED_SIZE_DEBUG_URL_BYTES",
+                  "value": "[parameters('env_MAX_ALLOWED_SIZE_DEBUG_URL_BYTES')]"
+                },
+                {
+                  "name": "MAX_ALLOWED_SIZE_ALL_DEBUG_URLS_KB",
+                  "value": "[parameters('env_MAX_ALLOWED_SIZE_ALL_DEBUG_URLS_KB')]"
+                },
+                {
+                  "name": "PS_VERBOSITY",
+                  "value": "[parameters('env_PS_VERBOSITY')]"
+                },
+                {
+                  "name": "ROMA_TIMEOUT_MS",
+                  "value": "[parameters('env_ROMA_TIMEOUT_MS')]"
+                },
+                {
+                  "name": "TEE_AD_RETRIEVAL_KV_SERVER_ADDR",
+                  "value": "[parameters('env_TEE_AD_RETRIEVAL_KV_SERVER_ADDR')]"
+                },
+                {
+                  "name": "TEE_KV_SERVER_ADDR",
+                  "value": "[parameters('env_TEE_KV_SERVER_ADDR')]"
+                },
+                {
+                  "name": "TELEMETRY_CONFIG",
+                  "value": "[parameters('env_TELEMETRY_CONFIG')]"
+                },
+                {
+                  "name": "AZURE_BA_PARAM_GET_TOKEN_URL",
+                  "value": "[parameters('env_AZURE_BA_PARAM_GET_TOKEN_URL')]"
+                },
+                {
+                  "name": "AZURE_BA_PARAM_KMS_UNWRAP_URL",
+                  "value": "https://depa-inferencing-kms.centralindia.cloudapp.azure.com/app/unwrapKey?fmt=tink"
+                },
+                {
+                  "name": "ENABLE_PROTECTED_AUDIENCE",
+                  "value": "[parameters('env_ENABLE_PROTECTED_AUDIENCE')]"
+                },
+                {
+                  "name": "KEY_REFRESH_FLOW_RUN_FREQUENCY_SECONDS",
+                  "value": "[parameters('env_KEY_REFRESH_FLOW_RUN_FREQUENCY_SECONDS')]"
+                },
+                {
+                  "name": "PRIMARY_COORDINATOR_ACCOUNT_IDENTITY",
+                  "value": "[parameters('env_PRIMARY_COORDINATOR_ACCOUNT_IDENTITY')]"
+                },
+                {
+                  "name": "PRIMARY_COORDINATOR_PRIVATE_KEY_ENDPOINT",
+                  "value": "https://depa-inferencing-kms.centralindia.cloudapp.azure.com/app/key?fmt=tink"
+                },
+                {
+                  "name": "PRIMARY_COORDINATOR_REGION",
+                  "value": "[parameters('env_PRIMARY_COORDINATOR_REGION')]"
+                },
+                {
+                  "name": "PRIVATE_KEY_CACHE_TTL_SECONDS",
+                  "value": "[parameters('env_PRIVATE_KEY_CACHE_TTL_SECONDS')]"
+                },
+                {
+                  "name": "PUBLIC_KEY_ENDPOINT",
+                  "value": "https://depa-inferencing-kms.centralindia.cloudapp.azure.com/app/listpubkeys"
+                },
+                {
+                  "name": "SFE_PUBLIC_KEYS_ENDPOINTS",
+                  "value": "{\"AZURE\":\"https://depa-inferencing-kms.centralindia.cloudapp.azure.com/app/listpubkeys\"}"
+                },
+                {
+                  "name": "TEST_MODE",
+                  "value": "false"
+                }
+              ]
+            }
+          }
+        ],
+        "osType": "Linux",
+        "sku": "Confidential",
+        "restartPolicy": "Always",
+        "ipAddress": {
+          "type": "Public",
+          "ports": [
+            {
+              "protocol": "TCP",
+              "port": "[parameters('port')]"
+            }
+          ],
+          "dnsNameLabel": "[if(equals(parameters('dnsLabelPrefix'), ''), json('null'), parameters('dnsLabelPrefix'))]"
+        }
+      }
+    }
+  ]
+}
