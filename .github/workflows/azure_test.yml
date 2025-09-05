@@ -45,7 +45,7 @@ jobs:
            sed -i 's|<your_tenant_id>|'"$AZURE_TENANT_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
 
       - name: Terraform init
-        run:
+        run: |
           cd ./deployment-scripts/azure/offer-service/environment/demo/terraform
           terraform init
 
@@ -53,6 +53,6 @@ jobs:
         env: 
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           KUBE_CONFIG_PATH: ~/.kube/config
-        run:
+        run: |
           cd ./deployment-scripts/azure/offer-service/environment/demo/terraform
           terraform apply -auto-approve
