@@ -19,8 +19,8 @@ locals {
   region = "centralindia"
   region_short = "cin"
 
-  subscription_id = "a8eb34c2-6598-49ca-8838-8456fb01374d"
-  tenant_id       = "6a15113e-45c7-434f-b430-96c6d0a41911"
+  subscription_id = "<your_subscription_id>"
+  tenant_id       = "<your_tenant_id>"
 
   image_registry = "ispirt.azurecr.io"
   registry_path  = "depa-inferencing/azure"
@@ -47,7 +47,7 @@ module "offer" {
       name      = "offer-service"
       image     = "${local.image_registry}/${local.registry_path}/bidding-service:${local.image_tag}"
       ccepolicy = "${file("../cce-policies/allow_all.base64")}"
-      replicas  = 3
+      replicas  = 1
       resources = {
         requests = {
           cpu    = "0.75"
@@ -108,7 +108,7 @@ module "offer" {
       name      = "ofe"
       image     = "${local.image_registry}/${local.registry_path}/buyer-frontend-service:${local.image_tag}"
       ccepolicy = "${file("../cce-policies/allow_all.base64")}"
-      replicas  = 3
+      replicas  = 1
       resources = {
         requests = {
           cpu    = "0.75"
