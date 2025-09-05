@@ -22,7 +22,7 @@ locals {
   subscription_id = "<your_subscription_id>"
   tenant_id       = "<your_tenant_id>"
 
-  image_registry = "ispirt"
+  image_registry = "ispirt.azurecr.io"
   registry_path  = "depa-inferencing/azure"
   image_tag      = "nonprod-4.3.0.0"
   kv_image_tag   = "nonprod-1.0.0.0"

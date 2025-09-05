@@ -1,0 +1,53 @@
+name: Test Azure Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      bidding-auction-version:
+        description: 'DEPA Inferencing Release Version for Bidding and Auction Services'
+        required: true
+        type: string
+        default: '4.8.0.0'
+      kv-services-version:
+        description: 'DEPA Inferencing Release Version for KV Services'
+        required: true
+        type: string
+        default: '1.2.0.0'
+
+jobs:
+  azure-login:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set Up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    
+      - name: Update demo environment
+        env: 
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+           sed -i 's|<your_subscription_id>|'"$AZURE_SUBSCRIPTION_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
+           sed -i 's|<your_tenant_id>|'"$AZURE_TENANT_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
+
+      - name: Terraform init
+        run:
+          cd ./deployment-scripts/azure/offer-service/environment/demo/terraform
+          terraform init
+
+      - name: Terraform apply
+        env: 
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          KUBE_CONFIG_PATH: ~/.kube/config
+        run:
+          cd ./deployment-scripts/azure/offer-service/environment/demo/terraform
+          terraform apply -auto-approve
