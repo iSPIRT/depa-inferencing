@@ -20,7 +20,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
   kubernetes_version        = var.kubernetes_version
   workload_identity_enabled = true
   oidc_issuer_enabled       = true
-  automatic_channel_upgrade = "patch"
 
   network_profile {
     network_plugin     = "azure"
