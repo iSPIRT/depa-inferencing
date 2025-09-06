@@ -54,5 +54,12 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
           KUBE_CONFIG_PATH: ~/.kube/config
         run: |
+          mkdir -p $KUBE_CONFIG_PATH
           cd ./deployment-scripts/azure/offer-service/environment/demo/terraform
           terraform apply -auto-approve
+
+      - name: Cleanup on failure
+        if: failure()
+        run: |
+          cd ./deployment-scripts/azure/offer-service/environment/demo/terraform
+          terraform destroy -auto-approve
