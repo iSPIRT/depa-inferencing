@@ -26,7 +26,7 @@ locals {
   registry_path  = "depa-inferencing/azure"
   image_tag      = "nonprod-4.3.0.0"
   kv_image_tag   = "nonprod-1.0.0.0"
-  kms_url        = ""
+  kms_url        = "https://depa-inferencing-kms.centralindia.cloudapp.azure.com"
 }
 
 module "offer" {
