@@ -7,20 +7,9 @@ permissions:
 
 on:
   workflow_dispatch:
-    inputs:
-      bidding-auction-version:
-        description: 'DEPA Inferencing Release Version for Bidding and Auction Services'
-        required: true
-        type: string
-        default: '4.8.0.0'
-      kv-services-version:
-        description: 'DEPA Inferencing Release Version for KV Services'
-        required: true
-        type: string
-        default: '1.2.0.0'
 
 jobs:
-  azure-login:
+  deploy-offer-service:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
