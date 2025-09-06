@@ -62,7 +62,7 @@
     "env_ENABLE_TKV_V2_BROWSER": {
       "value": "true"
     },
-    "env_TKV_V2_SERVER_ADDR": {
+    "env_BUYER_TKV_V2_SERVER_ADDR": {
       "value": "kv.ad_selection.microsoft:50051"
     },
     "env_TKV_EGRESS_TLS": {
