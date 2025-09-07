@@ -70,9 +70,13 @@ jobs:
           KMS_URL: "https://depa-inferencing-kms.centralindia.cloudapp.azure.com"
         run: |
           cd tools/secure-invoke
+          sed -i 's|/home/azureuser|/home/runner|g' ./.env
           sed -i 's|<KMS_HOST>|'"$KMS_URL"'|g' ./.env
           sed -i 's|<hostname>|'"$OFE_IP"'|g' ./.env
-          ./tools/secure-invoke/secure-invoke-test.sh
+          sed -i '/CA_CERT/d' ./.env
+          sed -i '/CLIENT_CERT/d' ./.env
+          sed -i '/CLIENT_KEY/d' ./.env
+          ./secure_invoke_test.sh
 
       - name: Cleanup 
         run: |
