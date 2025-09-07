@@ -16,7 +16,7 @@ fi
 
 COMMAND=$1
 #IMAGE="ispirt.azurecr.io/depa-inferencing/tools/data_cli:latest"
-IMAGE="kapilvreg.azurecr.io/tools/kv_tools:1.0.0.0"
+IMAGE="ispirt.azurecr.io/depa-inferencing/tools/kv_tools:1.0.0.0"
 USER_ID=$(id -u)
 GROUP_ID=$(id -g)
 

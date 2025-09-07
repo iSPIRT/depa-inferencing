@@ -1,21 +1,14 @@
 name: Test Azure Deployment
 
+permissions:
+  contents: read
+  id-token: write
+
 on:
   workflow_dispatch:
-    inputs:
-      bidding-auction-version:
-        description: 'DEPA Inferencing Release Version for Bidding and Auction Services'
-        required: true
-        type: string
-        default: '4.8.0.0'
-      kv-services-version:
-        description: 'DEPA Inferencing Release Version for KV Services'
-        required: true
-        type: string
-        default: '1.2.0.0'
 
 jobs:
-  azure-login:
+  test-azure:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
@@ -27,27 +20,41 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    
-      - name: Update demo environment
-        env: 
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
+
+      - name: Generate data and UDF
+        working-directory: ./tools/key-value-service
         run: |
-           sed -i 's|<your_subscription_id>|'"$AZURE_SUBSCRIPTION_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
-           sed -i 's|<your_tenant_id>|'"$AZURE_TENANT_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
+          mkdir ./tmp
+          ./data_cli.sh format_delta ./data.csv ./tmp/delta_0000000000000001
+          ./udf_delta_file_generator.sh ./tmp ./udf.js
 
-      - name: Terraform init
-        run:
-          cd ./deployment-scripts/azure/offer-service/environment/demo/terraform
-          terraform init
+      - name: Upload data and UDF
+        run: |
+          az storage file upload \
+            --account-name tfdemooffincstorage \
+            --share-name fslogix \
+            --path deltas \
+            --source ./tmp \
+            --auth-mode login
 
-      - name: Terraform apply
-        env: 
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          KUBE_CONFIG_PATH: ~/.kube/config
-        run:
-          cd ./deployment-scripts/azure/offer-service/environment/demo/terraform
-          terraform apply -auto-approve
+      - name: Find IP address of offer frontend load balancer
+        run: |
+          az aks get-credentials --resource-group tf-demo-offer-inc-rg --name tf-demo-offer-inc-aks --overwrite-existing
+          OFE_IP=$(kubectl get svc ofe-lb -n default -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
+          echo "OFE_IP=$OFE_IP" >> $GITHUB_ENV
+
+      - name: Run secure invoke
+        env:
+          KMS_URL: "https://depa-inferencing-kms.centralindia.cloudapp.azure.com"
+        working-directory: ./tools/secure-invoke
+        run: |
+          sed -i 's|/home/azureuser|/home/runner|g' ./.env
+          sed -i 's|<KMS_HOST>|'"$KMS_URL"'|g' ./.env
+          sed -i 's|<hostname>|'"$OFE_IP"'|g' ./.env
+          sed -i '/CA_CERT/d' ./.env
+          sed -i '/CLIENT_CERT/d' ./.env
+          sed -i '/CLIENT_KEY/d' ./.env
+          ./secure_invoke_test.sh

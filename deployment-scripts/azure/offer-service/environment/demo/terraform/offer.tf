@@ -49,7 +49,7 @@ module "offer" {
       name      = "offer-service"
       image     = "${local.image_registry}/${local.registry_path}/bidding-service:${local.image_tag}"
       ccepolicy = "${file("../cce-policies/allow_all.base64")}"
-      replicas  = 3
+      replicas  = 1
 
       resources = {
         requests = {
@@ -111,7 +111,7 @@ module "offer" {
       name      = "ofe"
       image     = "${local.image_registry}/${local.registry_path}/buyer-frontend-service:${local.image_tag}"
       ccepolicy = "${file("../cce-policies/allow_all.base64")}"
-      replicas  = 3
+      replicas  = 1
 
       resources = {
         requests = {
