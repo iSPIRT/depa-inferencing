@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy-test-cleanup:
+  test-azure:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
@@ -24,32 +24,11 @@ jobs:
           tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
 
-      - name: Update demo environment
-        env: 
-          AZURE_AKS_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
-          AZURE_AKS_TENANT_ID: ${{ secrets.AZURE_AKS_TENANT_ID }}
-        run: |
-          sed -i 's|<your_subscription_id>|'"$AZURE_AKS_SUBSCRIPTION_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
-          sed -i 's|<your_tenant_id>|'"$AZURE_AKS_TENANT_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
-
-      - name: Terraform init
-        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
-        run: terraform init
-
-      - name: Terraform apply
-        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
-        env: 
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
-          ARM_CLIENT_ID: ${{ secrets.AZURE_AKS_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_AKS_TENANT_ID }}
-          ARM_USE_OIDC: true
-        run: terraform apply -auto-approve
-
       - name: Generate data and UDF
         working-directory: ./tools/key-value-service
         run: |
           mkdir ./tmp
-          ./data_cli.sh format_delta ./tools/key-value-service/data.csv ./tmp/delta_0000000000000001
+          ./data_cli.sh format_delta ./data.csv ./tmp/delta_0000000000000001
           ./udf_delta_file_generator.sh ./tmp ./udf.js
 
       - name: Upload data and UDF
@@ -79,13 +58,3 @@ jobs:
           sed -i '/CLIENT_CERT/d' ./.env
           sed -i '/CLIENT_KEY/d' ./.env
           ./secure_invoke_test.sh
-
-      - name: Terraform destroy (always cleanup)
-        if: always()
-        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
-        env: 
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
-          ARM_CLIENT_ID: ${{ secrets.AZURE_AKS_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_AKS_TENANT_ID }}
-          ARM_USE_OIDC: true
-        run: terraform destroy -auto-approve
