@@ -1,35 +1,25 @@
-# .github/workflows/build.yml
-name: Build and Test for Key-Value Service
+name: Release build for Key-Value Service
 
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        default: 'dev'
-        type: choice
-        options:
-        - dev
-        - staging
-        - prod
       build_flavor:
         description: 'Build flavor'
         required: true
-        default: 'non_prod'
+        default: 'nonprod'
         type: choice
         options:
-        - non_prod
+        - nonprod
         - prod
       services:
         description: 'Services to build (comma-separated)'
         required: true
-        default: 'key-value-service'
+        default: 'key_value_service'
         type: string
       release_tag:
-        description: 'Release version for Docker images (e.g., 4.8.0.0)'
+        description: 'Release version for Docker images (e.g., 1.0.0.0)'
         required: true
-        default: '1.0.0.0'
+        default: '1.2.0.0'
         type: string
       push_to_acr:
         description: 'Push images to Azure Container Registry'
@@ -49,7 +39,6 @@ jobs:
     - name: Display Manual Trigger Parameters
       run: |
         echo "🚀 Manual Build Triggered on Self-Hosted Runner"
-        echo "Environment: ${{ github.event.inputs.environment }}"
         echo "Build Flavor: ${{ github.event.inputs.build_flavor }}"
         echo "Services: ${{ github.event.inputs.services }}"
         echo "Release Version: ${{ github.event.inputs.release_tag }}"
@@ -134,7 +123,7 @@ jobs:
         ./production/packaging/build_and_test_all_in_docker \
         --instance azure_microsoft \
         --platform azure_microsoft \
-        --build-flavor ${{ github.event.inputs.build_flavor }}
+        --mode ${{ github.event.inputs.build_flavor }}
           
     - name: List Generated Tar Files
       run: |
@@ -167,7 +156,6 @@ jobs:
     needs: build
     runs-on: self-hosted
     if: ${{ github.event.inputs.push_to_acr == 'true' }}
-    environment: ${{ github.event.inputs.environment }}
     
     steps:
     - name: Set up Docker Buildx
@@ -189,35 +177,35 @@ jobs:
         # Generate service-specific tags
         KV_SERVICE_IMAGE="key-value-service:${BUILD_FLAVOR}-${RELEASE_VERSION}"
 
-        echo "key-value-service=$KV_SERVICE_IMAGE" >> $GITHUB_OUTPUT
+        echo "key_value_service_image=$KV_SERVICE_IMAGE" >> $GITHUB_OUTPUT
 
         echo "✅ Service-specific Docker tags generated:"
-        echo "  Key Value Service: $KV_SERVICE_IMAGE"
+        echo "Key Value Service image: $KV_SERVICE_IMAGE"
 
     - name: Load and Push Key Value Service Image
-      if: contains(github.event.inputs.services, 'bidding_service')
+      if: contains(github.event.inputs.services, 'key_value_service')
       run: |
         # Load the key value service image from tar file
-        if [ -f "./dist/azure/key_value_service_image.tar" ]; then
+        if [ -f "./dist/key_value_service_image.tar" ]; then
           echo "Loading key_value_service_image.tar..."
-          LOAD_OUTPUT=$(docker load -i ./dist/azure/key_value_service_image.tar)
+          LOAD_OUTPUT=$(docker load -i ./dist/key_value_service_image.tar)
 
           # Get the loaded image name
           LOADED_IMAGE=$(echo "$LOAD_OUTPUT" | grep "Loaded image:" | sed 's/Loaded image: //')
           echo "Loaded image: $LOADED_IMAGE"
           
           # Tag the image with service-specific naming following Azure best practices
-          SERVICE_REPO_NAME="azure/depa-inferencing"
+          SERVICE_REPO_NAME="depa-inferencing/azure"
 
           # Service-specific tag: key-value-service:non-prod:1.0.0.0
-          docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service}}
+          docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service_image}}
             
           # Push all tags to Azure Container Registry
           echo "Pushing key value service to ACR with service-specific tags..."
           docker push ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service_image }}
 
           echo "✅ Successfully pushed key value service image with tags:"
-          echo "  - ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service }}"
+          echo "  - ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service_image }}"
         else
           echo "❌ key_value_service_image.tar not found"
           exit 1
@@ -231,4 +219,3 @@ jobs:
         docker image prune -f || true
         sudo chown -R $(whoami):$(whoami) ${GITHUB_WORKSPACE} || true
         echo "✅ Docker push job cleanup completed"
-

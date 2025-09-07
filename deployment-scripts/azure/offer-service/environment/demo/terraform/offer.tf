@@ -15,18 +15,20 @@
 locals {
   environment = "demo"
   operator    = "tf"
-
   # Please refer to https://github.com/claranet/terraform-azurerm-regions/blob/master/REGIONS.md for region codes. Check the "Region Deployments" section in https://github.com/microsoft/virtualnodesOnAzureContainerInstances for regions that support confidential pods.
   region = "centralindia"
+  region_short = "cin"
+
 
   subscription_id = "<your_subscription_id>"
   tenant_id       = "<your_tenant_id>"
 
   image_registry = "ispirt.azurecr.io"
   registry_path  = "depa-inferencing/azure"
-  image_tag      = "nonprod-4.3.0.0"
-  kv_image_tag   = "nonprod-1.0.0.0"
-  kms_url        = ""
+  image_tag      = "nonprod-4.8.0.0"
+  kv_image_tag   = "nonprod-1.2.0.0"
+  kms_url        = "https://depa-inferencing-kms.centralindia.cloudapp.azure.com"
+
 }
 
 module "offer" {
@@ -45,9 +47,10 @@ module "offer" {
   containers = [
     {
       name      = "offer-service"
-      image     = "${local.image_registry}/bidding-service:${local.image_tag}"
+      image     = "${local.image_registry}/${local.registry_path}/bidding-service:${local.image_tag}"
       ccepolicy = "${file("../cce-policies/allow_all.base64")}"
       replicas  = 3
+
       resources = {
         requests = {
           cpu    = "0.75"
@@ -106,9 +109,10 @@ module "offer" {
     },
     {
       name      = "ofe"
-      image     = "${local.image_registry}/buyer-frontend-service:${local.image_tag}"
+      image     = "${local.image_registry}/${local.registry_path}/buyer-frontend-service:${local.image_tag}"
       ccepolicy = "${file("../cce-policies/allow_all.base64")}"
       replicas  = 3
+
       resources = {
         requests = {
           cpu    = "0.75"
@@ -134,7 +138,6 @@ module "offer" {
         BIDDING_SIGNALS_LOAD_TIMEOUT_MS               = "60000"
         BUYER_FRONTEND_HEALTHCHECK_PORT               = "50552"                                        # Do not change unless you are modifying the default Azure architecture.
         BUYER_FRONTEND_PORT                           = "50051"                                        # Do not change unless you are modifying the default Azure architecture.
-        BUYER_KV_SERVER_ADDR                          = "kv.ad_selection.microsoft:50051"              # Do not change unless you are modifying the default Azure architecture. 
         ENABLE_TKV_V2                                 = "true"
         TKV_EGRESS_TLS                                = "false"
         BYOS_AD_RETRIEVAL_SERVER                      = "false"
@@ -144,11 +147,14 @@ module "offer" {
         GENERATE_BID_TIMEOUT_MS                       = "60000"
         GRPC_ARG_DEFAULT_AUTHORITY                    = ""
         PROTECTED_APP_SIGNALS_GENERATE_BID_TIMEOUT_MS = "60000"
+        BUYER_TKV_V2_SERVER_ADDR                      = "kv.ad_selection.microsoft:51052"
+        ENABLE_TKV_V2_BROWSER                         = "true"
       }
     },
     {
       name      = "kv"
-      image     = "${local.image_registry}/key-value-service:${local.kv_image_tag}"
+      image     = "${local.image_registry}/${local.registry_path}/key-value-service:${local.kv_image_tag}"
+
       ccepolicy = "${file("../cce-policies/allow_all.base64")}"
       replicas  = 1
       resources = {
@@ -198,7 +204,7 @@ module "offer" {
     SELECTION_KV_SERVER_EGRESS_TLS     = ""
     SELECTION_KV_SERVER_TIMEOUT_MS     = "60000"
     TEE_AD_RETRIEVAL_KV_SERVER_ADDR    = ""
-    TEE_KV_SERVER_ADDR                 = "kv.ad_selection.microsoft:50051"
+    TEE_KV_SERVER_ADDR                 = "kv.ad_selection.microsoft:51052"
     TELEMETRY_CONFIG                   = "mode: EXPERIMENT"
 
     AZURE_BA_PARAM_GET_TOKEN_URL             = "http://169.254.169.254/metadata/identity/oauth2/token"
@@ -216,6 +222,7 @@ module "offer" {
       }),
     ",", "\\,")}"
     TEST_MODE = "false"
+    
   }
 
 }

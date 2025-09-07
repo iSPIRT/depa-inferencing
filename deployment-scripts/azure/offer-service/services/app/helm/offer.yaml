@@ -17,7 +17,7 @@ domain: "ad_selection.microsoft"
 services:
   offer-service:
     replicas: 1
-    image: "ispirt.azurecr.io/depa-inferencing/azure/bidding-service:nonprod-4.3.0.0"
+    image: "ispirt.azurecr.io/depa-inferencing/azure/bidding-service:nonprod-4.8.0.0"
     containerPorts:
       - name: grpc
         port: 50057
@@ -43,7 +43,7 @@ services:
       TEE_KV_SERVER_GRPC_ARG_DEFAULT_AUTHORITY: ""
   ofe:
     replicas: 1
-    image: "ispirt.azurecr.io/depa-inferencing/azure/buyer-frontend-service:nonprod-4.3.0.0"
+    image: "ispirt.azurecr.io/depa-inferencing/azure/buyer-frontend-service:nonprod-4.8.0.0"
     containerPorts:
       - name: grpc
         port: 50051
@@ -73,10 +73,12 @@ services:
       PROTECTED_APP_SIGNALS_GENERATE_BID_TIMEOUT_MS: ""
   kv:
     replicas: 1
-    image: "ispirt.azurecr.io/depa-inferencing/azure/key-value-service:nonprod-1.0.0.0"
+    image: "ispirt.azurecr.io/depa-inferencing/azure/key-value-service:nonprod-1.2.0.0"
     containerPorts:
       - name: grpc
         port: 50051
+      - name: http
+        port: 51052
     healthCheck: {}
     resources: {}
     nodeSelector: {}
@@ -137,4 +139,4 @@ storageAccount:
   resourceGroup: ""
   name: ""
   fileShare: ""
-  accessKey: ""
+  accessKey: "" 
