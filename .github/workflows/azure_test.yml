@@ -2,14 +2,13 @@ name: Test Azure Deployment
 
 permissions:
   contents: read
-  pages: write
   id-token: write
 
 on:
   workflow_dispatch:
 
 jobs:
-  deploy-offer-service:
+  deploy-test-cleanup:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
@@ -24,30 +23,31 @@ jobs:
           client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
-    
+
       - name: Update demo environment
         env: 
           AZURE_AKS_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
           AZURE_AKS_TENANT_ID: ${{ secrets.AZURE_AKS_TENANT_ID }}
         run: |
-           sed -i 's|<your_subscription_id>|'"$AZURE_AKS_SUBSCRIPTION_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
-           sed -i 's|<your_tenant_id>|'"$AZURE_AKS_TENANT_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
+          sed -i 's|<your_subscription_id>|'"$AZURE_AKS_SUBSCRIPTION_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
+          sed -i 's|<your_tenant_id>|'"$AZURE_AKS_TENANT_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
 
       - name: Terraform init
-        run: |
-          cd ./deployment-scripts/azure/offer-service/environment/demo/terraform
-          terraform init
+        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
+        run: terraform init
 
       - name: Terraform apply
+        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
         env: 
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
-        run: |
-          cd ./deployment-scripts/azure/offer-service/environment/demo/terraform
-          terraform apply -auto-approve
+          ARM_CLIENT_ID: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_AKS_TENANT_ID }}
+          ARM_USE_OIDC: true
+        run: terraform apply -auto-approve
 
       - name: Generate data and UDF
+        working-directory: ./tools/key-value-service
         run: |
-          cd ./tools/key-value-service
           mkdir ./tmp
           ./data_cli.sh format_delta ./tools/key-value-service/data.csv ./tmp/delta_0000000000000001
           ./udf_delta_file_generator.sh ./tmp ./udf.js
@@ -55,9 +55,11 @@ jobs:
       - name: Upload data and UDF
         run: |
           az storage file upload \
-            --account-name tfdemooffincstorage 
-            --share-name fslogix/deltas \
-            --source ./tmp
+            --account-name tfdemooffincstorage \
+            --share-name fslogix \
+            --path deltas \
+            --source ./tmp \
+            --auth-mode login
 
       - name: Find IP address of offer frontend load balancer
         run: |
@@ -68,8 +70,8 @@ jobs:
       - name: Run secure invoke
         env:
           KMS_URL: "https://depa-inferencing-kms.centralindia.cloudapp.azure.com"
+        working-directory: ./tools/secure-invoke
         run: |
-          cd tools/secure-invoke
           sed -i 's|/home/azureuser|/home/runner|g' ./.env
           sed -i 's|<KMS_HOST>|'"$KMS_URL"'|g' ./.env
           sed -i 's|<hostname>|'"$OFE_IP"'|g' ./.env
@@ -78,7 +80,12 @@ jobs:
           sed -i '/CLIENT_KEY/d' ./.env
           ./secure_invoke_test.sh
 
-      - name: Cleanup 
-        run: |
-          cd ./deployment-scripts/azure/offer-service/environment/demo/terraform
-          terraform destroy -auto-approve
+      - name: Terraform destroy (always cleanup)
+        if: always()
+        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
+        env: 
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
+          ARM_CLIENT_ID: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_AKS_TENANT_ID }}
+          ARM_USE_OIDC: true
+        run: terraform destroy -auto-approve
