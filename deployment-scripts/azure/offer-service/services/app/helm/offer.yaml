@@ -139,4 +139,4 @@ storageAccount:
   resourceGroup: ""
   name: ""
   fileShare: ""
-  accessKey: ""
+  accessKey: "" 
