@@ -16,7 +16,7 @@ UDF_DELTA_FILE_PATH=$2
 INPUT_ARGUMENTS=$3
 
 # Run the Docker container with the provided arguments
-docker run -it --rm \
+docker run --rm \
   --volume="$(dirname "$KV_DELTA_FILE_PATH")":"$(dirname "$KV_DELTA_FILE_PATH")" \
   --volume="$(dirname "$UDF_DELTA_FILE_PATH")":"$(dirname "$UDF_DELTA_FILE_PATH")" \
   --user $(id -u ${USER}):$(id -g ${USER}) \
