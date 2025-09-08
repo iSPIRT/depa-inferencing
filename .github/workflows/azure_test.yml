@@ -31,7 +31,7 @@ jobs:
       - name: Upload data and UDF
         working-directory: ./tools/key-value-service
         run: |
-          az storage file upload \
+          az storage file upload-batch \
             --account-name tfdemooffincstorage \
             --share-name fslogix \
             --path deltas \
