@@ -14,9 +14,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set Up Terraform
-        uses: hashicorp/setup-terraform@v3
-
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -29,7 +26,7 @@ jobs:
         run: |
           mkdir ./tmp
           ./data_cli.sh format_delta ./data.csv ./tmp/delta_0000000000000001
-          ./udf_delta_file_generator.sh ./tmp ./udf.js
+          ./udf_delta_file_generator.sh ${PWD}/tmp ${PWD}/udf.js
 
       - name: Upload data and UDF
         run: |
