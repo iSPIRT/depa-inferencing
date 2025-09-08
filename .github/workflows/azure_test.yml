@@ -31,13 +31,18 @@ jobs:
       - name: Upload data and UDF
         working-directory: ./tools/key-value-service
         run: |
+          ACCOUNT_KEY=$(az storage account keys list \
+            --account-name tfdemooffincstorage \
+            --query "[0].value" -o tsv)
+  
           az storage file upload-batch \
             --account-name tfdemooffincstorage \
             --destination fslogix \
             --destination-path deltas \
             --source ${PWD}/tmp \
             --auth-mode login \
-            --enable-file-backup-request-intent
+            --enable-file-backup-request-intent \
+            --account-key $ACCOUNT_KEY
 
       - name: Find IP address of offer frontend load balancer
         run: |
