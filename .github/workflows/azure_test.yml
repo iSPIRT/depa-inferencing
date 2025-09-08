@@ -32,8 +32,8 @@ jobs:
           KMS_URL: "https://depa-inferencing-kms.centralindia.cloudapp.azure.com"
         working-directory: ./tools/secure-invoke
         run: |
-          REQUESTS_DIR=${GITHUB_WORKSPACE}/tools/requests
-          sed -i 's|/home/azureuser|'"$REQUESTS_DIR"'|g' ./.env
+          REQUESTS_DIR=/tools/requests
+          sed -i 's|/home/azureuser/requests|'"$REQUESTS_DIR"'|g' ./.env
           sed -i 's|<KMS_HOST>|'"$KMS_URL"'|g' ./.env
           sed -i 's|<hostname>|'"$OFE_IP"'|g' ./.env
           sed -i '/CA_CERT/d' ./.env
