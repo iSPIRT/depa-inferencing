@@ -23,7 +23,7 @@ GROUP_ID=$(id -g)
 case "$COMMAND" in
     help)
         echo "Running data_cli --help..."
-        docker run -it --rm \
+        docker run --rm \
             --entrypoint=/tools/data_cli/data_cli \
             "$IMAGE" \
             --help
