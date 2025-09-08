@@ -35,7 +35,8 @@ jobs:
             --share-name fslogix \
             --path deltas \
             --source ./tmp \
-            --auth-mode login
+            --auth-mode login \
+            --enable-file-backup-request-intent
 
       - name: Find IP address of offer frontend load balancer
         run: |
