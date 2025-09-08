@@ -16,17 +16,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.0"
-    }
-    # Add the helm provider requirement
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 2.9"
-    }
-    # Add the azuread provider requirement
-    azuread = {
-      source  = "hashicorp/azuread"
-      version = "~> 2.0"
+      version = "~> 4.0.1"
     }
     # Add the helm provider requirement
     helm = {

@@ -1,4 +1,4 @@
-name: Test Azure Deployment
+name: Deploy on Azure
 
 permissions:
   contents: read

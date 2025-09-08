@@ -1,4 +1,4 @@
-name: Test Azure Deployment
+name: Cleanup Azure Deployments
 
 permissions:
   contents: read
