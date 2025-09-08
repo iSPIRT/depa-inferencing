@@ -29,12 +29,13 @@ jobs:
           ./udf_delta_file_generator.sh ${PWD}/tmp ${PWD}/udf.js
 
       - name: Upload data and UDF
+        working-directory: ./tools/key-value-service
         run: |
           az storage file upload \
             --account-name tfdemooffincstorage \
             --share-name fslogix \
             --path deltas \
-            --source ./tmp \
+            --source ${PWD}/tmp \
             --auth-mode login \
             --enable-file-backup-request-intent
 
