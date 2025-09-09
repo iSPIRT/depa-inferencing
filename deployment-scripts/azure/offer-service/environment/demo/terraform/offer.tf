@@ -25,8 +25,8 @@ locals {
 
   image_registry = "ispirt.azurecr.io"
   registry_path  = "depa-inferencing/azure"
-  image_tag      = "nonprod-4.8.0.0"
-  kv_image_tag   = "nonprod-1.2.0.0"
+  image_tag      = "prod-4.8.0.0"
+  kv_image_tag   = "prod-1.2.0.0"
   kms_url        = "https://depa-inferencing-kms.centralindia.cloudapp.azure.com"
 
 }
