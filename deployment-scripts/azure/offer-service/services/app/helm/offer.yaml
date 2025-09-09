@@ -71,6 +71,9 @@ services:
       GENERATE_BID_TIMEOUT_MS: ""
       GRPC_ARG_DEFAULT_AUTHORITY: ""
       PROTECTED_APP_SIGNALS_GENERATE_BID_TIMEOUT_MS: ""
+      ENABLE_TKV_V2: ""
+      BUYER_TKV_V2_SERVER_ADDR: ""
+      ENABLE_TKV_V2_BROWSER: ""
   kv:
     replicas: 1
     image: "ispirt.azurecr.io/depa-inferencing/azure/key-value-service:nonprod-1.2.0.0"

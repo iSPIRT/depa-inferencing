@@ -1,4 +1,4 @@
-name: Test Azure Deployment
+name: Deploy on Azure
 
 permissions:
   contents: read
@@ -44,3 +44,26 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.AZURE_AKS_TENANT_ID }}
           ARM_USE_OIDC: true
         run: terraform apply -auto-approve
+
+      - name: Generate data and UDF
+        working-directory: ./tools/key-value-service
+        run: |
+          mkdir ./tmp
+          ./data_cli.sh format_delta ./data.csv ./tmp/delta_0000000000000001
+          ./udf_delta_file_generator.sh ${PWD}/tmp ${PWD}/udf.js
+
+      - name: Upload data and UDF
+        working-directory: ./tools/key-value-service
+        run: |
+          ACCOUNT_KEY=$(az storage account keys list \
+            --account-name tfdemooffincstorage \
+            --query "[0].value" -o tsv)
+  
+          az storage file upload-batch \
+            --account-name tfdemooffincstorage \
+            --destination fslogix \
+            --destination-path deltas \
+            --source ${PWD}/tmp \
+            --auth-mode login \
+            --enable-file-backup-request-intent \
+            --account-key $ACCOUNT_KEY

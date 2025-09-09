@@ -14,31 +14,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set Up Terraform
-        uses: hashicorp/setup-terraform@v3
-
       - name: Azure Login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
-
-      - name: Generate data and UDF
-        working-directory: ./tools/key-value-service
-        run: |
-          mkdir ./tmp
-          ./data_cli.sh format_delta ./data.csv ./tmp/delta_0000000000000001
-          ./udf_delta_file_generator.sh ./tmp ./udf.js
-
-      - name: Upload data and UDF
-        run: |
-          az storage file upload \
-            --account-name tfdemooffincstorage \
-            --share-name fslogix \
-            --path deltas \
-            --source ./tmp \
-            --auth-mode login
 
       - name: Find IP address of offer frontend load balancer
         run: |
@@ -51,7 +32,8 @@ jobs:
           KMS_URL: "https://depa-inferencing-kms.centralindia.cloudapp.azure.com"
         working-directory: ./tools/secure-invoke
         run: |
-          sed -i 's|/home/azureuser|/home/runner|g' ./.env
+          REQUESTS_DIR=${GITHUB_WORKSPACE}/tools/requests
+          sed -i 's|/home/azureuser/requests|'"$REQUESTS_DIR"'|g' ./.env
           sed -i 's|<KMS_HOST>|'"$KMS_URL"'|g' ./.env
           sed -i 's|<hostname>|'"$OFE_IP"'|g' ./.env
           sed -i '/CA_CERT/d' ./.env

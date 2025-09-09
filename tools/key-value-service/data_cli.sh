@@ -23,7 +23,7 @@ GROUP_ID=$(id -g)
 case "$COMMAND" in
     help)
         echo "Running data_cli --help..."
-        docker run -it --rm \
+        docker run --rm \
             --entrypoint=/tools/data_cli/data_cli \
             "$IMAGE" \
             --help
@@ -39,7 +39,7 @@ case "$COMMAND" in
         OUTPUT_DIR=$(dirname "$OUTPUT_FILE")
 
         echo "Running data_cli format_data..."
-        docker run -it --rm \
+        docker run --rm \
             --volume="$INPUT_DIR":"$INPUT_DIR" \
             --volume="$OUTPUT_DIR":"$OUTPUT_DIR" \
             --user "$USER_ID":"$GROUP_ID" \
@@ -62,7 +62,7 @@ case "$COMMAND" in
         SNAPSHOT_FILE="$5"
 
         echo "Running data_cli to generate snapshot file..."
-        docker run -it --rm \
+        docker run --rm \
             --volume=/tmp:/tmp \
             --volume="$DATA_DIR":"$DATA_DIR" \
             --user "$USER_ID":"$GROUP_ID" \
