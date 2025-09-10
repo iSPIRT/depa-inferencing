@@ -405,7 +405,7 @@
           {
             "name": "[parameters('containerGroupName')]",
             "properties": {
-              "image": "ispirt.azurecr.io/depa-inferencing/azure/buyer-frontend-service:nonprod-4.8.0.0",
+              "image": "ispirt.azurecr.io/depa-inferencing/azure/buyer-frontend-service:prod-4.8.0.0",
               "resources": {
                 "requests": {
                   "cpu": "[parameters('cpu')]",
