@@ -310,7 +310,7 @@
           {
             "name": "[parameters('containerGroupName')]",
             "properties": {
-              "image": "ispirt.azurecr.io/depa-inferencing/azure/key-value-service:prod-1.0.0.0",
+              "image": "ispirt.azurecr.io/depa-inferencing/azure/key-value-service:prod-1.2.0.0",
               "resources": {
                 "requests": {
                   "cpu": "[parameters('cpu')]",
