@@ -1,0 +1,69 @@
+name: Deploy on Azure
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set Up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
+
+      - name: Update demo environment
+        env: 
+          AZURE_AKS_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
+          AZURE_AKS_TENANT_ID: ${{ secrets.AZURE_AKS_TENANT_ID }}
+        run: |
+          sed -i 's|<your_subscription_id>|'"$AZURE_AKS_SUBSCRIPTION_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
+          sed -i 's|<your_tenant_id>|'"$AZURE_AKS_TENANT_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
+
+      - name: Terraform init
+        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
+        run: terraform init
+
+      - name: Terraform apply
+        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
+        env: 
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
+          ARM_CLIENT_ID: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_AKS_TENANT_ID }}
+          ARM_USE_OIDC: true
+        run: terraform apply -auto-approve
+
+      - name: Generate data and UDF
+        working-directory: ./tools/key-value-service
+        run: |
+          mkdir ./tmp
+          ./data_cli.sh format_delta ./data.csv ./tmp/delta_0000000000000001
+          ./udf_delta_file_generator.sh ${PWD}/tmp ${PWD}/udf.js
+
+      - name: Upload data and UDF
+        working-directory: ./tools/key-value-service
+        run: |
+          ACCOUNT_KEY=$(az storage account keys list \
+            --account-name tfdemooffincstorage \
+            --query "[0].value" -o tsv)
+  
+          az storage file upload-batch \
+            --account-name tfdemooffincstorage \
+            --destination fslogix \
+            --destination-path deltas \
+            --source ${PWD}/tmp \
+            --auth-mode login \
+            --enable-file-backup-request-intent \
+            --account-key $ACCOUNT_KEY

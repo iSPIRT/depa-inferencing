@@ -1,1 +1,16 @@
-{"buyerInput": {"interestGroups": [{"name": "Rajni Kausalya", "biddingSignalsKeys": ["9999999990"], "userBiddingSignals": "{\"age\":29, \"average_amount\":10000}"}]}, "seller": "irctc.com", "publisherName": "irctc.com"}
+{
+    "client_type": "CLIENT_TYPE_BROWSER",
+    "buyerInput": {
+        "interestGroups": [
+            {
+                "name": "Rajni Kausalya",
+                "biddingSignalsKeys": [
+                    "9999999990"
+                ],
+                "userBiddingSignals": "{\"age\":29, \"average_amount\":10000}"
+            }
+        ]
+    },
+    "seller": "irctc.com",
+    "publisherName": "irctc.com"
+}

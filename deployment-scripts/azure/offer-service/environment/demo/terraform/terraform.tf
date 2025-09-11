@@ -18,10 +18,21 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 4.0.1"
     }
+    # Add the helm provider requirement
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.9"
+    }
+    # Add the azuread provider requirement
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 2.0"
+    }
   }
 
   required_version = ">= 1.1.0"
 }
+
 
 provider "azuread" {
   use_cli = true
@@ -31,3 +42,4 @@ provider "azurerm" {
   features {}
   subscription_id = local.subscription_id
 }
+

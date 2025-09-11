@@ -15,7 +15,7 @@ OUTPUT_DIR=$1
 UDF_FILE_PATH=$2
 UDF_DIR=$(dirname "$UDF_FILE_PATH")
 # Run the Docker container with the provided arguments
-docker run -it --rm \
+docker run --rm \
   --volume="$OUTPUT_DIR:$OUTPUT_DIR" \
   --volume="$UDF_DIR:$UDF_DIR" \
   --user $(id -u ${USER}):$(id -g ${USER}) \
