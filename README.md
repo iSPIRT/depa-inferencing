@@ -1,3 +1,6 @@
+[![Deploy on Azure](https://github.com/iSPIRT/depa-inferencing/actions/workflows/azure_deploy.yml/badge.svg)](https://github.com/iSPIRT/depa-inferencing/actions/workflows/azure_deploy.yml)
+[![Test Azure Deployment](https://github.com/iSPIRT/depa-inferencing/actions/workflows/azure_test.yml/badge.svg)](https://github.com/iSPIRT/depa-inferencing/actions/workflows/azure_test.yml)
+
 # DEPA Inferencing
 
 This repository contains an implementation of DEPA Inferencing Framework that enables privacy-preserving, real-time data sharing between organizations.
@@ -7,3 +10,4 @@ This repository contains an implementation of DEPA Inferencing Framework that en
 - [Key Management and Release Flow on Azure](docs/depa_inferencing_key_management_azure.md)
 - [End-to-end Request Flow](docs/depa_inferencing_request_flow.md)
 - [Public Cloud Support](docs/depa_inferencing_cloud_support.md)
+
