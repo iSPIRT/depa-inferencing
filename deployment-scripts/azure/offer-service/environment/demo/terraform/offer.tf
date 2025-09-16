@@ -48,7 +48,7 @@ module "offer" {
     {
       name      = "offer-service"
       image     = "${local.image_registry}/${local.registry_path}/bidding-service:${local.image_tag}"
-      ccepolicy = "${file("../cce-policies/allow_all.base64")}"
+      ccepolicy = "${file("../cce-policies/offer.base64")}"
       replicas  = 1
 
       resources = {
@@ -110,7 +110,7 @@ module "offer" {
     {
       name      = "ofe"
       image     = "${local.image_registry}/${local.registry_path}/buyer-frontend-service:${local.image_tag}"
-      ccepolicy = "${file("../cce-policies/allow_all.base64")}"
+      ccepolicy = "${file("../cce-policies/ofe.base64")}"
       replicas  = 1
 
       resources = {
@@ -155,7 +155,7 @@ module "offer" {
       name      = "kv"
       image     = "${local.image_registry}/${local.registry_path}/key-value-service:${local.kv_image_tag}"
 
-      ccepolicy = "${file("../cce-policies/allow_all.base64")}"
+      ccepolicy = "${file("../cce-policies/kv.base64")}"
       replicas  = 1
       resources = {
         requests = {
