@@ -196,6 +196,18 @@
     },
     "env_SELECTION_KV_SERVER_TIMEOUT_MS": {
       "value": "60000"
+    },
+    "env_AZURE_CERT": {
+      "value": ""
+    },
+    "env_AZURE_KEYVAULT_NAME": {
+      "value": ""
+    },
+    "env_ENABLE_ENCRYPTION": {
+      "value": ""
+    },
+    "env_INSTRUMENTATION_KEY": {
+      "value": ""
     }
   }
 }

@@ -343,6 +343,36 @@
       "metadata": {
         "description": "AD retrieval timeout in milliseconds"
       }
+    },
+    "env_AZURE_CERT": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure certificate name"
+      }
+    },
+    "env_AZURE_KEYVAULT_NAME": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure key vault name"
+      }
+    },
+    "env_ENABLE_ENCRYPTION": {
+      "type": "string",
+      "metadata": {
+        "description": "Enable encryption"
+      }
+    },
+    "env_INSTRUMENTATION_KEY": {
+      "type": "string",
+      "metadata": {
+        "description": "Instrumentation key"
+      }
+    },
+    "env_JS_NUM_WORKERS": {
+      "type": "string",
+      "metadata": {
+        "description": "JS number of workers"
+      }
     }
   },
   "variables": {},
@@ -581,6 +611,26 @@
                 {
                   "name": "TEST_MODE",
                   "value": "false"
+                },
+                {
+                  "name": "AZURE_CERT",
+                  "value": "[parameters('env_AZURE_CERT')]"
+                },
+                {
+                  "name": "AZURE_KEYVAULT_NAME",
+                  "value": "[parameters('env_AZURE_KEYVAULT_NAME')]"
+                },
+                {
+                  "name": "ENABLE_ENCRYPTION",
+                  "value": "[parameters('env_ENABLE_ENCRYPTION')]"
+                },
+                {
+                  "name": "INSTRUMENTATION_KEY",
+                  "value": "[parameters('env_INSTRUMENTATION_KEY')]"
+                },
+                {
+                  "name": "JS_NUM_WORKERS",
+                  "value": "[parameters('env_JS_NUM_WORKERS')]"
                 }
               ]
             }

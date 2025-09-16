@@ -172,6 +172,21 @@
     },
     "env_PRIVATE_KEY_CACHE_TTL_SECONDS": {
       "value": "3888000"
+    },
+    "env_AZURE_CERT": {
+      "value": ""
+    },
+    "env_AZURE_KEYVAULT_NAME": {
+      "value": ""
+    },
+    "env_ENABLE_ENCRYPTION": {
+      "value": ""
+    },
+    "env_INSTRUMENTATION_KEY": {
+      "value": ""
+    },
+    "env_JS_NUM_WORKERS": {
+      "value": ""
     }
   }
 }

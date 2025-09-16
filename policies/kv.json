@@ -283,6 +283,42 @@
       "metadata": {
         "description": "PRIVATE_KEY_CACHE_TTL_SECONDS environment variable"
       }
+    },
+    "env_AZURE_CERT": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure certificate name"
+      }
+    },
+    "env_AZURE_KEYVAULT_NAME": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure ke vault name"
+      }
+    },
+    "env_ENABLE_ENCRYPTION": {
+      "type": "string",
+      "metadata": {
+        "description": "Enable encryption"
+      }
+    },
+    "env_HEALTHCHECK_PORT": {
+      "type": "string",
+      "metadata": {
+        "description": "Healthcheck port"
+      }
+    },
+    "env_INSTRUMENTATION_KEY": {
+      "type": "string",
+      "metadata": {
+        "description": "Instrumentation key"
+      }
+    },
+    "env_PORT": {
+      "type": "string",
+      "metadata": {
+        "description": "Port"
+      }
     }
   },
   "variables": {},
@@ -503,6 +539,30 @@
                 {
                   "name": "TEST_MODE",
                   "value": "false"
+                },
+                {
+                  "name": "AZURE_CERT",
+                  "value": "[parameters('env_AZURE_CERT')]"
+                },
+                {
+                  "name": "AZURE_KEYVAULT_NAME",
+                  "value": "[parameters('env_AZURE_KEYVAULT_NAME')]"
+                },
+                {
+                  "name": "ENABLE_ENCRYPTION",
+                  "value": "[parameters('env_ENABLE_ENCRYPTION')]"
+                },
+                {
+                  "name": "HEALTHCHECK_PORT",
+                  "value": "[parameters('env_HEALTHCHECK_PORT')]"
+                },
+                {
+                  "name": "INSTRUMENTATION_KEY",
+                  "value": "[parameters('env_INSTRUMENTATION_KEY')]"
+                },
+                {
+                  "name": "PORT",
+                  "value": "[parameters('env_PORT')]"
                 }
               ]
             }
