@@ -605,10 +605,6 @@
                   "value": "https://depa-inferencing-kms.centralindia.cloudapp.azure.com/app/listpubkeys"
                 },
                 {
-                  "name": "SFE_PUBLIC_KEYS_ENDPOINTS",
-                  "value": "{\"AZURE\":\"https://depa-inferencing-kms.centralindia.cloudapp.azure.com/app/listpubkeys\"}"
-                },
-                {
                   "name": "TEST_MODE",
                   "value": "false"
                 },

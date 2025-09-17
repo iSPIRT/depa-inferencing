@@ -216,11 +216,6 @@ module "offer" {
     PRIMARY_COORDINATOR_REGION               = ""
     PRIVATE_KEY_CACHE_TTL_SECONDS            = "3888000"
     PUBLIC_KEY_ENDPOINT                      = "${local.kms_url}/app/listpubkeys"
-    SFE_PUBLIC_KEYS_ENDPOINTS = " ${replace(jsonencode(
-      {
-        AZURE = "${local.kms_url}/app/listpubkeys"
-      }),
-    ",", "\\,")}"
     TEST_MODE = "false"
     
   }
