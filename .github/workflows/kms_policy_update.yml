@@ -46,6 +46,7 @@ jobs:
       - name: Install Azure CLI Confcom extension
         run: |
           az extension add --name confcom
+          az version
 
       - name: Setup Python virtual environment
         run: |
@@ -63,15 +64,15 @@ jobs:
       - name: Generate CCE policies for services
         run: |
           # Generate CCE policy for KV service
-          KV_POLICY=$(az confcom acipolicygen -y -i policies/kv-policy.json --print-policy | base64 --decode | sha256sum)
+          KV_POLICY=$(az confcom acipolicygen -y -i policies/kv-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
           echo "KV_POLICY=$KV_POLICY" >> $GITHUB_ENV
 
           # Generate CCE policy for OFE service
-          OFE_POLICY=$(az confcom acipolicygen -y -i policies/ofe-policy.json --print-policy | base64 --decode | sha256sum)
+          OFE_POLICY=$(az confcom acipolicygen -y -i policies/ofe-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
           echo "OFE_POLICY=$OFE_POLICY" >> $GITHUB_ENV
 
           # Generate CCE policy for offer service
-          OFFER_POLICY=$(az confcom acipolicygen -y -i policies/offer-policy.json --print-policy | base64 --decode | sha256sum)
+          OFFER_POLICY=$(az confcom acipolicygen -y -i policies/offer-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
           echo "OFFER_POLICY=$OFFER_POLICY" >> $GITHUB_ENV
 
           echo "CCE policies generated for all services"
@@ -82,10 +83,6 @@ jobs:
           OFE_POLICY: ${{ env.OFE_POLICY }}
           OFFER_POLICY: ${{ env.OFFER_POLICY }}
         run: |
-          # Extract just the hash values (remove the filename part from sha256sum output)
-          KV_HASH=$(echo "$KV_POLICY" | cut -d' ' -f1)
-          OFE_HASH=$(echo "$OFE_POLICY" | cut -d' ' -f1)
-          OFFER_HASH=$(echo "$OFFER_POLICY" | cut -d' ' -f1)
           
           # Generate the JSON structure
           cat > $GITHUB_WORKSPACE/key_release_policy.json << EOF
@@ -98,9 +95,9 @@ jobs:
                   "type": "add",
                   "claims": {
                     "x-ms-sevsnpvm-hostdata": [
-                      "$KV_HASH",
-                      "$OFE_HASH",
-                      "$OFFER_HASH"
+                      "$KV_POLICY",
+                      "$OFE_POLICY",
+                      "$OFFER_POLICY"
                     ]
                   }
                 }
