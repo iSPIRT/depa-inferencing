@@ -63,15 +63,15 @@ jobs:
       - name: Generate CCE policies for services
         run: |
           # Generate CCE policy for KV service
-          KV_POLICY=$(az confcom acipolicygen -y -a policies/kv.json --print-policy | base64 --decode | sha256sum)
+          KV_POLICY=$(az confcom acipolicygen -y -i policies/kv-policy.json --print-policy | base64 --decode | sha256sum)
           echo "KV_POLICY=$KV_POLICY" >> $GITHUB_ENV
 
           # Generate CCE policy for OFE service
-          OFE_POLICY=$(az confcom acipolicygen -y -a policies/ofe.json --print-policy | base64 --decode | sha256sum)
+          OFE_POLICY=$(az confcom acipolicygen -y -i policies/ofe-policy.json --print-policy | base64 --decode | sha256sum)
           echo "OFE_POLICY=$OFE_POLICY" >> $GITHUB_ENV
 
           # Generate CCE policy for offer service
-          OFFER_POLICY=$(az confcom acipolicygen -y -a policies/offer.json --print-policy | base64 --decode | sha256sum)
+          OFFER_POLICY=$(az confcom acipolicygen -y -i policies/offer-policy.json --print-policy | base64 --decode | sha256sum)
           echo "OFFER_POLICY=$OFFER_POLICY" >> $GITHUB_ENV
 
           echo "CCE policies generated for all services"
