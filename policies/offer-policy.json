@@ -289,18 +289,7 @@
           "value": ".*",
           "regex": true
         }
-        ],
-        "workingDir": "/app",
-        "allowElevated": false,
-        "allowStdioAccess": true,
-        "allowPrivilegeEscalation": false,
-        "user": "1000:1000",
-        "capabilities": {
-          "add": [],
-          "drop": ["ALL"]
-        },
-        "seccompProfile": "runtime/default",
-        "readonlyRootFilesystem": false
+        ]
       }
     }
   ]

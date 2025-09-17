@@ -334,80 +334,8 @@
           "value": ".*",
           "regex": true
         }
-        ],
-        "workingDir": "/app",
-        "allowElevated": false,
-        "allowStdioAccess": true,
-        "allowPrivilegeEscalation": false,
-        "user": "1000:1000",
-        "capabilities": {
-          "add": [],
-          "drop": ["ALL"]
-        },
-        "seccompProfile": "runtime/default",
-        "readonlyRootFilesystem": false,
-        "volumeMounts": [
-          {
-            "name": "models-volume",
-            "mountPath": "/models",
-            "mountType": "emptyDir",
-            "readonly": true
-          }
         ]
       }
     }
-  ],
-  "volumes": [
-    {
-      "name": "models-volume",
-      "type": "emptyDir"
-    }
-  ],
-  "allowedInboundPorts": [
-    {
-      "port": 50051,
-      "protocol": "TCP"
-    },
-    {
-      "port": 50552,
-      "protocol": "TCP"
-    }
-  ],
-  "allowedOutboundPorts": [
-    {
-      "port": 443,
-      "protocol": "TCP"
-    },
-    {
-      "port": 80,
-      "protocol": "TCP"
-    },
-    {
-      "port": 50057,
-      "protocol": "TCP"
-    }
-  ],
-  "allowedOutboundHosts": [
-    "depa-inferencing-kms.centralindia.cloudapp.azure.com",
-    "*.azurecr.io",
-    "*.microsoft.com",
-    "offer-service.ad_selection.microsoft",
-    "kv.ad_selection.microsoft"
-  ],
-  "allowedExecutables": [
-    "/usr/local/bin/inference-sidecar"
-  ],
-  "allowedLibraries": [],
-  "allowedFiles": [
-    {
-      "path": "/models",
-      "access": "read"
-    }
-  ],
-  "networkConfiguration": {
-    "allowInboundConnections": true,
-    "allowOutboundConnections": true,
-    "allowedInboundPorts": [50051, 50552],
-    "allowedOutboundPorts": [80, 443, 50057]
-  }
+  ]
 }
