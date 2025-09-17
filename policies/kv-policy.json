@@ -260,7 +260,7 @@
             "name": "data-vol",
             "mountPath": "/data",
             "mountType": "emptyDir",
-            "readonly": false
+            "readonly": true
           }
         ]
       }
