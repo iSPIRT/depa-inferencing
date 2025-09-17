@@ -1,0 +1,417 @@
+{
+  "version": "1.0",
+  "scenario": "vn2",
+  "containers": [
+    {
+      "name": "ofe-container",
+      "properties": {
+        "image": "ispirt.azurecr.io/depa-inferencing/azure/buyer-frontend-service:prod-4.8.0.0",
+        "command": [],
+        "environmentVariables": [
+        {
+          "name": "BFE_INGRESS_TLS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BFE_TCMALLOC_BACKGROUND_RELEASE_RATE_BYTES_PER_SECOND",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BFE_TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BFE_TLS_CERT",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BFE_TLS_KEY",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BIDDING_EGRESS_TLS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BIDDING_SERVER_ADDR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BIDDING_SIGNALS_LOAD_TIMEOUT_MS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BUYER_FRONTEND_HEALTHCHECK_PORT",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BUYER_FRONTEND_PORT",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BUYER_KV_SERVER_ADDR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_TKV_V2",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_TKV_V2_BROWSER",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BUYER_TKV_V2_SERVER_ADDR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "TKV_EGRESS_TLS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BYOS_AD_RETRIEVAL_SERVER",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "CREATE_NEW_EVENT_ENGINE",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_BIDDING_COMPRESSION",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_BUYER_FRONTEND_BENCHMARKING",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "GENERATE_BID_TIMEOUT_MS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "GRPC_ARG_DEFAULT_AUTHORITY",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "PROTECTED_APP_SIGNALS_GENERATE_BID_TIMEOUT_MS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AZURE_BA_PARAM_GET_TOKEN_URL",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AZURE_BA_PARAM_KMS_UNWRAP_URL",
+          "value": "https://depa-inferencing-kms.centralindia.cloudapp.azure.com/app/unwrapKey?fmt=tink"
+        },
+        {
+          "name": "ENABLE_PROTECTED_AUDIENCE",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "KEY_REFRESH_FLOW_RUN_FREQUENCY_SECONDS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "PRIMARY_COORDINATOR_ACCOUNT_IDENTITY",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "PRIMARY_COORDINATOR_PRIVATE_KEY_ENDPOINT",
+          "value": "https://depa-inferencing-kms.centralindia.cloudapp.azure.com/app/key?fmt=tink"
+        },
+        {
+          "name": "PRIMARY_COORDINATOR_REGION",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "PRIVATE_KEY_CACHE_TTL_SECONDS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "PUBLIC_KEY_ENDPOINT",
+          "value": "https://depa-inferencing-kms.centralindia.cloudapp.azure.com/app/listpubkeys"
+        },
+        {
+          "name": "SFE_PUBLIC_KEYS_ENDPOINTS",
+          "value": "{\"AZURE\":\"https://depa-inferencing-kms.centralindia.cloudapp.azure.com/app/listpubkeys\"}"
+        },
+        {
+          "name": "TEST_MODE",
+          "value": "false"
+        },
+        {
+          "name": "TELEMETRY_CONFIG",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "COLLECTOR_ENDPOINT",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BUYER_EGRESS_TLS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "CONSENTED_DEBUG_TOKEN",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_AUCTION_COMPRESSION",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_BUYER_COMPRESSION",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_CHAFFING",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_OTEL_BASED_LOGGING",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_PROTECTED_APP_SIGNALS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "KV_SERVER_EGRESS_TLS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "MAX_ALLOWED_SIZE_DEBUG_URL_BYTES",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "MAX_ALLOWED_SIZE_ALL_DEBUG_URLS_KB",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "PS_VERBOSITY",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ROMA_TIMEOUT_MS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "TEE_AD_RETRIEVAL_KV_SERVER_ADDR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "TEE_KV_SERVER_ADDR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AD_RETRIEVAL_KV_SERVER_ADDR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AD_RETRIEVAL_KV_SERVER_EGRESS_TLS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AD_RETRIEVAL_TIMEOUT_MS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INFERENCE_MODEL_BUCKET_NAME",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INFERENCE_MODEL_BUCKET_PATHS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INFERENCE_MODEL_CONFIG_PATH",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INFERENCE_MODEL_FETCH_PERIOD_MS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INFERENCE_MODEL_LOCAL_PATHS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INFERENCE_SIDECAR_BINARY_PATH",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "K_ANONYMITY_SERVER_ADDR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "K_ANONYMITY_SERVER_TIMEOUT_MS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "SELECTION_KV_SERVER_ADDR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "SELECTION_KV_SERVER_EGRESS_TLS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "SELECTION_KV_SERVER_TIMEOUT_MS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AZURE_CERT",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AZURE_KEYVAULT_NAME",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_ENCRYPTION",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INSTRUMENTATION_KEY",
+          "value": ".*",
+          "regex": true
+        }
+        ],
+        "workingDir": "/app",
+        "allowElevated": false,
+        "allowStdioAccess": true,
+        "allowPrivilegeEscalation": false,
+        "user": "1000:1000",
+        "capabilities": {
+          "add": [],
+          "drop": ["ALL"]
+        },
+        "seccompProfile": "runtime/default",
+        "readonlyRootFilesystem": false,
+        "volumeMounts": [
+          {
+            "name": "models-volume",
+            "mountPath": "/models",
+            "mountType": "emptyDir",
+            "readonly": true
+          }
+        ]
+      }
+    }
+  ],
+  "volumes": [
+    {
+      "name": "models-volume",
+      "type": "emptyDir"
+    }
+  ],
+  "allowedInboundPorts": [
+    {
+      "port": 50051,
+      "protocol": "TCP"
+    },
+    {
+      "port": 50552,
+      "protocol": "TCP"
+    }
+  ],
+  "allowedOutboundPorts": [
+    {
+      "port": 443,
+      "protocol": "TCP"
+    },
+    {
+      "port": 80,
+      "protocol": "TCP"
+    },
+    {
+      "port": 50057,
+      "protocol": "TCP"
+    }
+  ],
+  "allowedOutboundHosts": [
+    "depa-inferencing-kms.centralindia.cloudapp.azure.com",
+    "*.azurecr.io",
+    "*.microsoft.com",
+    "offer-service.ad_selection.microsoft",
+    "kv.ad_selection.microsoft"
+  ],
+  "allowedExecutables": [
+    "/usr/local/bin/inference-sidecar"
+  ],
+  "allowedLibraries": [],
+  "allowedFiles": [
+    {
+      "path": "/models",
+      "access": "read"
+    }
+  ],
+  "networkConfiguration": {
+    "allowInboundConnections": true,
+    "allowOutboundConnections": true,
+    "allowedInboundPorts": [50051, 50552],
+    "allowedOutboundPorts": [80, 443, 50057]
+  }
+}
