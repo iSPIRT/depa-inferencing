@@ -46,6 +46,7 @@ jobs:
       - name: Install Azure CLI Confcom extension
         run: |
           az extension add --name confcom
+          az extension update --name confcom
           az version
 
       - name: Setup Python virtual environment
