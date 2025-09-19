@@ -1,0 +1,33 @@
+name: Azure CI Pipeline
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  schedule:
+    # Run daily at 2:00 AM UTC
+    - cron: '0 2 * * *'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  azure_deploy:
+    name: Deploy on Azure
+    uses: ./.github/workflows/azure_deploy.yml
+    secrets: inherit
+
+  azure_test:
+    name: Test Azure Deployment
+    needs: azure_deploy
+    uses: ./.github/workflows/azure_test.yml
+    secrets: inherit
+
+  azure_cleanup:
+    name: Cleanup Azure Deployments
+    needs: [azure_deploy, azure_test]
+    if: always()
+    uses: ./.github/workflows/azure_cleanup.yml
+    secrets: inherit

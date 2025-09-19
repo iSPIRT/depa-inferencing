@@ -6,6 +6,7 @@ permissions:
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   deploy:
@@ -16,12 +17,6 @@ jobs:
 
       - name: Set Up Terraform
         uses: hashicorp/setup-terraform@v3
-
-      - name: Debug OIDC token
-        run: |
-          token=$(curl -sLS $ACTIONS_ID_TOKEN_REQUEST_URL \
-            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN")
-          echo $token | jq .
 
       - name: Azure Login
         uses: azure/login@v2
