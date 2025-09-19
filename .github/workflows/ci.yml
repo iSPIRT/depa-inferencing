@@ -1,5 +1,9 @@
 name: Azure CI Pipeline
 
+permissions:
+  contents: read
+  id-token: write
+
 on:
   schedule:
     # Run daily at 2:00 AM UTC
