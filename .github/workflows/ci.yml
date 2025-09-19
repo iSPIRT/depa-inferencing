@@ -17,14 +17,17 @@ jobs:
   azure_deploy:
     name: Deploy on Azure
     uses: ./.github/workflows/azure_deploy.yml
+    secrets: inherit
 
   azure_test:
     name: Test Azure Deployment
     needs: azure_deploy
     uses: ./.github/workflows/azure_test.yml
+    secrets: inherit
 
   azure_cleanup:
     name: Cleanup Azure Deployments
     needs: [azure_deploy, azure_test]
     if: always()
     uses: ./.github/workflows/azure_cleanup.yml
+    secrets: inherit
