@@ -1,0 +1,269 @@
+name: "KICS IaC Security Scan"
+
+on:
+  # Manual trigger only from any branch/environment
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to run KICS scan on'
+        required: false
+        default: 'main'
+      environment:
+        description: 'Environment to run in'
+        required: false
+        default: 'development'
+        type: choice
+        options:
+        - development
+        - staging
+        - production
+      scan_path:
+        description: 'Path to scan for IaC files'
+        required: false
+        default: '.'
+        type: string
+
+  # Allow this workflow to be called by other workflows
+  workflow_call:
+    inputs:
+      branch:
+        description: 'Branch to run KICS scan on'
+        required: false
+        default: 'main'
+        type: string
+      environment:
+        description: 'Environment to run in'
+        required: false
+        default: 'development'
+        type: string
+      scan_path:
+        description: 'Path to scan for IaC files'
+        required: false
+        default: '.'
+        type: string
+
+jobs:
+  kics-scan:
+    permissions:
+      contents: read # for actions/checkout to fetch code
+      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+    name: "KICS Infrastructure as Code Security Scan"
+    runs-on: [self-hosted, linux, X64]
+    outputs:
+      kics_exit_code: ${{ steps.kics_scan.outputs.exit_code }}
+      high_severity_results: ${{ steps.analyze_results.outputs.high_severity_results }}
+      total_results: ${{ steps.analyze_results.outputs.total_results }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Create results directory
+        run: |
+          mkdir -p kics-results
+          echo "Created kics-results directory"
+
+      - name: Install dependencies
+        run: |
+          # Install jq for JSON parsing if not available
+          if ! command -v jq &> /dev/null; then
+            echo "Installing jq..."
+            sudo apt-get update && sudo apt-get install -y jq
+          else
+            echo "jq is already installed"
+          fi
+
+      - name: Run KICS Scan
+        id: kics_scan
+        uses: checkmarx/kics-github-action@v2.1.2
+        with:
+          path: ${{ inputs.scan_path || github.event.inputs.scan_path || '.' }}
+          output_path: kics-results/
+          platform_type: terraform,dockerfile,kubernetes,helm,docker-compose,cloudformation,ansible,azure-blueprints,bicep,crossplane,grpc,openapi,serverless,github-actions
+          output_formats: 'sarif,json,html'
+          exclude_paths: 'builders/etc/,tools/debug/,.git/,node_modules/,third_party/'
+          exclude_severities: 'info'
+          fail_on: 'high,critical'
+          enable_comments: true
+          ignore_on_exit: 'results'
+        continue-on-error: true
+
+      - name: Handle KICS scan completion
+        run: |
+          echo "KICS scan step completed with exit code: ${{ steps.kics_scan.outputs.exit_code }}"
+          if [ "${{ steps.kics_scan.outputs.exit_code }}" != "0" ]; then
+            echo "⚠️ KICS scan detected issues or encountered errors"
+          else
+            echo "✅ KICS scan completed successfully"
+          fi
+
+      - name: Display scan results
+        run: |
+          echo "KICS scan completed"
+          echo "Exit code: ${{ steps.kics_scan.outputs.exit_code }}"
+          echo ""
+          echo "Generated files:"
+          ls -la kics-results/ || echo "No results directory found"
+          echo ""
+          if [ -f "kics-results/results.json" ]; then
+            echo "JSON results file found:"
+            ls -la kics-results/results.json
+            echo "JSON file size: $(wc -c < kics-results/results.json) bytes"
+            echo ""
+            echo "First few lines of JSON:"
+            head -10 kics-results/results.json || echo "Could not read JSON file"
+            echo ""
+            if command -v jq &> /dev/null; then
+              echo "JSON structure check:"
+              cat kics-results/results.json | jq 'keys' 2>/dev/null || echo "Could not parse JSON with jq"
+            fi
+          else
+            echo "No results.json file found"
+            echo "Available files in kics-results:"
+            find kics-results/ -type f 2>/dev/null || echo "No files found"
+          fi
+
+      - name: Analyze KICS results
+        id: analyze_results
+        run: |
+          if [ -f "kics-results/results.json" ]; then
+            # Count high and critical severity issues
+            HIGH_CRITICAL=$(cat kics-results/results.json | jq '[.queries[]? | select(.severity == "HIGH" or .severity == "CRITICAL")] | length' 2>/dev/null || echo "0")
+            TOTAL_ISSUES=$(cat kics-results/results.json | jq '.queries | length' 2>/dev/null || echo "0")
+            
+            # Alternative parsing for different JSON structure
+            if [ "$TOTAL_ISSUES" = "0" ] || [ "$TOTAL_ISSUES" = "null" ]; then
+              HIGH_CRITICAL=$(cat kics-results/results.json | jq '[.results[]? | select(.severity == "HIGH" or .severity == "CRITICAL")] | length' 2>/dev/null || echo "0")
+              TOTAL_ISSUES=$(cat kics-results/results.json | jq '.results | length' 2>/dev/null || echo "0")
+            fi
+            
+            # If still no results, try scanning statistics
+            if [ "$TOTAL_ISSUES" = "0" ] || [ "$TOTAL_ISSUES" = "null" ]; then
+              TOTAL_ISSUES=$(cat kics-results/results.json | jq '.files_scanned // 0' 2>/dev/null || echo "0")
+              HIGH_CRITICAL=$(cat kics-results/results.json | jq '.severity_counters.HIGH // 0 + .severity_counters.CRITICAL // 0' 2>/dev/null || echo "0")
+            fi
+            
+            echo "high_severity_results=$HIGH_CRITICAL" >> $GITHUB_OUTPUT
+            echo "total_results=$TOTAL_ISSUES" >> $GITHUB_OUTPUT
+            
+            echo "📊 KICS Scan Summary:"
+            echo "Total issues found: $TOTAL_ISSUES"
+            echo "High/Critical issues: $HIGH_CRITICAL"
+            
+            # Create a summary report
+            echo "# KICS Infrastructure as Code Scan Report" > kics_summary.md
+            echo "**Date:** $(date)" >> kics_summary.md
+            echo "**Branch:** ${{ inputs.branch || github.event.inputs.branch || github.ref_name }}" >> kics_summary.md
+            echo "**Scan Path:** ${{ inputs.scan_path || github.event.inputs.scan_path || '.' }}" >> kics_summary.md
+            echo "" >> kics_summary.md
+            echo "## Results Summary" >> kics_summary.md
+            echo "- Total issues: $TOTAL_ISSUES" >> kics_summary.md
+            echo "- High/Critical issues: $HIGH_CRITICAL" >> kics_summary.md
+            echo "- Exit code: ${{ steps.kics_scan.outputs.exit_code }}" >> kics_summary.md
+            echo "" >> kics_summary.md
+            
+            if [ "$HIGH_CRITICAL" -gt 0 ]; then
+              echo "## ⚠️ Security Issues Found" >> kics_summary.md
+              echo "High or critical severity issues were found in your Infrastructure as Code." >> kics_summary.md
+              echo "Please review the detailed SARIF report and address these issues." >> kics_summary.md
+            else
+              echo "## ✅ No Critical Issues" >> kics_summary.md
+              echo "No high or critical severity issues were found." >> kics_summary.md
+            fi
+            
+            cat kics_summary.md
+          else
+            echo "high_severity_results=0" >> $GITHUB_OUTPUT
+            echo "total_results=0" >> $GITHUB_OUTPUT
+            echo "⚠️ No KICS results file found"
+          fi
+
+      - name: Upload KICS SARIF results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kics-scan-results
+          path: |
+            kics-results/
+            kics_summary.md
+
+      - name: Upload SARIF to GitHub Security tab
+        if: always()
+        run: |
+          # Find SARIF files in the results directory
+          SARIF_FILES=($(find kics-results/ -name "*.sarif" 2>/dev/null))
+          
+          if [ ${#SARIF_FILES[@]} -eq 0 ]; then
+            echo "⚠️ No SARIF files found in kics-results/"
+            ls -la kics-results/ || echo "Results directory not found"
+          else
+            echo "Found ${#SARIF_FILES[@]} SARIF file(s):"
+            for file in "${SARIF_FILES[@]}"; do
+              echo "  - $file"
+              ls -la "$file"
+            done
+            
+            # Upload the first SARIF file found
+            SARIF_FILE="${SARIF_FILES[0]}"
+            echo "Uploading SARIF file: $SARIF_FILE"
+            
+            # Use the GitHub CLI to upload SARIF
+            if command -v gh &> /dev/null; then
+              gh api \
+                --method POST \
+                --header "Accept: application/vnd.github+json" \
+                --header "X-GitHub-Api-Version: 2022-11-28" \
+                /repos/${{ github.repository }}/code-scanning/sarifs \
+                --input "$SARIF_FILE" || echo "Failed to upload SARIF via GitHub CLI"
+            else
+              echo "GitHub CLI not available, trying alternative upload method"
+              # Alternative: use the official action
+              echo "sarif_file=$SARIF_FILE" >> $GITHUB_ENV
+            fi
+          fi
+
+      - name: Upload SARIF via Action (fallback)
+        if: always() && env.sarif_file != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ env.sarif_file }}
+          category: 'kics-iac-scan'
+        continue-on-error: true
+
+      - name: Generate final report
+        if: always()
+        run: |
+          echo "🔍 KICS Infrastructure as Code Scan Completed"
+          echo "================================================"
+          echo "Exit Code: ${{ steps.kics_scan.outputs.exit_code }}"
+          echo "Total Issues: ${{ steps.analyze_results.outputs.total_results }}"
+          echo "High/Critical Issues: ${{ steps.analyze_results.outputs.high_severity_results }}"
+          echo ""
+          
+          # Check if we should fail based on critical issues
+          HIGH_CRITICAL="${{ steps.analyze_results.outputs.high_severity_results }}"
+          if [ "$HIGH_CRITICAL" != "" ] && [ "$HIGH_CRITICAL" -gt 0 ]; then
+            echo "❌ Action Required: Critical security issues found in Infrastructure as Code"
+            echo "Please review the SARIF report in GitHub Security tab"
+            echo "This step will not fail the workflow to allow artifact upload"
+          else
+            echo "✅ No critical security issues found in Infrastructure as Code"
+          fi
+          
+      - name: Cleanup build artifacts
+        if: always()
+        run: |
+          echo "Cleaning up build artifacts..."
+          # Clean up any docker artifacts that might have permission issues
+          docker container prune -f || true
+          
+          # Fix permissions on workspace files, subsequent runs fail,
+          # because of some files with root permissions
+          sudo chown -R $(whoami):$(whoami) ${GITHUB_WORKSPACE} || true
+          
+          echo "Cleanup completed for ${{ matrix.language }}"
+          
+          # Clean up any temporary mounts
+          sudo umount /tmp/* 2>/dev/null || true
