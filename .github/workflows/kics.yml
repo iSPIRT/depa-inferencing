@@ -81,7 +81,7 @@ jobs:
         with:
           path: ${{ inputs.scan_path || github.event.inputs.scan_path || '.' }}
           output_path: kics-results/
-          platform_type: terraform,dockerfile,kubernetes,helm,docker-compose,cloudformation,ansible,azure-blueprints,bicep,crossplane,grpc,openapi,serverless,github-actions
+          platform_type: terraform,dockerfile,kubernetes,cloudformation,ansible,bicep,crossplane,grpc,openapi,serverlessfw,dockercompose
           output_formats: 'sarif,json,html'
           exclude_paths: 'builders/etc/,tools/debug/,.git/,node_modules/,third_party/'
           exclude_severities: 'info'
