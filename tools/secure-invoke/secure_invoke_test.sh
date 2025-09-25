@@ -26,4 +26,6 @@ echo "  client_cert file: $CLIENT_CERT"
 echo "  ca_cert file: $CA_CERT"
 echo "  enable_verbose: ${ENABLE_VERBOSE:-false}"
 
-docker compose -f "$REPO_ROOT/docker-compose.yml" up secure-invoke
+# Run the container and capture its exit code
+docker compose -f "$REPO_ROOT/docker-compose.yml" up --exit-code-from secure-invoke secure-invoke
+
