@@ -1,5 +1,4 @@
-[![Deploy on Azure](https://github.com/iSPIRT/depa-inferencing/actions/workflows/azure_deploy.yml/badge.svg)](https://github.com/iSPIRT/depa-inferencing/actions/workflows/azure_deploy.yml)
-[![Test Azure Deployment](https://github.com/iSPIRT/depa-inferencing/actions/workflows/azure_test.yml/badge.svg)](https://github.com/iSPIRT/depa-inferencing/actions/workflows/azure_test.yml)
+[![Azure CI Pipeline](https://github.com/iSPIRT/depa-inferencing/actions/workflows/ci.yml/badge.svg)](https://github.com/iSPIRT/depa-inferencing/actions/workflows/ci.yml)
 
 # DEPA Inferencing
 
