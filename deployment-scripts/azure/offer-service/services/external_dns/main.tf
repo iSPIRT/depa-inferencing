@@ -97,6 +97,11 @@ resource "helm_release" "external_dns" {
   ]
 
   set {
+    name  = "image.registry"
+    value = "ispirt.azurecr.io"
+  }
+
+  set {
     name  = "azure.useWorkloadIdentityExtension"
     type  = "auto"
     value = "true"
