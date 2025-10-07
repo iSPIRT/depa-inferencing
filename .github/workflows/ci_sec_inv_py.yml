@@ -1,4 +1,4 @@
-name: Azure CI Pipeline (Python Secure Invoke)
+name: Azure CI Python Secure Invoke
 
 permissions:
   contents: read
