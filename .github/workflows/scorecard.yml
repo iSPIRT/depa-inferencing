@@ -92,3 +92,29 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
+
+      - name: Prepare SARIFs for DefectDojo
+        if: always()
+        run: |
+          mkdir -p reports
+          cp results.sarif reports/scorecard.sarif
+
+      - name: Upload SARIFs to DefectDojo
+        if: always()
+        env:
+          DD_URL: ${{ secrets.DEFECTDOJO_URL }}
+          DD_API_KEY: ${{ secrets.DEFECTDOJO_API_KEY }}
+          DD_ENGAGEMENT_ID: ${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}
+        run: |
+          pip install requests
+          python3 <<'EOF'
+          import os, requests
+          dojo_url = os.getenv("DD_URL").rstrip("/")
+          api_key = os.getenv("DD_API_KEY")
+          engagement_id = os.getenv("DD_ENGAGEMENT_ID")
+          headers = {"Authorization": f"Token {api_key}"}
+          with open("reports/scorecard.sarif", "rb") as f:
+              data = {"scan_type": "SARIF", "engagement": engagement_id, "auto_create_context": True}
+              r = requests.post(f"{dojo_url}/api/v2/import-scan/", headers=headers, data=data, files={"file": f})
+              print(r.status_code, r.text)
+          EOF
