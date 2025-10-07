@@ -1,4 +1,4 @@
-name: Azure CI Pipeline (Python Secure Invoke)
+name: Azure CI with Py Secure Invoke
 
 permissions:
   contents: read
@@ -6,11 +6,22 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      workflow_branch:
+        description: 'Branch to use for workflow definitions (azure_deploy, azure_cleanup)'
+        required: true
+        default: 'main'
+        type: string
+      deployment_branch:
+        description: 'Branch to checkout and deploy from'
+        required: true
+        default: 'main'
+        type: string
 
 jobs:
   azure_deploy:
     name: Deploy on Azure
-    uses: ./.github/workflows/azure_deploy.yml
+    uses: ./.github/workflows/azure_deploy.yml@${{ inputs.workflow_branch }}
     secrets: inherit
 
   azure_test_py:
@@ -20,6 +31,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.deployment_branch }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -71,6 +84,6 @@ jobs:
     name: Cleanup Azure Deployments
     needs: [azure_deploy, azure_test_py]
     if: always()
-    uses: ./.github/workflows/azure_cleanup.yml
+    uses: ./.github/workflows/azure_cleanup.yml@${{ inputs.workflow_branch }}
     secrets: inherit
 
