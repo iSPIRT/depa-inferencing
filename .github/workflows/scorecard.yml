@@ -91,7 +91,7 @@ jobs:
             -H "accept: application/json" \
             -F "scan_type=SARIF" \
             -F "file=@results.sarif" \
-            -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
+            -F "engagement=${{ secrets.DEFECTDOJO_SCORECARD_ENGAGEMENT_ID }}" \
             -F "scan_date=${TIMESTAMP}" \
             -F "active=true" \
             -F "verified=false" \
