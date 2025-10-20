@@ -256,12 +256,17 @@ jobs:
       - name: "Upload to DefectDojo"
         run: |
           TIMESTAMP=$(date +%Y-%m-%d)
+          SARIF_FILE=$(find kics-results/ -name "*.sarif" | head -n 1)
+          if [ -z "$SARIF_FILE" ]; then
+            echo "⚠️ No SARIF file found to upload"
+            exit 0
+          fi
           
           curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
             -H "accept: application/json" \
             -F "scan_type=SARIF" \
-            -F "file=@results.sarif" \
+            -F "file=@${SARIF_FILE}" \
             -F "engagement=${{ secrets.DEFECTDOJO_KICS_ENGAGEMENT_ID }}" \
             -F "scan_date=${TIMESTAMP}" \
             -F "active=true" \
