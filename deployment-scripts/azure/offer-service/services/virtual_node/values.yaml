@@ -22,11 +22,17 @@ podAnnotations: {}
 podSecurityContext: {}
   # fsGroup: 2000
 
-securityContext: 
-  capabilities:
-    add:
-      - NET_ADMIN
-      - NET_RAW
+# Pod Disruption Budget (https://kubernetes.io/docs/tasks/run-application/configure-pdb/)
+podDisruptionBudget: {}
+  # minAvailable: 1
+  # maxUnavailable: 1
+admissionControllerPodDisruptionBudget: {}
+  # minAvailable: 1
+  # maxUnavailable: 1
+
+# Pod Priority Class (https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/)
+priorityClassName: ""
+admissionControllerPriorityClassName: ""
 
 nodeSelector: 
   "kubernetes.io/os": linux
@@ -45,6 +51,11 @@ rbac:
   ## Cluster role reference
   roleRef: cluster-admin
 
+# You must provide a value here if deploying the virtual node outside of Azure's public cloud.
+# For example, if using Azure Government, set this value to "https://management.usgovcloudapi.net/" (reference: https://learn.microsoft.com/en-us/azure/azure-government/compare-azure-government-global-azure).
+# If no value is provided, the virtual node defaults to using Public cloud.
+armEndpointBaseUrl: ''
+
 namespace: vn2
 aciSubnetName: cg # remember this subnet needs to be delegated to Microsoft.ContainerInstance/containerGroups
 aciResourceGroupName: '' # If not empty, will override the default resource group for the ACI instances. Must be within same subscription as the AKS cluster
@@ -59,6 +70,17 @@ standbyPool:
   ccePolicy: '' 
 
 nodeLabels: '' #Labels to add when registering the node in the cluster. Labels must be key=value pairs separated by ','. Labels in the 'kubernetes.io' namespace must begin with an allowed prefix ('kubelet.kubernetes.io', 'node.kubernetes.io') or be in the specifically allowed set ('beta.kubernetes.io/arch', 'beta.kubernetes.io/instance-type', 'beta.kubernetes.io/os', 'failure-domain.beta.kubernetes.io/region', 'failure-domain.beta.kubernetes.io/zone', 'kubernetes.io/arch', 'kubernetes.io/hostname', 'kubernetes.io/os', 'node.kubernetes.io/instance-type', 'topology.kubernetes.io/region', 'topology.kubernetes.io/zone')
+
+infraPodMinRestartDelaySeconds: '120' # Minimum time between automated repair operations that will restart a particular virtual node's infrastructure pod
+
+containerLogsVolumeHostPath: '' # if set, overrides default emptyDir volume for container logs volume to be a hostPath volume to the specified directory
+
+customTags: '' # Custom tags to add to ACI container groups, in the format key1=value1;key2=value2
+
+acrTrustedAccess:
+  enabled: false
+  identityResourceId: '' # Resource ID of managed identity with ACR access eg -  /subscriptions/<subId>/resourceGroups/<rgName>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<miName>
+  identityPrincipalId: '' # Principal ID of the managed identity with ACR access
 
 images:
   pullPolicy: Always
