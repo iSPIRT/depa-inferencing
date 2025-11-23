@@ -49,7 +49,7 @@ module "offer" {
       name      = "offer-service"
       image     = "${local.image_registry}/${local.registry_path}/bidding-service:${local.image_tag}"
       ccepolicy = "${file("../cce-policies/offer.base64")}"
-      replicas  = 2
+      replicas  = 1
 
       resources = {
         requests = {
@@ -156,7 +156,7 @@ module "offer" {
       image     = "${local.image_registry}/${local.registry_path}/key-value-service:${local.kv_image_tag}"
 
       ccepolicy = "${file("../cce-policies/kv.base64")}"
-      replicas  = 2
+      replicas  = 1
       resources = {
         requests = {
           cpu    = "0.75"
