@@ -46,3 +46,18 @@ output "key_vault_uri" {
   value       = module.key_vault.uri
 }
 
+output "application_gateway_endpoint" {
+  description = "Endpoint URL of the Application Gateway."
+  value       = module.application_gateway.endpoint
+}
+
+output "application_gateway_public_ip" {
+  description = "Public IP address of the Application Gateway."
+  value       = module.application_gateway.public_ip_address
+}
+
+output "ledger_endpoint_name" {
+  description = "Name of the Confidential Ledger endpoint."
+  value       = module.confidential_ledger.name
+}
+

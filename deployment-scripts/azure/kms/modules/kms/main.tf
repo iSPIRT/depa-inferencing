@@ -7,6 +7,8 @@ locals {
   default_key_vault_name      = "depa-inferencing-${var.region_short}-kv"
   default_certificate_name    = "depa-inferencing-kms-${var.environment}-${var.region_short}-member-cert"
   default_ledger_name         = "depa-inferencing-kms-${var.environment}-${var.region_short}"
+  default_vnet_name           = "depa-inferencing-kms-${var.environment}-${var.region_short}-vnet"
+  default_app_gateway_name    = "depa-inferencing-kms-${var.environment}-${var.region_short}-agw"
 
   resource_group_name = (
     var.resource_group_name != "" ?
@@ -36,6 +38,18 @@ locals {
     var.ledger_name != "" ?
     var.ledger_name :
     local.default_ledger_name
+  )
+
+  virtual_network_name = (
+    var.virtual_network_name != "" ?
+    var.virtual_network_name :
+    local.default_vnet_name
+  )
+
+  application_gateway_name = (
+    var.application_gateway_name != "" ?
+    var.application_gateway_name :
+    local.default_app_gateway_name
   )
 
   base_tags = {
@@ -97,6 +111,31 @@ module "confidential_ledger" {
   depends_on = [
     module.key_vault,
     module.managed_identity,
+  ]
+}
+
+module "virtual_network" {
+  source              = "../../services/virtual_network"
+  name                = local.virtual_network_name
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
+  tags                = merge(local.base_tags, var.extra_tags)
+}
+
+module "application_gateway" {
+  source              = "../../services/application_gateway"
+  name                = local.application_gateway_name
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
+  subnet_id           = module.virtual_network.gateway_subnet_id
+  backend_address     = replace(module.confidential_ledger.ledger_endpoint, "https://", "")
+  backend_port        = 443
+  trusted_root_certificate = module.confidential_ledger.ledger_tls_certificate
+  tags                = merge(local.base_tags, var.extra_tags)
+
+  depends_on = [
+    module.virtual_network,
+    module.confidential_ledger,
   ]
 }
 

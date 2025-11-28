@@ -56,6 +56,18 @@ variable "ledger_name" {
   default     = ""
 }
 
+variable "application_gateway_name" {
+  type        = string
+  description = "Optional explicit name for the application gateway. Defaults to a convention-based value when empty."
+  default     = ""
+}
+
+variable "virtual_network_name" {
+  type        = string
+  description = "Optional explicit name for the virtual network. Defaults to a convention-based value when empty."
+  default     = ""
+}
+
 variable "extra_tags" {
   type        = map(string)
   description = "Additional tags to append to the default KMS tag set."
