@@ -1,0 +1,102 @@
+# Copyright (c) iSPIRT.
+# Licensed under the Apache License, Version 2.0.
+
+locals {
+  default_resource_group_name = "depa-inferencing-kms-${var.environment}-${var.region_short}-rg"
+  default_identity_name       = "depa-inferencing-kms-${var.region_short}-mi"
+  default_key_vault_name      = "depa-inferencing-${var.region_short}-kv"
+  default_certificate_name    = "depa-inferencing-kms-${var.environment}-${var.region_short}-member-cert"
+  default_ledger_name         = "depa-inferencing-kms-${var.environment}-${var.region_short}"
+
+  resource_group_name = (
+    var.resource_group_name != "" ?
+    var.resource_group_name :
+    local.default_resource_group_name
+  )
+
+  managed_identity_name = (
+    var.managed_identity_name != "" ?
+    var.managed_identity_name :
+    local.default_identity_name
+  )
+
+  key_vault_name = (
+    var.key_vault_name != "" ?
+    var.key_vault_name :
+    local.default_key_vault_name
+  )
+
+  certificate_name = (
+    var.certificate_name != "" ?
+    var.certificate_name :
+    local.default_certificate_name
+  )
+
+  ledger_name = (
+    var.ledger_name != "" ?
+    var.ledger_name :
+    local.default_ledger_name
+  )
+
+  base_tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+    Workload    = "depa-inferencing-kms"
+  }
+}
+
+module "resource_group" {
+  source   = "../../services/resource_group"
+  name     = local.resource_group_name
+  location = var.region
+  tags     = merge(local.base_tags, var.extra_tags)
+}
+
+module "managed_identity" {
+  source              = "../../services/managed_identity"
+  name                = local.managed_identity_name
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
+  tags                = merge(local.base_tags, var.extra_tags)
+}
+
+resource "azurerm_role_assignment" "managed_identity_rg_contributor" {
+  principal_id                     = module.managed_identity.principal_id
+  role_definition_name             = "Contributor"
+  scope                            = module.resource_group.id
+  skip_service_principal_aad_check = true
+
+  depends_on = [
+    module.managed_identity,
+    module.resource_group,
+  ]
+}
+
+module "key_vault" {
+  source               = "../../services/key_vault"
+  name                 = local.key_vault_name
+  resource_group_name  = module.resource_group.name
+  location             = module.resource_group.location
+  tenant_id            = var.tenant_id
+  tags                 = merge(local.base_tags, var.extra_tags)
+  crypto_principal_ids = [module.managed_identity.principal_id]
+  certificate_name     = local.certificate_name
+}
+
+module "confidential_ledger" {
+  source               = "../../services/confidential_ledger"
+  name                 = local.ledger_name
+  resource_group_name  = module.resource_group.name
+  location             = module.resource_group.location
+  tags                 = merge(local.base_tags, var.extra_tags)
+  azuread_based_service_principal_tenant_id   = var.tenant_id
+  azuread_based_service_principal_principal_id = module.managed_identity.principal_id
+  key_vault_id         = module.key_vault.id
+  certificate_name     = local.certificate_name
+
+  depends_on = [
+    module.key_vault,
+    module.managed_identity,
+  ]
+}
+
