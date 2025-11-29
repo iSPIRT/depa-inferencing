@@ -29,7 +29,8 @@ on:
 
 env:
   BUILD_TYPE: Release
-  REGISTRY: ispirt.azurecr.io
+  REGISTRY: ${{ vars.REGISTRY }}
+  REPO_NAME: ${{ vars.REPO_PATH }}
   
 jobs:
   build:
@@ -234,7 +235,7 @@ jobs:
           echo "Loaded image: $LOADED_IMAGE"
           
           # Tag the image with service-specific naming following Azure best practices
-          SERVICE_REPO_NAME="depa-inferencing/azure"
+          SERVICE_REPO_NAME="${{ env.REPO_NAME }}"
           
           # Service-specific tag: bidding-service:nonprod:4.8.0.0
           docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.bidding_service_image}}
@@ -263,7 +264,7 @@ jobs:
           echo "Loaded image: $LOADED_IMAGE"
           
           # Tag the image with service-specific naming following Azure best practices
-          SERVICE_REPO_NAME="depa-inferencing/azure"
+          SERVICE_REPO_NAME="${{ env.REPO_NAME }}"
           
           # Service-specific tag: buyer-frontend-service:nonprod:4.8.0.0
           docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.buyer_frontend_image}}
