@@ -64,7 +64,7 @@ resource "helm_release" "ba_services" {
   name         = "${var.side}-services"
   namespace    = var.kubernetes_namespace
   chart        = "${path.module}/helm"
-  timeout      = 900
+  timeout      = 1800
   force_update = true
 
   values = [
