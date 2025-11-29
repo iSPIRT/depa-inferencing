@@ -22,3 +22,15 @@ variable "tags" {
   default     = {}
 }
 
+variable "github_repository" {
+  type        = string
+  description = "GitHub repository in format 'owner/repo' for federated credential. Leave empty to disable."
+  default     = ""
+}
+
+variable "github_branch" {
+  type        = string
+  description = "GitHub branch name for federated credential. Only used if github_repository is set."
+  default     = ""
+}
+

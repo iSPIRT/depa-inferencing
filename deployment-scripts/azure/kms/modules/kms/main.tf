@@ -72,6 +72,8 @@ module "managed_identity" {
   resource_group_name = module.resource_group.name
   location            = module.resource_group.location
   tags                = merge(local.base_tags, var.extra_tags)
+  github_repository   = var.github_repository
+  github_branch       = var.github_branch
 }
 
 resource "azurerm_role_assignment" "managed_identity_rg_contributor" {

@@ -27,5 +27,7 @@ module "kms" {
   region_short         = local.region_short
   resource_group_name  = local.resource_group_name
   extra_tags           = local.extra_tags
+  github_repository    = "iSPIRT/azure-depa-inferencing-kms"
+  github_branch        = "kapilv/kms-migration"
 }
 
