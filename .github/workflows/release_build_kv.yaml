@@ -29,7 +29,8 @@ on:
 
 env:
   BUILD_TYPE: Release
-  REGISTRY: ispirt.azurecr.io
+  REGISTRY: ${{ vars.REGISTRY }}
+  REPO_PATH: ${{ vars.REPO_PATH }}
   
 jobs:
   build:
@@ -195,17 +196,16 @@ jobs:
           echo "Loaded image: $LOADED_IMAGE"
           
           # Tag the image with service-specific naming following Azure best practices
-          SERVICE_REPO_NAME="depa-inferencing/azure"
+          SERVICE_REPO_PATH="${{ env.REPO_PATH }}"
 
           # Service-specific tag: key-value-service:non-prod:1.0.0.0
-          docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service_image}}
+          docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.key_value_service_image}}
             
           # Push all tags to Azure Container Registry
           echo "Pushing key value service to ACR with service-specific tags..."
-          docker push ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service_image }}
-
+          docker push ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.key_value_service_image }}
           echo "✅ Successfully pushed key value service image with tags:"
-          echo "  - ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.key_value_service_image }}"
+          echo "  - ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.key_value_service_image }}"
         else
           echo "❌ key_value_service_image.tar not found"
           exit 1
