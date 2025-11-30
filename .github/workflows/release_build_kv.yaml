@@ -30,7 +30,7 @@ on:
 env:
   BUILD_TYPE: Release
   REGISTRY: ${{ vars.REGISTRY }}
-  REPO_NAME: ${{ vars.REPO_PATH }}
+  REPO_PATH: ${{ vars.REPO_PATH }}
   
 jobs:
   build:
