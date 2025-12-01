@@ -53,7 +53,7 @@ variable "sku_tier" {
 variable "waf_firewall_mode" {
   type        = string
   description = "The Web Application Firewall mode. Possible values are Detection and Prevention."
-  default     = "Prevention"
+  default     = "Detection"
 }
 
 variable "waf_rule_set_type" {
