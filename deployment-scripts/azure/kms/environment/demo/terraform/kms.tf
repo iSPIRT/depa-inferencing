@@ -2,9 +2,9 @@
 # Licensed under the Apache License, Version 2.0.
 
 locals {
-  environment = "prod"
-  operator    = "tf"
-  region      = "centralindia"
+  environment  = "prod"
+  operator     = "tf"
+  region       = "centralindia"
   region_short = "cin"
 
   subscription_id = "2a5f1e30-b076-4cb2-9235-2036241dedf0"
@@ -15,6 +15,8 @@ locals {
   extra_tags = {
     Owner = "ispirt"
   }
+
+  ssl_certificate_name = "depa-inferencing-kms-prod-cin-frontend-cert" # Name of the SSL certificate in Key Vault for Application Gateway.
 }
 
 module "kms" {
@@ -28,6 +30,7 @@ module "kms" {
   resource_group_name  = local.resource_group_name
   extra_tags           = local.extra_tags
   github_repository    = "iSPIRT/azure-depa-inferencing-kms"
-  github_branch        = "kapilv/kms-migration"
+  github_branch        = "main"
+  ssl_certificate_name = local.ssl_certificate_name
 }
 

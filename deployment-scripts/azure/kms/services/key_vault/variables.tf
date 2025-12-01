@@ -45,3 +45,9 @@ variable "certificate_name" {
   default     = "member-cert"
 }
 
+variable "secrets_user_principal_ids" {
+  type        = list(string)
+  description = "List of principal object IDs that should be granted Key Vault Secrets User role."
+  default     = []
+}
+

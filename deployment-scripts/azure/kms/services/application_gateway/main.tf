@@ -1,25 +1,20 @@
 # Copyright (c) iSPIRT.
 # Licensed under the Apache License, Version 2.0.
 
-resource "null_resource" "convert_cert_to_cer" {
-  triggers = {
-    cert_pem = var.trusted_root_certificate
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      echo '${var.trusted_root_certificate}' | openssl x509 -inform PEM -outform DER | base64 > /tmp/ledger_cert.cer
-    EOT
-  }
-}
-
-data "local_file" "cert_cer" {
-  filename   = "/tmp/ledger_cert.cer"
-  depends_on = [null_resource.convert_cert_to_cer]
+data "external" "cert_cer" {
+  program = ["bash", "-c", <<-EOT
+    echo '${var.trusted_root_certificate}' | openssl x509 -inform PEM -outform DER | base64 -w 0 | jq -Rs '{cer: .}'
+  EOT
+  ]
 }
 
 locals {
-  trusted_root_certificate_cer = trimspace(data.local_file.cert_cer.content)
+  trusted_root_certificate_cer = trimspace(data.external.cert_cer.result.cer)
+  # Key Vault URI format: https://{vault-name}.vault.azure.net
+  # Secret ID format: https://{vault-name}.vault.azure.net/secrets/{secret-name}
+  # Trim any trailing slash from URI to avoid double slashes
+  key_vault_uri_trimmed               = trimsuffix(var.key_vault_uri, "/")
+  ssl_certificate_key_vault_secret_id = "${local.key_vault_uri_trimmed}/secrets/${var.ssl_certificate_name}"
 }
 
 resource "azurerm_public_ip" "gateway" {
@@ -28,16 +23,44 @@ resource "azurerm_public_ip" "gateway" {
   location            = var.location
   allocation_method   = "Static"
   sku                 = "Standard"
+  zones               = var.zones
   tags                = var.tags
+}
+
+resource "azurerm_web_application_firewall_policy" "this" {
+  name                = "${var.name}-waf-policy"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  tags                = var.tags
+
+  policy_settings {
+    enabled                     = true
+    mode                        = var.waf_firewall_mode
+    request_body_check          = true
+    file_upload_limit_in_mb     = 100
+    max_request_body_size_in_kb = 128
+  }
+
+  managed_rules {
+    managed_rule_set {
+      type    = var.waf_rule_set_type
+      version = var.waf_rule_set_version
+    }
+  }
 }
 
 resource "azurerm_application_gateway" "this" {
   name                = var.name
   resource_group_name = var.resource_group_name
   location            = var.location
+  zones               = var.zones
   tags                = var.tags
+  enable_http2        = true
 
-  depends_on = [null_resource.convert_cert_to_cer]
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [var.managed_identity_id]
+  }
 
   sku {
     name     = var.sku_name
@@ -45,19 +68,16 @@ resource "azurerm_application_gateway" "this" {
     capacity = var.capacity
   }
 
+  firewall_policy_id = azurerm_web_application_firewall_policy.this.id
+
   gateway_ip_configuration {
-    name      = "gateway-ip-config"
+    name      = "depa-inferencing-gateway-ip-config"
     subnet_id = var.subnet_id
   }
 
   frontend_port {
-    name = "https-port"
+    name = "depa-inferencing-https-port"
     port = 443
-  }
-
-  frontend_port {
-    name = "http-port"
-    port = 80
   }
 
   frontend_ip_configuration {
@@ -66,7 +86,7 @@ resource "azurerm_application_gateway" "this" {
   }
 
   backend_address_pool {
-    name  = "backend-pool"
+    name  = "depa-inferencing-backend-pool"
     fqdns = [var.backend_address]
   }
 
@@ -75,48 +95,33 @@ resource "azurerm_application_gateway" "this" {
     data = local.trusted_root_certificate_cer
   }
 
+  ssl_certificate {
+    name                = var.ssl_certificate_name
+    key_vault_secret_id = local.ssl_certificate_key_vault_secret_id
+  }
+
   backend_http_settings {
-    name                  = "backend-http-settings"
-    cookie_based_affinity = "Disabled"
-    port                  = var.backend_port
-    protocol              = "Https"
-    request_timeout       = 20
-    probe_name            = "health-probe"
-    trusted_root_certificate_names = [var.trusted_root_certificate_name]
+    name                                = "depa-inferencing-backend-http-settings"
+    cookie_based_affinity               = "Disabled"
+    port                                = var.backend_port
+    protocol                            = "Https"
+    request_timeout                     = 20
+    probe_name                          = "depa-inferencing-health-probe"
+    trusted_root_certificate_names      = [var.trusted_root_certificate_name]
+    pick_host_name_from_backend_address = var.backend_hostname == "" ? true : false
+    host_name                           = var.backend_hostname != "" ? var.backend_hostname : null
   }
 
   http_listener {
-    name                           = "http-listener"
+    name                           = "depa-inferencing-https-listener"
     frontend_ip_configuration_name = "frontend-ip"
-    frontend_port_name             = "http-port"
-    protocol                       = "Http"
-  }
-
-  dynamic "http_listener" {
-    for_each = var.ssl_certificate_name != "" ? [1] : []
-    content {
-      name                           = "https-listener"
-      frontend_ip_configuration_name = "frontend-ip"
-      frontend_port_name             = "https-port"
-      protocol                       = "Https"
-      ssl_certificate_name           = var.ssl_certificate_name
-    }
-  }
-
-  dynamic "request_routing_rule" {
-    for_each = var.ssl_certificate_name != "" ? [1] : []
-    content {
-      name                       = "https-rule"
-      rule_type                  = "Basic"
-      http_listener_name         = "https-listener"
-      backend_address_pool_name   = "backend-pool"
-      backend_http_settings_name = "backend-http-settings"
-      priority                   = 100
-    }
+    frontend_port_name             = "depa-inferencing-https-port"
+    protocol                       = "Https"
+    ssl_certificate_name           = var.ssl_certificate_name
   }
 
   probe {
-    name                = "health-probe"
+    name                = "depa-inferencing-health-probe"
     protocol            = "Https"
     path                = var.health_probe_path
     host                = var.backend_address
@@ -127,12 +132,12 @@ resource "azurerm_application_gateway" "this" {
   }
 
   request_routing_rule {
-    name                       = "http-rule"
+    name                       = "depa-inferencing-https-rule"
     rule_type                  = "Basic"
-    http_listener_name         = "http-listener"
-    backend_address_pool_name   = "backend-pool"
-    backend_http_settings_name = "backend-http-settings"
-    priority                   = 10
+    http_listener_name         = "depa-inferencing-https-listener"
+    backend_address_pool_name  = "depa-inferencing-backend-pool"
+    backend_http_settings_name = "depa-inferencing-backend-http-settings"
+    priority                   = 100
   }
 
 }

@@ -26,6 +26,12 @@ variable "backend_address" {
   description = "Backend address (FQDN or IP) for the Application Gateway backend pool."
 }
 
+variable "backend_hostname" {
+  type        = string
+  description = "Hostname to use in the Host header when forwarding requests to the backend. If not provided, uses the backend address."
+  default     = ""
+}
+
 variable "backend_port" {
   type        = number
   description = "Backend port for the Application Gateway backend pool."
@@ -35,13 +41,31 @@ variable "backend_port" {
 variable "sku_name" {
   type        = string
   description = "SKU name for the Application Gateway."
-  default     = "Standard_v2"
+  default     = "WAF_v2"
 }
 
 variable "sku_tier" {
   type        = string
   description = "SKU tier for the Application Gateway."
-  default     = "Standard_v2"
+  default     = "WAF_v2"
+}
+
+variable "waf_firewall_mode" {
+  type        = string
+  description = "The Web Application Firewall mode. Possible values are Detection and Prevention."
+  default     = "Prevention"
+}
+
+variable "waf_rule_set_type" {
+  type        = string
+  description = "The Type of the Rule Set used for this Web Application Firewall."
+  default     = "OWASP"
+}
+
+variable "waf_rule_set_version" {
+  type        = string
+  description = "The Version of the Rule Set used for this Web Application Firewall."
+  default     = "3.2"
 }
 
 variable "capacity" {
@@ -50,9 +74,20 @@ variable "capacity" {
   default     = 2
 }
 
+variable "zones" {
+  type        = list(string)
+  description = "Availability zones for the Application Gateway. Defaults to all zones [1, 2, 3] for high availability."
+  default     = ["1", "2", "3"]
+}
+
 variable "ssl_certificate_name" {
   type        = string
-  description = "Name of the SSL certificate for HTTPS listener. Leave empty to disable HTTPS."
+  description = "Name of the SSL certificate in Key Vault for HTTPS listener."
+}
+
+variable "key_vault_uri" {
+  type        = string
+  description = "Key Vault URI (e.g., https://vault-name.vault.azure.net). Required if ssl_certificate_name is provided."
   default     = ""
 }
 
@@ -71,6 +106,11 @@ variable "trusted_root_certificate_name" {
   type        = string
   description = "Name for the trusted root certificate."
   default     = "ledger-root-cert"
+}
+
+variable "managed_identity_id" {
+  type        = string
+  description = "Resource ID of the User-Assigned Managed Identity for the Application Gateway."
 }
 
 variable "tags" {

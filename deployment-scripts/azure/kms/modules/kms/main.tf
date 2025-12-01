@@ -89,26 +89,27 @@ resource "azurerm_role_assignment" "managed_identity_rg_contributor" {
 }
 
 module "key_vault" {
-  source               = "../../services/key_vault"
-  name                 = local.key_vault_name
-  resource_group_name  = module.resource_group.name
-  location             = module.resource_group.location
-  tenant_id            = var.tenant_id
-  tags                 = merge(local.base_tags, var.extra_tags)
-  crypto_principal_ids = [module.managed_identity.principal_id]
-  certificate_name     = local.certificate_name
+  source                     = "../../services/key_vault"
+  name                       = local.key_vault_name
+  resource_group_name        = module.resource_group.name
+  location                   = module.resource_group.location
+  tenant_id                  = var.tenant_id
+  tags                       = merge(local.base_tags, var.extra_tags)
+  crypto_principal_ids       = [module.managed_identity.principal_id]
+  secrets_user_principal_ids = [module.managed_identity.principal_id]
+  certificate_name           = local.certificate_name
 }
 
 module "confidential_ledger" {
-  source               = "../../services/confidential_ledger"
-  name                 = local.ledger_name
-  resource_group_name  = module.resource_group.name
-  location             = module.resource_group.location
-  tags                 = merge(local.base_tags, var.extra_tags)
-  azuread_based_service_principal_tenant_id   = var.tenant_id
+  source                                       = "../../services/confidential_ledger"
+  name                                         = local.ledger_name
+  resource_group_name                          = module.resource_group.name
+  location                                     = module.resource_group.location
+  tags                                         = merge(local.base_tags, var.extra_tags)
+  azuread_based_service_principal_tenant_id    = var.tenant_id
   azuread_based_service_principal_principal_id = module.managed_identity.principal_id
-  key_vault_id         = module.key_vault.id
-  certificate_name     = local.certificate_name
+  key_vault_id                                 = module.key_vault.id
+  certificate_name                             = local.certificate_name
 
   depends_on = [
     module.key_vault,
@@ -125,16 +126,20 @@ module "virtual_network" {
 }
 
 module "application_gateway" {
-  source              = "../../services/application_gateway"
-  name                = local.application_gateway_name
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
-  subnet_id           = module.virtual_network.gateway_subnet_id
-  backend_address     = replace(module.confidential_ledger.ledger_endpoint, "https://", "")
-  backend_port        = 443
+  source                   = "../../services/application_gateway"
+  name                     = local.application_gateway_name
+  resource_group_name      = module.resource_group.name
+  location                 = module.resource_group.location
+  subnet_id                = module.virtual_network.gateway_subnet_id
+  backend_address          = replace(module.confidential_ledger.ledger_endpoint, "https://", "")
+  backend_hostname         = module.confidential_ledger.name
+  backend_port             = 443
   trusted_root_certificate = module.confidential_ledger.ledger_tls_certificate
-  tags                = merge(local.base_tags, var.extra_tags)
-
+  ssl_certificate_name     = var.ssl_certificate_name
+  key_vault_uri            = module.key_vault.uri
+  managed_identity_id      = module.managed_identity.id
+  tags                     = merge(local.base_tags, var.extra_tags)
+  health_probe_path        = "/node/metrics"
   depends_on = [
     module.virtual_network,
     module.confidential_ledger,

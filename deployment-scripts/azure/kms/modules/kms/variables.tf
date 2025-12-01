@@ -80,6 +80,11 @@ variable "github_branch" {
   default     = ""
 }
 
+variable "ssl_certificate_name" {
+  type        = string
+  description = "Name of the SSL certificate in Key Vault for Application Gateway."
+}
+
 variable "extra_tags" {
   type        = map(string)
   description = "Additional tags to append to the default KMS tag set."

@@ -28,7 +28,7 @@ output "fqdn" {
 
 output "endpoint" {
   description = "Endpoint URL of the Application Gateway (using FQDN if available, otherwise IP address)."
-  value       = coalesce(
+  value = coalesce(
     azurerm_public_ip.gateway.fqdn != null && azurerm_public_ip.gateway.fqdn != "" ? "http://${azurerm_public_ip.gateway.fqdn}" : null,
     "http://${azurerm_public_ip.gateway.ip_address}"
   )

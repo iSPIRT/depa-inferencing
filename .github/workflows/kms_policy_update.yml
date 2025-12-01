@@ -113,7 +113,7 @@ jobs:
           echo "Key release policy JSON generated: key_release_policy.json"
           cat $GITHUB_WORKSPACE/key_release_policy.json
     
-      - name: Sign and submitkey release policy proposal
+      - name: Sign and submit key release policy proposal
         env:
           AZURE_VAULT_NAME: ${{ inputs.azure-vault-name }}
           KMS_DEPLOYMENT_NAME: ${{ inputs.deployment-name }}

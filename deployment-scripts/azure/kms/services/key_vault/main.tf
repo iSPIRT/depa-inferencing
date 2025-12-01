@@ -47,6 +47,13 @@ resource "azurerm_role_assignment" "certificates_officer" {
   principal_id         = var.crypto_principal_ids[count.index]
 }
 
+resource "azurerm_role_assignment" "secrets_user" {
+  count                = length(var.secrets_user_principal_ids)
+  scope                = azurerm_key_vault.this.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = var.secrets_user_principal_ids[count.index]
+}
+
 resource "azurerm_key_vault_certificate" "member" {
   name         = var.certificate_name
   key_vault_id = azurerm_key_vault.this.id
