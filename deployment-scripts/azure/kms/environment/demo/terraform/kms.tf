@@ -17,6 +17,8 @@ locals {
   }
 
   ssl_certificate_name = "depa-inferencing-kms-prod-cin-frontend-cert" # Name of the SSL certificate in Key Vault for Application Gateway.
+  diagnostics_log_analytics_workspace_name = "depa-inferencing-sentinel-workspace" # Optional: Log Analytics workspace name for Application Gateway diagnostics.
+  diagnostics_log_analytics_workspace_resource_group_name = "depa-inferencing-sentinel-rg" # Optional: Resource group that hosts the Log Analytics workspace.
 }
 
 module "kms" {
@@ -32,5 +34,7 @@ module "kms" {
   github_repository    = "iSPIRT/azure-depa-inferencing-kms"
   github_branch        = "main"
   ssl_certificate_name = local.ssl_certificate_name
+  diagnostics_log_analytics_workspace_name = local.diagnostics_log_analytics_workspace_name
+  diagnostics_log_analytics_workspace_resource_group_name = local.diagnostics_log_analytics_workspace_resource_group_name
 }
 

@@ -85,6 +85,18 @@ variable "ssl_certificate_name" {
   description = "Name of the SSL certificate in Key Vault for Application Gateway."
 }
 
+variable "diagnostics_log_analytics_workspace_name" {
+  type        = string
+  description = "Log Analytics workspace name for Application Gateway diagnostics. If empty, diagnostics are disabled."
+  default     = ""
+}
+
+variable "diagnostics_log_analytics_workspace_resource_group_name" {
+  type        = string
+  description = "Resource group name of the Log Analytics workspace for Application Gateway diagnostics. If empty, defaults to the Application Gateway resource group."
+  default     = ""
+}
+
 variable "extra_tags" {
   type        = map(string)
   description = "Additional tags to append to the default KMS tag set."

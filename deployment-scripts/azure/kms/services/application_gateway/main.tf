@@ -142,3 +142,30 @@ resource "azurerm_application_gateway" "this" {
 
 }
 
+data "azurerm_log_analytics_workspace" "this" {
+  count = var.diagnostics_log_analytics_workspace_name != "" ? 1 : 0
+
+  name                = var.diagnostics_log_analytics_workspace_name
+  resource_group_name = var.diagnostics_log_analytics_workspace_resource_group_name != "" ? var.diagnostics_log_analytics_workspace_resource_group_name : var.resource_group_name
+}
+
+resource "azurerm_monitor_diagnostic_setting" "application_gateway" {
+  count = var.diagnostics_log_analytics_workspace_name != "" ? 1 : 0
+
+  name                       = "${var.name}-diagnostics"
+  target_resource_id         = azurerm_application_gateway.this.id
+  log_analytics_workspace_id = data.azurerm_log_analytics_workspace.this[0].id
+
+  enabled_log {
+    category = "ApplicationGatewayAccessLog"
+  }
+
+  enabled_log {
+    category = "ApplicationGatewayPerformanceLog"
+  }
+
+  enabled_log {
+    category = "ApplicationGatewayFirewallLog"
+  }
+}
+

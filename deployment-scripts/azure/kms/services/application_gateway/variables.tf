@@ -113,6 +113,18 @@ variable "managed_identity_id" {
   description = "Resource ID of the User-Assigned Managed Identity for the Application Gateway."
 }
 
+variable "diagnostics_log_analytics_workspace_name" {
+  type        = string
+  description = "Log Analytics workspace name for Application Gateway diagnostics. If empty, diagnostics are disabled."
+  default     = ""
+}
+
+variable "diagnostics_log_analytics_workspace_resource_group_name" {
+  type        = string
+  description = "Resource group name of the Log Analytics workspace for Application Gateway diagnostics. If empty, defaults to the Application Gateway resource group."
+  default     = ""
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags applied to the Application Gateway."

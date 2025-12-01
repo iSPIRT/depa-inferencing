@@ -138,6 +138,8 @@ module "application_gateway" {
   ssl_certificate_name     = var.ssl_certificate_name
   key_vault_uri            = module.key_vault.uri
   managed_identity_id      = module.managed_identity.id
+  diagnostics_log_analytics_workspace_name = var.diagnostics_log_analytics_workspace_name
+  diagnostics_log_analytics_workspace_resource_group_name = var.diagnostics_log_analytics_workspace_resource_group_name
   tags                     = merge(local.base_tags, var.extra_tags)
   health_probe_path        = "/node/metrics"
   depends_on = [
