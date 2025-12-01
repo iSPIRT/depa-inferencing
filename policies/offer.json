@@ -574,7 +574,7 @@
                 },
                 {
                   "name": "AZURE_BA_PARAM_KMS_UNWRAP_URL",
-                  "value": "https://depa-inferencing-kms.centralindia.cloudapp.azure.com/app/unwrapKey?fmt=tink"
+                  "value": "https://depa-inferencing-kms-azure.ispirt.in/app/unwrapKey?fmt=tink"
                 },
                 {
                   "name": "ENABLE_PROTECTED_AUDIENCE",
@@ -590,7 +590,7 @@
                 },
                 {
                   "name": "PRIMARY_COORDINATOR_PRIVATE_KEY_ENDPOINT",
-                  "value": "https://depa-inferencing-kms.centralindia.cloudapp.azure.com/app/key?fmt=tink"
+                  "value": "https://depa-inferencing-kms-azure.ispirt.in/app/key?fmt=tink"
                 },
                 {
                   "name": "PRIMARY_COORDINATOR_REGION",
@@ -602,7 +602,7 @@
                 },
                 {
                   "name": "PUBLIC_KEY_ENDPOINT",
-                  "value": "https://depa-inferencing-kms.centralindia.cloudapp.azure.com/app/listpubkeys"
+                  "value": "https://depa-inferencing-kms-azure.ispirt.in/app/listpubkeys"
                 },
                 {
                   "name": "TEST_MODE",
