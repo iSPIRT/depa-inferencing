@@ -29,7 +29,7 @@ on:
 
 env:
   BUILD_TYPE: Release
-  REGISTRY: ispirt.azurecr.io
+  REGISTRY: depainferencing.azurecr.io
   
 jobs:
   build:

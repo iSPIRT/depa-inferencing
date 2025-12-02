@@ -12,7 +12,7 @@ on:
         description: 'DEPA Inferencing Release Version for Bidding and Auction Services'
         required: true
         type: string
-        default: 'prod-4.8.0.0'
+        default: 'prod-4.8.0.1'
       kv-services-version:
         description: 'DEPA Inferencing Release Version for KV Services'
         required: true
@@ -65,17 +65,17 @@ jobs:
       - name: Generate CCE policies for services
         run: |
           # Generate CCE policy for KV service
-          docker pull ispirt.azurecr.io/depa-inferencing/azure/key-value-service:${{ inputs.kv-services-version }}
+          docker pull depainferencing.azurecr.io/azure/key-value-service:${{ inputs.kv-services-version }}
           KV_POLICY=$(az confcom acipolicygen -y -i policies/kv-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
           echo "KV_POLICY=$KV_POLICY" >> $GITHUB_ENV
 
           # Generate CCE policy for OFE service
-          docker pull ispirt.azurecr.io/depa-inferencing/azure/buyer-frontend-service:${{ inputs.bidding-auction-version }}
+          docker pull depainferencing.azurecr.io/azure/buyer-frontend-service:${{ inputs.bidding-auction-version }}
           OFE_POLICY=$(az confcom acipolicygen -y -i policies/ofe-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
           echo "OFE_POLICY=$OFE_POLICY" >> $GITHUB_ENV
 
           # Generate CCE policy for offer service
-          docker pull ispirt.azurecr.io/depa-inferencing/azure/bidding-service:${{ inputs.bidding-auction-version }}
+          docker pull depainferencing.azurecr.io/azure/bidding-service:${{ inputs.bidding-auction-version }}
           OFFER_POLICY=$(az confcom acipolicygen -y -i policies/offer-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
           echo "OFFER_POLICY=$OFFER_POLICY" >> $GITHUB_ENV
 

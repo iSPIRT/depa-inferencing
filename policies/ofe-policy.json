@@ -5,7 +5,7 @@
     {
       "name": "ofe-container",
       "properties": {
-        "image": "ispirt.azurecr.io/depa-inferencing/azure/buyer-frontend-service:prod-4.8.0.0",
+        "image": "depainferencing.azurecr.io/azure/buyer-frontend-service:prod-4.8.0.1",
         "command": [],
         "environmentVariables": [
         {

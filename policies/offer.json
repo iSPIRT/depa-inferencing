@@ -387,7 +387,7 @@
           {
             "name": "[parameters('containerGroupName')]",
             "properties": {
-              "image": "ispirt.azurecr.io/depa-inferencing/azure/bidding-service:prod-4.8.0.0",
+              "image": "depainferencing.azurecr.io/azure/bidding-service:prod-4.8.0.1",
               "resources": {
                 "requests": {
                   "cpu": "[parameters('cpu')]",
