@@ -12,6 +12,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      run_cleanup:
+        description: 'Cleanup after deployment'
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   azure_deploy:
@@ -28,6 +34,6 @@ jobs:
   azure_cleanup:
     name: Cleanup Azure Deployments
     needs: [azure_deploy, azure_test]
-    if: always()
+    if: always() && (github.event_name != 'workflow_dispatch' || inputs.run_cleanup != 'false')
     uses: ./.github/workflows/azure_cleanup.yml
     secrets: inherit
