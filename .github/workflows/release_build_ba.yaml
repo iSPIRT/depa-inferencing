@@ -29,7 +29,8 @@ on:
 
 env:
   BUILD_TYPE: Release
-  REGISTRY: depainferencing.azurecr.io
+  REGISTRY: ${{ vars.REGISTRY }}
+  REPO_PATH: ${{ vars.REPO_PATH }}
   
 jobs:
   build:
@@ -234,17 +235,17 @@ jobs:
           echo "Loaded image: $LOADED_IMAGE"
           
           # Tag the image with service-specific naming following Azure best practices
-          SERVICE_REPO_NAME="depa-inferencing/azure"
+          SERVICE_REPO_PATH="${{ env.REPO_PATH }}"
           
           # Service-specific tag: bidding-service:nonprod:4.8.0.1
           docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.bidding_service_image}}
             
           # Push all tags to Azure Container Registry
           echo "Pushing bidding service to ACR with service-specific tags..."
-          docker push ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.bidding_service_image}}
+          docker push ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.bidding_service_image}}
           
           echo "✅ Successfully pushed bidding service image with tags:"
-          echo "  - ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.bidding_service_image }}"
+          echo "  - ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.bidding_service_image }}"
         else
           echo "❌ bidding_service_image.tar not found"
           exit 1
@@ -263,17 +264,17 @@ jobs:
           echo "Loaded image: $LOADED_IMAGE"
           
           # Tag the image with service-specific naming following Azure best practices
-          SERVICE_REPO_NAME="depa-inferencing/azure"
+          SERVICE_REPO_PATH="${{ env.REPO_PATH }}"
           
           # Service-specific tag: buyer-frontend-service:nonprod:4.8.0.1
           docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.buyer_frontend_image}}
           
           # Push all tags to Azure Container Registry
           echo "Pushing buyer frontend service to ACR with service-specific tags..."
-          docker push ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.buyer_frontend_image}}
+          docker push ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.buyer_frontend_image}}
           
           echo "✅ Successfully pushed buyer frontend service image with tags:"
-          echo "  - ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.buyer_frontend_image}}"
+          echo "  - ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.buyer_frontend_image}}"
         else
           echo "❌ buyer_frontend_service_image.tar not found"
           exit 1
