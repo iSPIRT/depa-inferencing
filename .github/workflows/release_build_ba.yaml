@@ -238,7 +238,7 @@ jobs:
           SERVICE_REPO_PATH="${{ env.REPO_PATH }}"
           
           # Service-specific tag: bidding-service:nonprod:4.8.0.1
-          docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.bidding_service_image}}
+          docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.bidding_service_image}}
             
           # Push all tags to Azure Container Registry
           echo "Pushing bidding service to ACR with service-specific tags..."
@@ -267,7 +267,7 @@ jobs:
           SERVICE_REPO_PATH="${{ env.REPO_PATH }}"
           
           # Service-specific tag: buyer-frontend-service:nonprod:4.8.0.1
-          docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_NAME/${{ steps.generate_tags.outputs.buyer_frontend_image}}
+          docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.buyer_frontend_image}}
           
           # Push all tags to Azure Container Registry
           echo "Pushing buyer frontend service to ACR with service-specific tags..."
