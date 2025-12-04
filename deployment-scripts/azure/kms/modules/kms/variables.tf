@@ -46,7 +46,7 @@ variable "managed_identity_name" {
 
 variable "storage_managed_identity_name" {
   type        = string
-  description = "Optional explicit name for the storage managed identity. Defaults to a convention-based value when empty."
+  description = "Optional explicit name for the ledger backup managed identity. Defaults to a convention-based value when empty."
   default     = ""
 }
 
@@ -111,7 +111,7 @@ variable "extra_tags" {
 
 variable "storage_account_name" {
   type        = string
-  description = "Optional explicit name for the storage account. Must be globally unique, 3-24 characters, lowercase alphanumeric only. Defaults to a convention-based value when empty."
+  description = "Optional explicit name for the ledger backup storage account. Must be globally unique, 3-24 characters, lowercase alphanumeric only. Defaults to a convention-based value when empty."
   default     = ""
 }
 

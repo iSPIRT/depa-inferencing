@@ -9,8 +9,8 @@ locals {
   default_ledger_name         = "depa-inferencing-kms-${var.environment}-${var.region_short}"
   default_vnet_name           = "depa-inferencing-kms-${var.environment}-${var.region_short}-vnet"
   default_app_gateway_name    = "depa-inferencing-kms-${var.environment}-${var.region_short}-agw"
-  default_storage_identity_name = "depa-inferencing-kms-${var.region_short}-storage-mi"
-  default_storage_account_name = lower(substr(replace(replace("depainfkms${var.environment}${var.region_short}st", "-", ""), "_", ""), 0, 24))
+  default_storage_identity_name = "depa-inferencing-kms-${var.region_short}-ledger-backup-mi"
+  default_storage_account_name = lower(substr(replace(replace("depainfkms${var.environment}${var.region_short}ldgbk", "-", ""), "_", ""), 0, 24))
 
   resource_group_name = (
     var.resource_group_name != "" ?
