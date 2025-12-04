@@ -44,6 +44,12 @@ variable "managed_identity_name" {
   default     = ""
 }
 
+variable "storage_managed_identity_name" {
+  type        = string
+  description = "Optional explicit name for the storage managed identity. Defaults to a convention-based value when empty."
+  default     = ""
+}
+
 variable "certificate_name" {
   type        = string
   description = "Optional explicit name for the certificate. Defaults to a convention-based value when empty."
@@ -101,5 +107,35 @@ variable "extra_tags" {
   type        = map(string)
   description = "Additional tags to append to the default KMS tag set."
   default     = {}
+}
+
+variable "storage_account_name" {
+  type        = string
+  description = "Optional explicit name for the storage account. Must be globally unique, 3-24 characters, lowercase alphanumeric only. Defaults to a convention-based value when empty."
+  default     = ""
+}
+
+variable "storage_account_tier" {
+  type        = string
+  description = "Defines the Tier to use for the storage account. Valid options are Standard and Premium."
+  default     = "Standard"
+}
+
+variable "storage_account_replication_type" {
+  type        = string
+  description = "Defines the type of replication to use for the storage account. Valid options are LRS, GRS, RAGRS, ZRS, GZRS and RAGZRS."
+  default     = "LRS"
+}
+
+variable "storage_file_share_name" {
+  type        = string
+  description = "Name of the file share for storing ledger backups."
+  default     = "ledger-backup"
+}
+
+variable "storage_file_share_quota_gb" {
+  type        = number
+  description = "The maximum size of the file share in gigabytes for ledger backups. Must be greater than 0, and less than or equal to 102400."
+  default     = 100
 }
 

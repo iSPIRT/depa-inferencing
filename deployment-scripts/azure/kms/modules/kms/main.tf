@@ -9,6 +9,8 @@ locals {
   default_ledger_name         = "depa-inferencing-kms-${var.environment}-${var.region_short}"
   default_vnet_name           = "depa-inferencing-kms-${var.environment}-${var.region_short}-vnet"
   default_app_gateway_name    = "depa-inferencing-kms-${var.environment}-${var.region_short}-agw"
+  default_storage_identity_name = "depa-inferencing-kms-${var.region_short}-storage-mi"
+  default_storage_account_name = lower(substr(replace(replace("depainfkms${var.environment}${var.region_short}st", "-", ""), "_", ""), 0, 24))
 
   resource_group_name = (
     var.resource_group_name != "" ?
@@ -20,6 +22,12 @@ locals {
     var.managed_identity_name != "" ?
     var.managed_identity_name :
     local.default_identity_name
+  )
+
+  storage_managed_identity_name = (
+    var.storage_managed_identity_name != "" ?
+    var.storage_managed_identity_name :
+    local.default_storage_identity_name
   )
 
   key_vault_name = (
@@ -52,6 +60,12 @@ locals {
     local.default_app_gateway_name
   )
 
+  storage_account_name = (
+    var.storage_account_name != "" ?
+    var.storage_account_name :
+    local.default_storage_account_name
+  )
+
   base_tags = {
     Environment = var.environment
     ManagedBy   = "Terraform"
@@ -74,6 +88,16 @@ module "managed_identity" {
   tags                = merge(local.base_tags, var.extra_tags)
   github_repository   = var.github_repository
   github_branch       = var.github_branch
+}
+
+module "storage_managed_identity" {
+  source              = "../../services/managed_identity"
+  name                = local.storage_managed_identity_name
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
+  tags                = merge(local.base_tags, var.extra_tags)
+  github_repository   = ""
+  github_branch       = ""
 }
 
 resource "azurerm_role_assignment" "managed_identity_rg_contributor" {
@@ -145,6 +169,24 @@ module "application_gateway" {
   depends_on = [
     module.virtual_network,
     module.confidential_ledger,
+  ]
+}
+
+module "storage_account" {
+  source                        = "../../services/storage_account"
+  name                          = local.storage_account_name
+  resource_group_name           = module.resource_group.name
+  location                      = module.resource_group.location
+  account_tier                  = var.storage_account_tier
+  account_replication_type      = var.storage_account_replication_type
+  file_share_name               = var.storage_file_share_name
+  file_share_quota_gb           = var.storage_file_share_quota_gb
+  managed_identity_principal_id = module.storage_managed_identity.principal_id
+  tags                          = merge(local.base_tags, var.extra_tags)
+
+  depends_on = [
+    module.resource_group,
+    module.storage_managed_identity,
   ]
 }
 

@@ -129,6 +129,10 @@ resource "azurerm_application_gateway" "this" {
     timeout             = 30
     unhealthy_threshold = 3
     minimum_servers     = 0
+
+    match {
+      status_code = ["200-399"]
+    }
   }
 
   request_routing_rule {

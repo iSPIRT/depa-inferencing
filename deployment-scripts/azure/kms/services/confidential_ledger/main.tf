@@ -34,6 +34,12 @@ resource "azurerm_confidential_ledger" "this" {
     ledger_role_name = "Administrator"
     pem_public_key   = local.pem_certificate
   }
+
+  lifecycle {
+    # Ignore changes to azuread_based_service_principal blocks to preserve
+    # principals that are automatically added by Azure or managed outside of Terraform
+    ignore_changes = [azuread_based_service_principal]
+  }
 }
 
 # Obtain the ledger's TLS certificate from the identity service endpoint
