@@ -44,12 +44,6 @@ variable "managed_identity_name" {
   default     = ""
 }
 
-variable "storage_managed_identity_name" {
-  type        = string
-  description = "Optional explicit name for the ledger backup managed identity. Defaults to a convention-based value when empty."
-  default     = ""
-}
-
 variable "certificate_name" {
   type        = string
   description = "Optional explicit name for the certificate. Defaults to a convention-based value when empty."
