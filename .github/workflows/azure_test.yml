@@ -30,7 +30,7 @@ jobs:
 
       - name: Run secure invoke
         env:
-          KMS_URL: "https://depa-inferencing-kms-azure.ispirt.in"
+          KMS_URL: "https://depa-inferencing-kms.centralindia.cloudapp.azure.com"
         working-directory: ./tools/secure-invoke
         run: |
           REQUESTS_DIR=${GITHUB_WORKSPACE}/tools/requests

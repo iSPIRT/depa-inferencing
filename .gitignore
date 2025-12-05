@@ -11,8 +11,3 @@ lib*.so*
 __pycache__
 *.build
 *.dist
-# .tfstate files
-*.tfstate
-*.tfstate.*
-.terraform
-.terraform.lock.hcl

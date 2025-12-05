@@ -25,9 +25,9 @@ locals {
 
   image_registry = "depainferencing.azurecr.io"
   registry_path  = "azure"
-  image_tag      = "prod-4.8.0.1"
+  image_tag      = "prod-4.8.0.0"
   kv_image_tag   = "prod-1.2.0.0"
-  kms_url        = "https://depa-inferencing-kms-azure.ispirt.in"
+  kms_url        = "https://depa-inferencing-kms.centralindia.cloudapp.azure.com"
 
 }
 
@@ -74,8 +74,8 @@ module "offer" {
         {
           fetchMode                               = 0,
           biddingJsPath                           = "",
-          biddingJsUrl                            = "https://raw.githubusercontent.com/KenGordon/bidding-auction-servers/refs/heads/kapilv/generate-bid/fetchAdditionalSignals.js",
-          protectedAppSignalsBiddingJsUrl         = "https://raw.githubusercontent.com/KenGordon/bidding-auction-servers/refs/heads/kapilv/generate-bid/fetchAdditionalSignals.js",
+          biddingJsUrl                            = "https://raw.githubusercontent.com/iSPIRT/depa-inferencing/refs/heads/pavankad/bidding-js/tools/inference-models/generateBid.js",
+          protectedAppSignalsBiddingJsUrl         = "https://raw.githubusercontent.com/iSPIRT/depa-inferencing/refs/heads/pavankad/bidding-js/tools/inference-models/generateBid.js",
           biddingWasmHelperUrl                    = "",
           protectedAppSignalsBiddingWasmHelperUrl = "",
           urlFetchPeriodMs                        = 13000000,
