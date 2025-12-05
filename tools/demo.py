@@ -54,7 +54,7 @@ async def main():
   pdp,pdc=st.columns(2)
   
   pdp.header("Personal data provider")
-  kms_url = pdp.text_input("KMS", value="https://depa-inferencing-kms-azure.ispirt.in")
+  kms_url = pdp.text_input("KMS", value="https://depa-inferencing-kms.centralindia.cloudapp.azure.com")
   buyer_host = pdp.text_input("PDC endpoint", value="4.209.24.251:51052/v1/getbids")
   customer_name = pdp.text_input("Customer name", value="Rajni Kausalya")
   customer_id = pdp.text_input("Customer ID", value="9999999990")

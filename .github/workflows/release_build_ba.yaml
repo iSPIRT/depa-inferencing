@@ -17,9 +17,9 @@ on:
         default: 'bidding_service,buyer_frontend_service'
         type: string
       release_tag:
-        description: 'Release version for Docker images (e.g., 4.8.0.1)'
+        description: 'Release version for Docker images (e.g., 4.8.0.0)'
         required: true
-        default: '4.8.0.1'
+        default: '4.8.0.0'
         type: string
       push_to_acr:
         description: 'Push images to Azure Container Registry'
@@ -237,7 +237,7 @@ jobs:
           # Tag the image with service-specific naming following Azure best practices
           SERVICE_REPO_PATH="${{ env.REPO_PATH }}"
           
-          # Service-specific tag: bidding-service:nonprod:4.8.0.1
+          # Service-specific tag: bidding-service:nonprod:4.8.0.0
           docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.bidding_service_image}}
             
           # Push all tags to Azure Container Registry
@@ -266,7 +266,7 @@ jobs:
           # Tag the image with service-specific naming following Azure best practices
           SERVICE_REPO_PATH="${{ env.REPO_PATH }}"
           
-          # Service-specific tag: buyer-frontend-service:nonprod:4.8.0.1
+          # Service-specific tag: buyer-frontend-service:nonprod:4.8.0.0
           docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.buyer_frontend_image}}
           
           # Push all tags to Azure Container Registry
