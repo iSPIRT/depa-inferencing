@@ -1,0 +1,18 @@
+# Copyright (c) iSPIRT.
+# Licensed under the Apache License, Version 2.0.
+
+output "private_dns_zone_id" {
+  description = "Resource ID of the private DNS zone for Key Vault."
+  value       = azurerm_private_dns_zone.key_vault.id
+}
+
+output "private_dns_zone_name" {
+  description = "Name of the private DNS zone for Key Vault."
+  value       = azurerm_private_dns_zone.key_vault.name
+}
+
+output "private_endpoint_id" {
+  description = "Resource ID of the private endpoint for Key Vault."
+  value       = azurerm_private_endpoint.key_vault.id
+}
+

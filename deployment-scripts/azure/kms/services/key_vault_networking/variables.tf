@@ -1,0 +1,45 @@
+# Copyright (c) iSPIRT.
+# Licensed under the Apache License, Version 2.0.
+
+variable "name" {
+  type        = string
+  description = "Name of the Key Vault (used for naming private endpoint and DNS records)."
+}
+
+variable "resource_group_name" {
+  type        = string
+  description = "Resource group that hosts the Key Vault networking resources."
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for the private endpoint."
+}
+
+variable "key_vault_id" {
+  type        = string
+  description = "Resource ID of the Key Vault to create private endpoint for."
+}
+
+variable "private_endpoint_subnet_id" {
+  type        = string
+  description = "Subnet ID for the private endpoint."
+}
+
+variable "virtual_network_id" {
+  type        = string
+  description = "Virtual Network ID for linking the private DNS zone."
+}
+
+variable "additional_virtual_network_ids" {
+  type        = list(string)
+  description = "List of additional Virtual Network IDs to link the private DNS zone to. This allows VMs in other VNets to access the Key Vault via private endpoint."
+  default     = []
+}
+
+variable "tags" {
+  type        = map(string)
+  description = "Tags applied to the networking resources."
+  default     = {}
+}
+

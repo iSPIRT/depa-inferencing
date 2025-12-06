@@ -133,3 +133,9 @@ variable "storage_file_share_quota_gb" {
   default     = 100
 }
 
+variable "additional_virtual_network_ids" {
+  type        = list(string)
+  description = "List of additional Virtual Network IDs to link the Key Vault private DNS zone to. This allows VMs in other VNets to access the Key Vault via private endpoint. NOTE: This variable is NOT used in the main KMS deployment - it is only used in the separate key-vault-networking deployment."
+  default     = []
+}
+

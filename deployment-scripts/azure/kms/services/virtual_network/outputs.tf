@@ -16,3 +16,8 @@ output "gateway_subnet_id" {
   value       = azurerm_subnet.gateway.id
 }
 
+output "private_endpoint_subnet_id" {
+  description = "Resource ID of the private endpoint subnet."
+  value       = azurerm_subnet.private_endpoint.id
+}
+
