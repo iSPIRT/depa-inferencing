@@ -26,3 +26,16 @@ data "azurerm_subnet" "private_endpoint" {
   resource_group_name  = local.resource_group_name
 }
 
+# Discover VM Virtual Network for additional private endpoint
+data "azurerm_virtual_network" "vm" {
+  name                = local.vm_vnet_name
+  resource_group_name = local.vm_vnet_resource_group_name
+}
+
+# Discover VM subnet for private endpoint
+data "azurerm_subnet" "vm_private_endpoint" {
+  name                 = local.vm_subnet_name
+  virtual_network_name = data.azurerm_virtual_network.vm.name
+  resource_group_name  = local.vm_vnet_resource_group_name
+}
+

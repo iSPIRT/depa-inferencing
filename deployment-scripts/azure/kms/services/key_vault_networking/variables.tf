@@ -37,6 +37,18 @@ variable "additional_virtual_network_ids" {
   default     = []
 }
 
+variable "vm_private_endpoint_subnet_id" {
+  type        = string
+  description = "Optional subnet ID for creating a private endpoint for the externally provisioned VM. If provided, a separate private endpoint will be created in this subnet."
+  default     = ""
+}
+
+variable "vm_virtual_network_id" {
+  type        = string
+  description = "Optional Virtual Network ID where the externally provisioned VM resides. Required if vm_private_endpoint_subnet_id is provided."
+  default     = ""
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags applied to the networking resources."

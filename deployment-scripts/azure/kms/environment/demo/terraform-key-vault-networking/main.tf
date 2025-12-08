@@ -14,7 +14,14 @@ module "key_vault_networking" {
   private_endpoint_subnet_id     = data.azurerm_subnet.private_endpoint.id
   virtual_network_id             = data.azurerm_virtual_network.kms.id
   additional_virtual_network_ids = local.additional_virtual_network_ids
+  vm_private_endpoint_subnet_id  = data.azurerm_subnet.vm_private_endpoint.id
+  vm_virtual_network_id          = data.azurerm_virtual_network.vm.id
   tags                           = local.extra_tags
+
+  depends_on = [
+    data.azurerm_subnet.vm_private_endpoint,
+    data.azurerm_virtual_network.vm,
+  ]
 }
 
 # Disable public network access on Key Vault after private endpoint is configured

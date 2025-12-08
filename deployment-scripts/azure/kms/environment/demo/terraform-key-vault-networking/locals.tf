@@ -21,7 +21,15 @@ locals {
 
   # List of additional Virtual Network IDs to link the Key Vault private DNS zone to.
   # This allows VMs in other VNets to access the Key Vault via private endpoint.
-  # Example: ["/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vm-vnet"]
-  additional_virtual_network_ids = ["/subscriptions/2a5f1e30-b076-4cb2-9235-2036241dedf0/resourceGroups/depa-inferencing-prod/providers/Microsoft.Network/virtualNetworks/vnet-depainf-cicd"]
+  # Note: VNets with dedicated private endpoints (like the VM VNet) should NOT be listed here,
+  # as the private endpoint creation will handle the DNS zone linking automatically.
+  # Example: ["/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/other-vnet"]
+  additional_virtual_network_ids = []
+
+  # VM VNet configuration for additional private endpoint
+  # This creates a dedicated private endpoint for the externally provisioned VM
+  vm_vnet_resource_group_name = "depa-inferencing-prod"
+  vm_vnet_name                = "vnet-depainf-cicd"
+  vm_subnet_name              = "snet-depainf-cicd" # Subnet name for private endpoint in VM VNet
 }
 
