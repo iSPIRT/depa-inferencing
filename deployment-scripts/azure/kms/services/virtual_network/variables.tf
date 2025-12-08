@@ -28,6 +28,12 @@ variable "subnet_address_prefixes" {
   default     = ["10.0.1.0/24"]
 }
 
+variable "private_endpoint_subnet_address_prefixes" {
+  type        = list(string)
+  description = "Address prefixes for the private endpoint subnet."
+  default     = ["10.0.2.0/24"]
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags applied to the Virtual Network."

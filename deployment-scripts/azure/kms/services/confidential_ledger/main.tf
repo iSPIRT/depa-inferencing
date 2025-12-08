@@ -1,6 +1,11 @@
 # Copyright (c) iSPIRT.
 # Licensed under the Apache License, Version 2.0.
 
+# IMPORTANT: This data source ALWAYS reads the certificate from Key Vault during Terraform operations.
+# It cannot use cached state - it must fetch fresh certificate data to configure the ledger.
+#
+# Network access: With public_network_access_enabled = true in the first deployment,
+# this data source can read the certificate from any location.
 data "azurerm_key_vault_certificate" "member" {
   name         = var.certificate_name
   key_vault_id = var.key_vault_id
