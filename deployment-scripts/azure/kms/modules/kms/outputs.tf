@@ -91,18 +91,3 @@ output "storage_file_share_url" {
   value       = module.storage_account.file_share_url
 }
 
-output "storage_managed_identity_id" {
-  description = "Resource ID of the storage managed identity."
-  value       = module.storage_managed_identity.id
-}
-
-output "storage_managed_identity_client_id" {
-  description = "Client ID of the storage managed identity."
-  value       = module.storage_managed_identity.client_id
-}
-
-output "storage_managed_identity_principal_id" {
-  description = "Principal ID (object ID) of the storage managed identity."
-  value       = module.storage_managed_identity.principal_id
-}
-
