@@ -16,6 +16,16 @@ on:
         required: true
         default: 'key_value_service'
         type: string
+      run_tests:
+        description: 'Run tests'
+        required: true
+        default: false
+        type: boolean
+      run_precommit_checks:
+        description: 'Run precommit checks'
+        required: true
+        default: false
+        type: boolean
       release_tag:
         description: 'Release version for Docker images (e.g., 1.0.0.0)'
         required: true
@@ -42,6 +52,8 @@ jobs:
         echo "🚀 Manual Build Triggered on Self-Hosted Runner"
         echo "Build Flavor: ${{ github.event.inputs.build_flavor }}"
         echo "Services: ${{ github.event.inputs.services }}"
+        echo "Run tests?: ${{ github.event.inputs.run_tests }}"
+        echo "Run precommit checks?: ${{ github.event.inputs.run_precommit_checks }}"
         echo "Release Version: ${{ github.event.inputs.release_tag }}"
         echo "Push to ACR: ${{ github.event.inputs.push_to_acr }}"
 
@@ -121,10 +133,23 @@ jobs:
         
     - name: Run Custom Build Command
       run: |
+        TEST_FLAG=""
+        PRECOMMIT_FLAG="--no-precommit"
+
+        if [ "${{ github.event.inputs.run_tests }}" = "true" ]; then
+          TEST_FLAG="--with-tests"
+        fi
+
+        if [ "${{ github.event.inputs.run_precommit_checks }}" = "true" ]; then
+          PRECOMMIT_FLAG=""
+        fi
+        
         ./production/packaging/build_and_test_all_in_docker \
         --instance azure_microsoft \
         --platform azure_microsoft \
-        --mode ${{ github.event.inputs.build_flavor }}
+        --mode ${{ github.event.inputs.build_flavor }} \
+          $TEST_FLAG \
+          $PRECOMMIT_FLAG
           
     - name: List Generated Tar Files
       run: |
