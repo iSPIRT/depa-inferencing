@@ -244,12 +244,10 @@ jobs:
           echo "Original ENV vars: $ENV_VARS"
           
           # step 5: create Dockerfile to restore metadata
-          cat > Dockerfile.squashed << DOCKERFILE_EOF
-          FROM kv-squashed-base:temp
-          $ENV_VARS
-          WORKDIR ${WORKDIR:-/}
-          ENTRYPOINT $ENTRYPOINT_JSON
-          DOCKERFILE_EOF
+          echo "FROM kv-squashed-base:temp" > Dockerfile.squashed
+          echo "$ENV_VARS" >> Dockerfile.squashed
+          echo "WORKDIR ${WORKDIR:-/}" >> Dockerfile.squashed
+          echo "ENTRYPOINT $ENTRYPOINT_JSON" >> Dockerfile.squashed
           
           echo "Generated Dockerfile.squashed:"
           cat Dockerfile.squashed
@@ -259,14 +257,14 @@ jobs:
           
           # step 7: verify single layer
           LAYER_COUNT=$(docker inspect kv-squashed-final:temp | jq '.[0].RootFS.Layers | length')
-          echo "✅ Squashed image has $LAYER_COUNT layer(s)"
+          echo "Squashed image has $LAYER_COUNT layers"
           
-          # Cleanup temp artifacts
+          # cleanup temp artifacts
           docker rm kv-squash-temp
           docker rmi kv-squashed-base:temp || true
           rm -f kv-squashed.tar Dockerfile.squashed
           
-          # Use squashed image for tagging
+          # use squashed image for tagging
           FINAL_IMAGE="kv-squashed-final:temp"
           # ============================================
           
