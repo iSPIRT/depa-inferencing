@@ -429,7 +429,7 @@
           {
             "name": "[parameters('containerGroupName')]",
             "properties": {
-              "image": "depainferencing.azurecr.io/azure/buyer-frontend-service:prod-4.8.0.1",
+              "image": "depainferencing.azurecr.io/azure/buyer-frontend-service:prod-4.8.0.2",
               "resources": {
                 "requests": {
                   "cpu": "[parameters('cpu')]",

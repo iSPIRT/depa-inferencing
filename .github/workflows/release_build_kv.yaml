@@ -220,17 +220,69 @@ jobs:
           LOADED_IMAGE=$(echo "$LOAD_OUTPUT" | grep "Loaded image:" | sed 's/Loaded image: //')
           echo "Loaded image: $LOADED_IMAGE"
           
+          # ============================================
+          # SQUASH IMAGE TO SINGLE LAYER (for CCE policy compatibility)
+          # ============================================
+          echo "🔧 Squashing image layers for CCE policy compatibility..."
+          
+          # step 1: create container from loaded image
+          docker create --name kv-squash-temp $LOADED_IMAGE
+          
+          # step 2: export container filesystem (flattens to single layer)
+          docker export kv-squash-temp -o kv-squashed.tar
+          
+          # step 3: import as new image (single layer, no metadata)
+          SQUASHED_BASE=$(docker import kv-squashed.tar kv-squashed-base:temp)
+          echo "Created squashed base image: $SQUASHED_BASE"
+          
+          # step 4: extract original image metadata
+          ENTRYPOINT_JSON=$(docker inspect $LOADED_IMAGE --format '{{json .Config.Entrypoint}}')
+          ENV_VARS=$(docker inspect $LOADED_IMAGE --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
+          WORKDIR=$(docker inspect $LOADED_IMAGE --format '{{.Config.WorkingDir}}')
+          
+          echo "Original ENTRYPOINT: $ENTRYPOINT_JSON"
+          echo "Original ENV vars: $ENV_VARS"
+          
+          # step 5: create Dockerfile to restore metadata
+          echo "FROM kv-squashed-base:temp" > Dockerfile.squashed
+          echo "$ENV_VARS" >> Dockerfile.squashed
+          echo "WORKDIR ${WORKDIR:-/}" >> Dockerfile.squashed
+          echo "ENTRYPOINT $ENTRYPOINT_JSON" >> Dockerfile.squashed
+          
+          echo "Generated Dockerfile.squashed:"
+          cat Dockerfile.squashed
+          
+          # step 6: build final squashed image with metadata
+          docker build -f Dockerfile.squashed -t kv-squashed-final:temp .
+          
+          # step 7: verify single layer
+          LAYER_COUNT=$(docker inspect kv-squashed-final:temp | jq '.[0].RootFS.Layers | length')
+          echo "Squashed image has $LAYER_COUNT layers"
+          
+          # cleanup temp artifacts
+          docker rm kv-squash-temp
+          docker rmi kv-squashed-base:temp || true
+          rm -f kv-squashed.tar Dockerfile.squashed
+          
+          # use squashed image for tagging
+          FINAL_IMAGE="kv-squashed-final:temp"
+          # ============================================
+          
           # Tag the image with service-specific naming following Azure best practices
           SERVICE_REPO_PATH="${{ env.REPO_PATH }}"
 
           # Service-specific tag: key-value-service:non-prod:1.0.0.0
-          docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.key_value_service_image}}
+          docker tag $FINAL_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.key_value_service_image}}
             
           # Push all tags to Azure Container Registry
           echo "Pushing key value service to ACR with service-specific tags..."
           docker push ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.key_value_service_image }}
           echo "✅ Successfully pushed key value service image with tags:"
           echo "  - ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.key_value_service_image }}"
+          
+          # Cleanup final temp image
+          docker rmi $FINAL_IMAGE || true
+          docker rmi $LOADED_IMAGE || true
         else
           echo "❌ key_value_service_image.tar not found"
           exit 1
