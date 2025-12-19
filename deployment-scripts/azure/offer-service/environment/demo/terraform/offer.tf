@@ -208,6 +208,7 @@ module "offer" {
     TELEMETRY_CONFIG                   = "mode: EXPERIMENT"
 
     AZURE_BA_PARAM_GET_TOKEN_URL             = "http://169.254.169.254/metadata/identity/oauth2/token"
+    AZURE_BA_PARAM_CLIENT_ID                 = ""
     AZURE_BA_PARAM_KMS_UNWRAP_URL            = "${local.kms_url}/app/unwrapKey?fmt=tink"
     ENABLE_PROTECTED_AUDIENCE                = "true"
     KEY_REFRESH_FLOW_RUN_FREQUENCY_SECONDS   = "10800"

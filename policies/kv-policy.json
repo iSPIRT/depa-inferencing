@@ -8,252 +8,257 @@
         "image": "depainferencing.azurecr.io/azure/key-value-service:prod-1.2.0.2",
         "command": [],
         "environmentVariables": [
-          {
-            "name": "KV_PORT",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "KV_HEALTHCHECK_PORT",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "AZURE_LOCAL_DATA_DIR",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "AZURE_LOCAL_REALTIME_DATA_DIR",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "AD_RETRIEVAL_KV_SERVER_ADDR",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "AD_RETRIEVAL_KV_SERVER_EGRESS_TLS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "AD_RETRIEVAL_TIMEOUT_MS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "BUYER_EGRESS_TLS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "COLLECTOR_ENDPOINT",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "CONSENTED_DEBUG_TOKEN",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "ENABLE_AUCTION_COMPRESSION",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "ENABLE_BUYER_COMPRESSION",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "ENABLE_CHAFFING",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "ENABLE_OTEL_BASED_LOGGING",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "ENABLE_PROTECTED_APP_SIGNALS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "INFERENCE_MODEL_BUCKET_NAME",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "INFERENCE_MODEL_BUCKET_PATHS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "INFERENCE_MODEL_CONFIG_PATH",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "INFERENCE_MODEL_FETCH_PERIOD_MS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "INFERENCE_MODEL_LOCAL_PATHS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "INFERENCE_SIDECAR_BINARY_PATH",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "K_ANONYMITY_SERVER_ADDR",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "K_ANONYMITY_SERVER_TIMEOUT_MS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "KV_SERVER_EGRESS_TLS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "MAX_ALLOWED_SIZE_DEBUG_URL_BYTES",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "MAX_ALLOWED_SIZE_ALL_DEBUG_URLS_KB",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "PS_VERBOSITY",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "ROMA_TIMEOUT_MS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "SELECTION_KV_SERVER_ADDR",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "SELECTION_KV_SERVER_EGRESS_TLS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "SELECTION_KV_SERVER_TIMEOUT_MS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "TEE_AD_RETRIEVAL_KV_SERVER_ADDR",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "TEE_KV_SERVER_ADDR",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "TELEMETRY_CONFIG",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "AZURE_BA_PARAM_GET_TOKEN_URL",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "AZURE_BA_PARAM_KMS_UNWRAP_URL",
-            "value": "https://depa-inferencing-kms-azure.ispirt.in/app/unwrapKey?fmt=tink"
-          },
-          {
-            "name": "ENABLE_PROTECTED_AUDIENCE",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "KEY_REFRESH_FLOW_RUN_FREQUENCY_SECONDS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "PRIMARY_COORDINATOR_ACCOUNT_IDENTITY",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "PRIMARY_COORDINATOR_PRIVATE_KEY_ENDPOINT",
-            "value": "https://depa-inferencing-kms-azure.ispirt.in/app/key?fmt=tink"
-          },
-          {
-            "name": "PRIMARY_COORDINATOR_REGION",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "PRIVATE_KEY_CACHE_TTL_SECONDS",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "PUBLIC_KEY_ENDPOINT",
-            "value": "https://depa-inferencing-kms-azure.ispirt.in/app/listpubkeys"
-          },
-          {
-            "name": "TEST_MODE",
-            "value": "false"
-          },
-          {
-            "name": "AZURE_CERT",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "AZURE_KEYVAULT_NAME",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "ENABLE_ENCRYPTION",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "HEALTHCHECK_PORT",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "INSTRUMENTATION_KEY",
-            "value": ".*",
-            "regex": true
-          },
-          {
-            "name": "PORT",
-            "value": ".*",
-            "regex": true
-          }
+        {
+          "name": "KV_PORT",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "KV_HEALTHCHECK_PORT", 
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AZURE_LOCAL_DATA_DIR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AZURE_LOCAL_REALTIME_DATA_DIR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AD_RETRIEVAL_KV_SERVER_ADDR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AD_RETRIEVAL_KV_SERVER_EGRESS_TLS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AD_RETRIEVAL_TIMEOUT_MS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "BUYER_EGRESS_TLS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "COLLECTOR_ENDPOINT",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "CONSENTED_DEBUG_TOKEN",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_AUCTION_COMPRESSION",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_BUYER_COMPRESSION",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_CHAFFING",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_OTEL_BASED_LOGGING",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_PROTECTED_APP_SIGNALS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INFERENCE_MODEL_BUCKET_NAME",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INFERENCE_MODEL_BUCKET_PATHS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INFERENCE_MODEL_CONFIG_PATH",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INFERENCE_MODEL_FETCH_PERIOD_MS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INFERENCE_MODEL_LOCAL_PATHS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INFERENCE_SIDECAR_BINARY_PATH",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "K_ANONYMITY_SERVER_ADDR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "K_ANONYMITY_SERVER_TIMEOUT_MS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "KV_SERVER_EGRESS_TLS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "MAX_ALLOWED_SIZE_DEBUG_URL_BYTES",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "MAX_ALLOWED_SIZE_ALL_DEBUG_URLS_KB",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "PS_VERBOSITY",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ROMA_TIMEOUT_MS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "SELECTION_KV_SERVER_ADDR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "SELECTION_KV_SERVER_EGRESS_TLS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "SELECTION_KV_SERVER_TIMEOUT_MS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "TEE_AD_RETRIEVAL_KV_SERVER_ADDR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "TEE_KV_SERVER_ADDR",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "TELEMETRY_CONFIG",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AZURE_BA_PARAM_GET_TOKEN_URL",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AZURE_BA_PARAM_CLIENT_ID",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AZURE_BA_PARAM_KMS_UNWRAP_URL",
+          "value": "https://depa-inferencing-kms-azure.ispirt.in/app/unwrapKey?fmt=tink"
+        },
+        {
+          "name": "ENABLE_PROTECTED_AUDIENCE",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "KEY_REFRESH_FLOW_RUN_FREQUENCY_SECONDS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "PRIMARY_COORDINATOR_ACCOUNT_IDENTITY",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "PRIMARY_COORDINATOR_PRIVATE_KEY_ENDPOINT",
+          "value": "https://depa-inferencing-kms-azure.ispirt.in/app/key?fmt=tink"
+        },
+        {
+          "name": "PRIMARY_COORDINATOR_REGION",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "PRIVATE_KEY_CACHE_TTL_SECONDS",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "PUBLIC_KEY_ENDPOINT",
+          "value": "https://depa-inferencing-kms-azure.ispirt.in/app/listpubkeys"
+        },
+        {
+          "name": "TEST_MODE",
+          "value": "false"
+        },
+        {
+          "name": "AZURE_CERT",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "AZURE_KEYVAULT_NAME",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "ENABLE_ENCRYPTION",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "HEALTHCHECK_PORT",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "INSTRUMENTATION_KEY",
+          "value": ".*",
+          "regex": true
+        },
+        {
+          "name": "PORT",
+          "value": ".*",
+          "regex": true
+        }
         ],
         "volumeMounts": [
           {

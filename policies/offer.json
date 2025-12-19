@@ -152,6 +152,12 @@
         "description": "Azure BA param get token URL"
       }
     },
+    "env_AZURE_BA_PARAM_CLIENT_ID": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure BA param client ID"
+      }
+    },
     "env_ENABLE_PROTECTED_AUDIENCE": {
       "type": "string",
       "metadata": {
@@ -571,6 +577,10 @@
                 {
                   "name": "AZURE_BA_PARAM_GET_TOKEN_URL",
                   "value": "[parameters('env_AZURE_BA_PARAM_GET_TOKEN_URL')]"
+                },
+                {
+                  "name": "AZURE_BA_PARAM_CLIENT_ID",
+                  "value": "[parameters('env_AZURE_BA_PARAM_CLIENT_ID')]"
                 },
                 {
                   "name": "AZURE_BA_PARAM_KMS_UNWRAP_URL",
