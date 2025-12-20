@@ -254,6 +254,12 @@
         "description": "AZURE_BA_PARAM_GET_TOKEN_URL environment variable"
       }
     },
+    "env_AZURE_BA_PARAM_CLIENT_ID": {
+      "type": "string",
+      "metadata": {
+        "description": "AZURE_BA_PARAM_CLIENT_ID environment variable"
+      }
+    },
     "env_ENABLE_PROTECTED_AUDIENCE": {
       "type": "string",
       "metadata": {
