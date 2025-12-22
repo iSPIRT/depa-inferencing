@@ -3,6 +3,11 @@ name: Release Build for BA services
 on:
   workflow_dispatch:
     inputs:
+      build_ref:
+        description: 'Branch or tag to build from'
+        required: true
+        default: 'main'
+        type: string
       build_flavor:
         description: 'Build flavor'
         required: true
@@ -25,6 +30,11 @@ on:
         description: 'Push images to Azure Container Registry'
         required: true
         default: true
+        type: boolean
+      generate_sboms:
+        description: 'Generate SBOMs (requires push to ACR)'
+        required: true
+        default: false
         type: boolean
 
 env:
@@ -59,16 +69,18 @@ jobs:
     - name: Display Manual Trigger Parameters
       run: |
         echo "🚀 Manual Build Triggered on Self-Hosted Runner"
+        echo "Build Ref: ${{ github.event.inputs.build_ref }}"
         echo "Build Flavor: ${{ github.event.inputs.build_flavor }}"
         echo "Services: ${{ github.event.inputs.services }}"
         echo "Release Version: ${{ github.event.inputs.release_tag }}"
         echo "Push to ACR: ${{ github.event.inputs.push_to_acr }}"
+        echo "Generate SBOMs: ${{ github.event.inputs.generate_sboms }}"
 
     - name: Checkout Repository
       uses: actions/checkout@v4
       with:
         repository: ispirt/ad-selection-api.bidding-and-auction-servers
-        ref: main
+        ref: ${{ github.event.inputs.build_ref }}
         fetch-depth: 0
         
     - name: Setup Build Environment
@@ -300,4 +312,81 @@ jobs:
         echo "Cleaning up distribution directories..."
         sudo rm -rf ./dist/ || true
         sudo rm -rf ../dist/ || true
+
+  generate-sboms:
+    needs: docker-push-to-acr
+    runs-on: self-hosted
+    if: ${{ github.event.inputs.push_to_acr == 'true' && github.event.inputs.generate_sboms == 'true' }}
+    
+    steps:
+    - name: Checkout Repository for SBOM
+      uses: actions/checkout@v4
+      with:
+        repository: ispirt/ad-selection-api.bidding-and-auction-servers
+        ref: ${{ github.event.inputs.build_ref }}
+        fetch-depth: 0
+        
+    - name: Install Syft
+      run: |
+        echo "📦 Installing Syft..."
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+        syft version
+        
+    - name: Log in to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ env.REGISTRY }}
+        username: ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}
+        password: ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
+        
+    - name: Generate SBOMs
+      run: |
+        BUILD_FLAVOR_INPUT="${{ github.event.inputs.build_flavor }}"
+        if [ "$BUILD_FLAVOR_INPUT" = "non_prod" ]; then
+          BUILD_FLAVOR="nonprod"
+        else
+          BUILD_FLAVOR="$BUILD_FLAVOR_INPUT"
+        fi
+        RELEASE_VERSION="${{ github.event.inputs.release_tag }}"
+        SERVICE_REPO_PATH="${{ env.REPO_PATH }}"
+        SERVICES="${{ github.event.inputs.services }}"
+        
+        echo "🔍 Generating SBOMs..."
+        
+        # Generate SBOM for Bidding Service if included
+        if echo "$SERVICES" | grep -q "bidding_service"; then
+          BIDDING_IMAGE="${{ env.REGISTRY }}/${SERVICE_REPO_PATH}/bidding-service:${BUILD_FLAVOR}-${RELEASE_VERSION}"
+          echo "Generating SBOM for Bidding Service: $BIDDING_IMAGE"
+          syft $BIDDING_IMAGE -o spdx-json=bidding-service-${BUILD_FLAVOR}-sbom.spdx.json
+        fi
+        
+        # Generate SBOM for Buyer Frontend Service if included
+        if echo "$SERVICES" | grep -q "buyer_frontend_service"; then
+          BUYER_FRONTEND_IMAGE="${{ env.REGISTRY }}/${SERVICE_REPO_PATH}/buyer-frontend-service:${BUILD_FLAVOR}-${RELEASE_VERSION}"
+          echo "Generating SBOM for Buyer Frontend Service: $BUYER_FRONTEND_IMAGE"
+          syft $BUYER_FRONTEND_IMAGE -o spdx-json=buyer-frontend-service-${BUILD_FLAVOR}-sbom.spdx.json
+        fi
+        
+        # Generate SBOM for repository
+        echo "Generating SBOM for repository"
+        syft dir:. -o spdx-json=ba-repo-sbom.spdx.json
+        
+        echo "✅ SBOMs generated successfully"
+        ls -lh *-sbom.spdx.json
+        
+    - name: Upload SBOM Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom-files-${{ github.event.inputs.build_flavor }}-${{ github.event.inputs.release_tag }}
+        path: |
+          *-sbom.spdx.json
+        retention-days: 90
+        
+    - name: Cleanup SBOM Job
+      if: always()
+      run: |
+        echo "🧹 Cleaning up SBOM generation artifacts..."
+        rm -f *-sbom.spdx.json || true
+        docker logout ${{ env.REGISTRY }} || true
+        echo "✅ SBOM job cleanup completed"
 
