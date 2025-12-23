@@ -1,5 +1,8 @@
 name: Release build for Key-Value Service
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:
