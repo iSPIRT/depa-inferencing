@@ -122,7 +122,7 @@ resource "azurerm_application_gateway" "this" {
 
   backend_http_settings {
     name                                = "depa-inferencing-backend-http-settings"
-    cookie_based_affinity               = "Disabled"
+    cookie_based_affinity               = "Enabled"
     port                                = var.backend_port
     protocol                            = "Https"
     request_timeout                     = 20
