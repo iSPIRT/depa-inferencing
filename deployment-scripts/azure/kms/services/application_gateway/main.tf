@@ -15,6 +15,13 @@ locals {
   # Trim any trailing slash from URI to avoid double slashes
   key_vault_uri_trimmed               = trimsuffix(var.key_vault_uri, "/")
   ssl_certificate_key_vault_secret_id = "${local.key_vault_uri_trimmed}/secrets/${var.ssl_certificate_name}"
+  
+  # Map rate limit duration minutes to Azure WAF format
+  rate_limit_duration_map = {
+    1 = "OneMin"
+    5 = "FiveMins"
+  }
+  rate_limit_duration = lookup(local.rate_limit_duration_map, var.rate_limit_duration_minutes, "OneMin")
 }
 
 resource "azurerm_public_ip" "gateway" {
@@ -64,6 +71,27 @@ resource "azurerm_web_application_firewall_policy" "this" {
       operator           = "Equal"
       match_values       = [var.allowed_hostname]
       negation_condition = true
+    }
+  }
+
+  custom_rules {
+    name      = "RateLimitByClientIP"
+    priority  = 2
+    rule_type = "RateLimitRule"
+    action    = "Block"
+    rate_limit_duration  = local.rate_limit_duration
+    rate_limit_threshold = var.rate_limit_threshold
+
+    # Rate limit by client IP address
+    # Blocks requests from a client IP if it exceeds the threshold within the duration window
+    # Match all requests - rate limiting is automatically grouped by client IP when using RemoteAddr
+    match_conditions {
+      match_variables {
+        variable_name = "RemoteAddr"
+      }
+      operator           = "IPMatch"
+      match_values       = ["0.0.0.0/0"]
+      negation_condition = false
     }
   }
 }

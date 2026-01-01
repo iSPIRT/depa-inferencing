@@ -136,3 +136,15 @@ variable "allowed_hostname" {
   description = "Allowed hostname for Host header validation. Requests with Host headers not matching this hostname will be blocked."
 }
 
+variable "rate_limit_threshold" {
+  type        = number
+  description = "Maximum number of requests allowed per client IP per rate limit duration. Requests exceeding this threshold will be blocked."
+  default     = 100
+}
+
+variable "rate_limit_duration_minutes" {
+  type        = number
+  description = "Time window in minutes for rate limiting. The threshold applies to this duration."
+  default     = 1
+}
+
