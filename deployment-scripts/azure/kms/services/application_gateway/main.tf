@@ -135,12 +135,42 @@ resource "azurerm_application_gateway" "this" {
     }
   }
 
+  rewrite_rule_set {
+    name = "depa-inferencing-rewrite-rule-set"
+
+    rewrite_rule {
+      name          = "add-security-headers"
+      rule_sequence = 100
+
+      response_header_configuration {
+        header_name  = "X-Content-Type-Options"
+        header_value = "nosniff"
+      }
+
+      response_header_configuration {
+        header_name  = "Strict-Transport-Security"
+        header_value = "max-age=31536000; includeSubDomains"
+      }
+
+      response_header_configuration {
+        header_name  = "Cache-Control"
+        header_value = "no-cache, no-store, must-revalidate"
+      }
+
+      response_header_configuration {
+        header_name  = "Pragma"
+        header_value = "no-cache"
+      }
+    }
+  }
+
   request_routing_rule {
     name                       = "depa-inferencing-https-rule"
     rule_type                  = "Basic"
     http_listener_name         = "depa-inferencing-https-listener"
     backend_address_pool_name  = "depa-inferencing-backend-pool"
     backend_http_settings_name = "depa-inferencing-backend-http-settings"
+    rewrite_rule_set_name      = "depa-inferencing-rewrite-rule-set"
     priority                   = 100
   }
 
