@@ -47,6 +47,25 @@ resource "azurerm_web_application_firewall_policy" "this" {
       version = var.waf_rule_set_version
     }
   }
+
+  custom_rules {
+    name      = "ValidateHostHeader"
+    priority  = 1
+    rule_type = "MatchRule"
+    action    = "Block"
+
+    # Block requests where Host header does not match the allowed hostname
+    # Uses "Equal" operator with negation: block if Host does NOT equal the allowed hostname
+    match_conditions {
+      match_variables {
+        variable_name = "RequestHeaders"
+        selector      = "Host"
+      }
+      operator           = "Equal"
+      match_values       = [var.allowed_hostname]
+      negation_condition = true
+    }
+  }
 }
 
 resource "azurerm_application_gateway" "this" {
@@ -118,6 +137,7 @@ resource "azurerm_application_gateway" "this" {
     frontend_port_name             = "depa-inferencing-https-port"
     protocol                       = "Https"
     ssl_certificate_name           = var.ssl_certificate_name
+    host_name                      = var.allowed_hostname
   }
 
   probe {

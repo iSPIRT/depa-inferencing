@@ -25,6 +25,12 @@ resource "azurerm_key_vault" "this" {
     ip_rules                   = []
     virtual_network_subnet_ids = []
   }
+
+  lifecycle {
+    # Ignore changes to ip_rules to allow temporary IP additions for Terraform operations
+    # IPs can be added manually via Azure CLI/Portal without Terraform removing them
+    ignore_changes = [network_acls[0].ip_rules]
+  }
 }
 
 resource "azurerm_role_assignment" "admin" {
