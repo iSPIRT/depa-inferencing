@@ -172,16 +172,6 @@ resource "azurerm_application_gateway" "this" {
         header_name  = "Strict-Transport-Security"
         header_value = "max-age=31536000; includeSubDomains"
       }
-
-      response_header_configuration {
-        header_name  = "Cache-Control"
-        header_value = "no-cache, no-store, must-revalidate"
-      }
-
-      response_header_configuration {
-        header_name  = "Pragma"
-        header_value = "no-cache"
-      }
     }
   }
 
