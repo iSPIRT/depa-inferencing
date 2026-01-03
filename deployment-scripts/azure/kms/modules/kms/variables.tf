@@ -139,3 +139,8 @@ variable "additional_virtual_network_ids" {
   default     = []
 }
 
+variable "allowed_hostname" {
+  type        = string
+  description = "Allowed hostname for Application Gateway Host header validation. Requests with Host headers not matching this hostname will be blocked by WAF."
+}
+

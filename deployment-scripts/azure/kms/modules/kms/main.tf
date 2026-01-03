@@ -156,6 +156,7 @@ module "application_gateway" {
   diagnostics_log_analytics_workspace_resource_group_name = var.diagnostics_log_analytics_workspace_resource_group_name
   tags                                                    = merge(local.base_tags, var.extra_tags)
   health_probe_path                                       = "/node/metrics"
+  allowed_hostname                                        = var.allowed_hostname
   depends_on = [
     module.virtual_network,
     module.confidential_ledger,

@@ -131,3 +131,8 @@ variable "tags" {
   default     = {}
 }
 
+variable "allowed_hostname" {
+  type        = string
+  description = "Allowed hostname for Host header validation. Requests with Host headers not matching this hostname will be blocked."
+}
+

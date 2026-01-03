@@ -19,6 +19,8 @@ locals {
   ssl_certificate_name                                    = "depa-inferencing-kms-prod-cin-frontend-cert" # Name of the SSL certificate in Key Vault for Application Gateway.
   diagnostics_log_analytics_workspace_name                = "depa-inferencing-sentinel-workspace"         # Optional: Log Analytics workspace name for Application Gateway diagnostics.
   diagnostics_log_analytics_workspace_resource_group_name = "depa-inferencing-sentinel-rg"                # Optional: Resource group that hosts the Log Analytics workspace.
+
+  allowed_hostname = "depa-inferencing-kms-azure.ispirt.in" # Allowed hostname for Application Gateway Host header validation.
 }
 
 module "kms" {
@@ -36,6 +38,7 @@ module "kms" {
   ssl_certificate_name                                    = local.ssl_certificate_name
   diagnostics_log_analytics_workspace_name                = local.diagnostics_log_analytics_workspace_name
   diagnostics_log_analytics_workspace_resource_group_name = local.diagnostics_log_analytics_workspace_resource_group_name
+  allowed_hostname                                         = local.allowed_hostname
   # Note: additional_virtual_network_ids is only used in the key-vault-networking deployment, not here
 }
 

@@ -47,6 +47,26 @@ resource "azurerm_web_application_firewall_policy" "this" {
       version = var.waf_rule_set_version
     }
   }
+
+  custom_rules {
+    name      = "ValidateHostHeader"
+    priority  = 1
+    rule_type = "MatchRule"
+    action    = "Block"
+
+    # Block requests where Host header does not match the allowed hostname
+    # Uses "Equal" operator with negation: block if Host does NOT equal the allowed hostname
+    match_conditions {
+      match_variables {
+        variable_name = "RequestHeaders"
+        selector      = "Host"
+      }
+      operator           = "Equal"
+      match_values       = [var.allowed_hostname]
+      negation_condition = true
+    }
+  }
+
 }
 
 resource "azurerm_application_gateway" "this" {
@@ -102,7 +122,7 @@ resource "azurerm_application_gateway" "this" {
 
   backend_http_settings {
     name                                = "depa-inferencing-backend-http-settings"
-    cookie_based_affinity               = "Disabled"
+    cookie_based_affinity               = "Enabled"
     port                                = var.backend_port
     protocol                            = "Https"
     request_timeout                     = 20
@@ -118,6 +138,7 @@ resource "azurerm_application_gateway" "this" {
     frontend_port_name             = "depa-inferencing-https-port"
     protocol                       = "Https"
     ssl_certificate_name           = var.ssl_certificate_name
+    host_name                      = var.allowed_hostname
   }
 
   probe {
@@ -135,12 +156,32 @@ resource "azurerm_application_gateway" "this" {
     }
   }
 
+  rewrite_rule_set {
+    name = "depa-inferencing-rewrite-rule-set"
+
+    rewrite_rule {
+      name          = "add-security-headers"
+      rule_sequence = 100
+
+      response_header_configuration {
+        header_name  = "X-Content-Type-Options"
+        header_value = "nosniff"
+      }
+
+      response_header_configuration {
+        header_name  = "Strict-Transport-Security"
+        header_value = "max-age=31536000; includeSubDomains"
+      }
+    }
+  }
+
   request_routing_rule {
     name                       = "depa-inferencing-https-rule"
     rule_type                  = "Basic"
     http_listener_name         = "depa-inferencing-https-listener"
     backend_address_pool_name  = "depa-inferencing-backend-pool"
     backend_http_settings_name = "depa-inferencing-backend-http-settings"
+    rewrite_rule_set_name      = "depa-inferencing-rewrite-rule-set"
     priority                   = 100
   }
 
