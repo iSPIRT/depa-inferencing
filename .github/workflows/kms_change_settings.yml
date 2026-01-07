@@ -79,7 +79,11 @@ jobs:
               }
             ]
           }
-            
+          EOF
+
+          echo "Settings policy proposal JSON generated: settings_policy_proposal.json"
+          cat $GITHUB_WORKSPACE/settings_policy_proposal.json
+
       - name: Sign and submit settings policy proposal
         env:
           AZURE_VAULT_NAME: ${{ inputs.azure-vault-name }}
