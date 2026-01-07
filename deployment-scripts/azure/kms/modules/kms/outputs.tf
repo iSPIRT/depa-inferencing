@@ -91,3 +91,24 @@ output "storage_file_share_url" {
   value       = module.storage_account.file_share_url
 }
 
+output "logs_storage_account_id" {
+  description = "Resource ID of the storage account for KMS logs."
+  value       = azurerm_storage_account.logs.id
+}
+
+output "logs_storage_account_name" {
+  description = "Name of the storage account for KMS logs."
+  value       = azurerm_storage_account.logs.name
+}
+
+output "logs_storage_account_primary_blob_endpoint" {
+  description = "Primary blob endpoint URL of the storage account for KMS logs."
+  value       = azurerm_storage_account.logs.primary_blob_endpoint
+}
+
+output "logs_storage_account_primary_access_key" {
+  description = "Primary access key for the storage account for KMS logs."
+  value       = azurerm_storage_account.logs.primary_access_key
+  sensitive   = true
+}
+

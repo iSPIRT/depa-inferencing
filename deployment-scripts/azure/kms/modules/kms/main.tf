@@ -10,6 +10,7 @@ locals {
   default_vnet_name            = "depa-inferencing-kms-${var.environment}-${var.region_short}-vnet"
   default_app_gateway_name     = "depa-inferencing-kms-${var.environment}-${var.region_short}-agw"
   default_storage_account_name = lower(substr(replace(replace("depainfkms${var.environment}${var.region_short}ldgbk", "-", ""), "_", ""), 0, 24))
+  default_logs_storage_account_name = lower(substr(replace(replace("depainfkms${var.environment}${var.region_short}logs", "-", ""), "_", ""), 0, 24))
 
   resource_group_name = (
     var.resource_group_name != "" ?
@@ -57,6 +58,12 @@ locals {
     var.storage_account_name != "" ?
     var.storage_account_name :
     local.default_storage_account_name
+  )
+
+  logs_storage_account_name = (
+    var.logs_storage_account_name != "" ?
+    var.logs_storage_account_name :
+    local.default_logs_storage_account_name
   )
 
   base_tags = {
@@ -177,6 +184,36 @@ module "storage_account" {
 
   depends_on = [
     module.resource_group,
+    module.managed_identity,
+  ]
+}
+
+# Storage Account for KMS logs
+resource "azurerm_storage_account" "logs" {
+  name                            = local.logs_storage_account_name
+  resource_group_name             = module.resource_group.name
+  location                        = module.resource_group.location
+  account_tier                    = var.logs_storage_account_tier
+  account_replication_type        = var.logs_storage_account_replication_type
+  account_kind                    = "StorageV2"
+  min_tls_version                 = "TLS1_2"
+  https_traffic_only_enabled      = true
+  allow_nested_items_to_be_public = false
+
+  tags = merge(local.base_tags, var.extra_tags, {
+    Purpose = "KMS-Logs"
+  })
+}
+
+# Grant the managed identity Storage Blob Data Contributor role for logs
+resource "azurerm_role_assignment" "logs_storage_blob_data_contributor" {
+  scope                            = azurerm_storage_account.logs.id
+  role_definition_name             = "Storage Blob Data Contributor"
+  principal_id                     = module.managed_identity.principal_id
+  skip_service_principal_aad_check = true
+
+  depends_on = [
+    azurerm_storage_account.logs,
     module.managed_identity,
   ]
 }
