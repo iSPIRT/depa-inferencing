@@ -86,7 +86,7 @@ jobs:
 
       - name: Sign and submit settings policy proposal
         env:
-          AZURE_VAULT_NAME: ${{ inputs.azure-vault-name }}          
+          AZURE_VAULT_NAME: ${{ inputs.azure-vault-name }}
           KMS_DEPLOYMENT_NAME: ${{ inputs.deployment-name }}
           PROPOSAL: ${{ github.workspace }}/settings_policy_proposal.json
         run: |
