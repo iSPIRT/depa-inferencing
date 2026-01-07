@@ -103,6 +103,4 @@ jobs:
           # Display the key release policy
           KMS_URL="https://${KMS_DEPLOYMENT_NAME}.confidential-ledger.azure.com"
           TOKEN=$(az account get-access-token --resource https://confidential-ledger.azure.com | jq -r '.accessToken')
-          curl $KMS_URL/app/settingsPolicy -k \
-            -H "Content-Type: application/json" \ 
-            -H "Authorization: Bearer $TOKEN" | jq
+          curl -k $KMS_URL/app/settingsPolicy -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" | jq
