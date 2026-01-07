@@ -88,6 +88,7 @@ jobs:
         env:
           AZURE_VAULT_NAME: ${{ inputs.azure-vault-name }}
           KMS_DEPLOYMENT_NAME: ${{ inputs.deployment-name }}
+          AZURE_KEY_NAME: ${{ inputs.deployment-name }}-member-cert
           PROPOSAL: ${{ github.workspace }}/settings_policy_proposal.json
         run: |
           # Activate the virtual environment
