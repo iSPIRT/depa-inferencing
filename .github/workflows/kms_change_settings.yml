@@ -25,7 +25,7 @@ on:
         default: true
 
 jobs:
-  azure-login:
+  change-settings:
     runs-on: self-hosted
     steps:
       - name: Checkout repository
