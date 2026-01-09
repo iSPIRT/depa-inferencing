@@ -129,6 +129,36 @@ module "key_vault" {
   ]
 }
 
+# Storage Account for KMS logs (created before Confidential Ledger for diagnostics)
+resource "azurerm_storage_account" "logs" {
+  name                            = local.logs_storage_account_name
+  resource_group_name             = module.resource_group.name
+  location                        = module.resource_group.location
+  account_tier                    = var.logs_storage_account_tier
+  account_replication_type        = var.logs_storage_account_replication_type
+  account_kind                    = "StorageV2"
+  min_tls_version                 = "TLS1_2"
+  https_traffic_only_enabled      = true
+  allow_nested_items_to_be_public = false
+
+  tags = merge(local.base_tags, var.extra_tags, {
+    Purpose = "KMS-Logs"
+  })
+}
+
+# Grant the managed identity Storage Blob Data Contributor role for logs
+resource "azurerm_role_assignment" "logs_storage_blob_data_contributor" {
+  scope                            = azurerm_storage_account.logs.id
+  role_definition_name             = "Storage Blob Data Contributor"
+  principal_id                     = module.managed_identity.principal_id
+  skip_service_principal_aad_check = true
+
+  depends_on = [
+    azurerm_storage_account.logs,
+    module.managed_identity,
+  ]
+}
+
 module "confidential_ledger" {
   source                                       = "../../services/confidential_ledger"
   name                                         = local.ledger_name
@@ -139,10 +169,12 @@ module "confidential_ledger" {
   azuread_based_service_principal_principal_id = module.managed_identity.principal_id
   key_vault_id                                 = module.key_vault.id
   certificate_name                             = local.certificate_name
+  logs_storage_account_id                      = azurerm_storage_account.logs.id
 
   depends_on = [
     module.key_vault,
     module.managed_identity,
+    azurerm_storage_account.logs,
   ]
 }
 
@@ -184,36 +216,6 @@ module "storage_account" {
 
   depends_on = [
     module.resource_group,
-    module.managed_identity,
-  ]
-}
-
-# Storage Account for KMS logs
-resource "azurerm_storage_account" "logs" {
-  name                            = local.logs_storage_account_name
-  resource_group_name             = module.resource_group.name
-  location                        = module.resource_group.location
-  account_tier                    = var.logs_storage_account_tier
-  account_replication_type        = var.logs_storage_account_replication_type
-  account_kind                    = "StorageV2"
-  min_tls_version                 = "TLS1_2"
-  https_traffic_only_enabled      = true
-  allow_nested_items_to_be_public = false
-
-  tags = merge(local.base_tags, var.extra_tags, {
-    Purpose = "KMS-Logs"
-  })
-}
-
-# Grant the managed identity Storage Blob Data Contributor role for logs
-resource "azurerm_role_assignment" "logs_storage_blob_data_contributor" {
-  scope                            = azurerm_storage_account.logs.id
-  role_definition_name             = "Storage Blob Data Contributor"
-  principal_id                     = module.managed_identity.principal_id
-  skip_service_principal_aad_check = true
-
-  depends_on = [
-    azurerm_storage_account.logs,
     module.managed_identity,
   ]
 }
