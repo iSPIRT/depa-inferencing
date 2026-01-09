@@ -59,3 +59,24 @@ locals {
   ledger_tls_certificate = local.ledger_identity_json.ledgerTlsCertificate
 }
 
+# Diagnostic settings for Confidential Ledger logs
+resource "azurerm_monitor_diagnostic_setting" "confidential_ledger" {
+  count = var.logs_storage_account_id != "" ? 1 : 0
+
+  name               = "${var.name}-diagnostics"
+  target_resource_id = azurerm_confidential_ledger.this.id
+  storage_account_id = var.logs_storage_account_id
+
+  enabled_log {
+    category = "transactionlogs"
+  }
+
+  enabled_log {
+    category = "userdefinedlogs"
+  }
+
+  depends_on = [
+    azurerm_confidential_ledger.this,
+  ]
+}
+

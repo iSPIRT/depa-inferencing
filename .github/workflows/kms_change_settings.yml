@@ -25,7 +25,7 @@ on:
         default: true
 
 jobs:
-  azure-login:
+  change-settings:
     runs-on: self-hosted
     steps:
       - name: Checkout repository
@@ -34,9 +34,9 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
 
       - name: Install Azure CLI Confcom extension
         run: |
@@ -79,7 +79,11 @@ jobs:
               }
             ]
           }
-            
+          EOF
+
+          echo "Settings policy proposal JSON generated: settings_policy_proposal.json"
+          cat $GITHUB_WORKSPACE/settings_policy_proposal.json
+
       - name: Sign and submit settings policy proposal
         env:
           AZURE_VAULT_NAME: ${{ inputs.azure-vault-name }}
@@ -99,6 +103,4 @@ jobs:
           # Display the key release policy
           KMS_URL="https://${KMS_DEPLOYMENT_NAME}.confidential-ledger.azure.com"
           TOKEN=$(az account get-access-token --resource https://confidential-ledger.azure.com | jq -r '.accessToken')
-          curl $KMS_URL/app/settingsPolicy -k \
-            -H "Content-Type: application/json" \ 
-            -H "Authorization: Bearer $TOKEN" | jq
+          curl -k $KMS_URL/app/settingsPolicy -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" | jq
