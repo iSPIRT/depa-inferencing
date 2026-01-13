@@ -10,7 +10,7 @@ AZURE_VAULT_NAME="${AZURE_VAULT_NAME:-}"
 KMS_DEPLOYMENT_NAME="${KMS_DEPLOYMENT_NAME:-depa-inferencing-kms}"
 PROPOSAL="${PROPOSAL:-key_release_policy.json}"
 
-AZURE_KEY_NAME="${KMS_DEPLOYMENT_NAME}-member0"
+AZURE_KEY_NAME="${KMS_DEPLOYMENT_NAME}-member-cert"
 KMS_URL="https://${KMS_DEPLOYMENT_NAME}.confidential-ledger.azure.com"
 
 # Colors for output
