@@ -144,3 +144,21 @@ variable "allowed_hostname" {
   description = "Allowed hostname for Application Gateway Host header validation. Requests with Host headers not matching this hostname will be blocked by WAF."
 }
 
+variable "logs_storage_account_name" {
+  type        = string
+  description = "Optional explicit name for the KMS logs storage account. Must be globally unique, 3-24 characters, lowercase alphanumeric only. Defaults to a convention-based value when empty."
+  default     = ""
+}
+
+variable "logs_storage_account_tier" {
+  type        = string
+  description = "Defines the Tier to use for the logs storage account. Valid options are Standard and Premium."
+  default     = "Standard"
+}
+
+variable "logs_storage_account_replication_type" {
+  type        = string
+  description = "Defines the type of replication to use for the logs storage account. Valid options are LRS, GRS, RAGRS, ZRS, GZRS and RAGZRS."
+  default     = "LRS"
+}
+
