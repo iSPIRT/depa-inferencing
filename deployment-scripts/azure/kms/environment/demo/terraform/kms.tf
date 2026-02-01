@@ -21,6 +21,10 @@ locals {
   diagnostics_log_analytics_workspace_resource_group_name = "depa-inferencing-sentinel-rg"                # Optional: Resource group that hosts the Log Analytics workspace.
 
   allowed_hostname = "depa-inferencing-kms-azure.ispirt.in" # Allowed hostname for Application Gateway Host header validation.
+
+  # KMS private link configuration (resource ID or alias as provided)
+  kms_private_link_resource_id_or_alias = ""
+
 }
 
 module "kms" {
@@ -39,6 +43,7 @@ module "kms" {
   diagnostics_log_analytics_workspace_name                = local.diagnostics_log_analytics_workspace_name
   diagnostics_log_analytics_workspace_resource_group_name = local.diagnostics_log_analytics_workspace_resource_group_name
   allowed_hostname                                         = local.allowed_hostname
+  kms_private_link_resource_id_or_alias                     = local.kms_private_link_resource_id_or_alias
   # Note: additional_virtual_network_ids is only used in the key-vault-networking deployment, not here
 }
 

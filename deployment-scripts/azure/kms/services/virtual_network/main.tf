@@ -35,3 +35,10 @@ resource "azurerm_subnet" "private_endpoint" {
   address_prefixes     = var.private_endpoint_subnet_address_prefixes
 }
 
+resource "azurerm_subnet" "kms_private_link" {
+  name                 = "KmsPrivateLinkSubnet"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.this.name
+  address_prefixes     = var.kms_private_link_subnet_address_prefixes
+}
+

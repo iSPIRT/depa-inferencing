@@ -34,6 +34,12 @@ variable "private_endpoint_subnet_address_prefixes" {
   default     = ["10.0.2.0/24"]
 }
 
+variable "kms_private_link_subnet_address_prefixes" {
+  type        = list(string)
+  description = "Address prefixes for the KMS private link subnet."
+  default     = ["10.0.3.0/24"]
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags applied to the Virtual Network."

@@ -21,3 +21,8 @@ output "private_endpoint_subnet_id" {
   value       = azurerm_subnet.private_endpoint.id
 }
 
+output "kms_private_link_subnet_id" {
+  description = "Resource ID of the KMS private link subnet."
+  value       = azurerm_subnet.kms_private_link.id
+}
+

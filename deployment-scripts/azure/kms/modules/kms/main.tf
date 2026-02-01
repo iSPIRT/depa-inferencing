@@ -66,6 +66,14 @@ locals {
     local.default_logs_storage_account_name
   )
 
+  kms_private_dns_zone_name = data.terraform_remote_state.key_vault_networking.outputs.key_vault_private_dns_zone_name
+  kms_private_dns_record_name = "depa-inferencing-kms-${var.environment}-${var.region_short}-pls-api"
+  kms_private_dns_record_fqdn = (
+    local.kms_private_dns_zone_name != "" ?
+    "${local.kms_private_dns_record_name}.${local.kms_private_dns_zone_name}" :
+    ""
+  )
+
   base_tags = {
     Environment = var.environment
     ManagedBy   = "Terraform"
@@ -108,6 +116,88 @@ module "virtual_network" {
   resource_group_name = module.resource_group.name
   location            = module.resource_group.location
   tags                = merge(local.base_tags, var.extra_tags)
+}
+
+data "terraform_remote_state" "key_vault_networking" {
+  backend = "azurerm"
+
+  config = {
+    resource_group_name  = local.resource_group_name
+    storage_account_name = "${lower(var.environment)}terraformstate${lower(var.region_short)}"
+    container_name       = "terraform-key-vault-networking-state"
+    key                  = "terraform.tfstate"
+  }
+}
+
+data "azurerm_private_dns_zone" "kms" {
+  count               = local.kms_private_dns_zone_name != "" ? 1 : 0
+  name                = local.kms_private_dns_zone_name
+  resource_group_name = local.resource_group_name
+}
+
+resource "azurerm_private_endpoint" "kms_private_link" {
+  count               = var.kms_private_link_resource_id_or_alias != "" ? 1 : 0
+  name                = "${module.resource_group.name}-kmspls-pe"
+  location            = module.resource_group.location
+  resource_group_name = module.resource_group.name
+  subnet_id           = module.virtual_network.kms_private_link_subnet_id
+
+  private_service_connection {
+    name                           = "${module.resource_group.name}-kmspls-psc"
+    private_connection_resource_id = startswith(var.kms_private_link_resource_id_or_alias, "/subscriptions/") ? var.kms_private_link_resource_id_or_alias : null
+    private_connection_resource_alias = startswith(var.kms_private_link_resource_id_or_alias, "/subscriptions/") ? null : var.kms_private_link_resource_id_or_alias
+    is_manual_connection           = false
+    request_message                = "KMS private link connection"
+  }
+
+  depends_on = [
+    module.virtual_network,
+  ]
+}
+
+resource "azurerm_private_dns_a_record" "kms_private_link" {
+  count               = local.kms_private_dns_zone_name != "" && length(azurerm_private_endpoint.kms_private_link) > 0 ? 1 : 0
+  name                = local.kms_private_dns_record_name
+  zone_name           = data.azurerm_private_dns_zone.kms[0].name
+  resource_group_name = data.azurerm_private_dns_zone.kms[0].resource_group_name
+  ttl                 = 300
+  records             = [azurerm_private_endpoint.kms_private_link[0].private_service_connection[0].private_ip_address]
+}
+
+resource "null_resource" "kms_private_link_approval_check" {
+  count = startswith(var.kms_private_link_resource_id_or_alias, "/subscriptions/") ? 1 : 0
+
+  depends_on = [
+    azurerm_private_endpoint.kms_private_link,
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "Checking private endpoint connection approval status..."
+      RESOURCE_ID="${var.kms_private_link_resource_id_or_alias}"
+      PRIVATE_ENDPOINT_ID="${azurerm_private_endpoint.kms_private_link[0].id}"
+
+      STATUS=$(az network private-endpoint-connection list --id "$RESOURCE_ID" \
+        --query "[?privateEndpoint.id=='$PRIVATE_ENDPOINT_ID'].privateLinkServiceConnectionState.status" -o tsv)
+
+      REQUEST_STATUS=$(az network private-endpoint-connection list --id "$RESOURCE_ID" \
+        --query "[?privateEndpoint.id=='$PRIVATE_ENDPOINT_ID'].privateLinkServiceConnectionState.description" -o tsv)
+
+      echo "Connection Status: $STATUS"
+      echo "Request/Response Status: $REQUEST_STATUS"
+
+      if [ "$STATUS" != "Approved" ]; then
+        echo "❌ Private endpoint connection is not approved."
+        exit 1
+      fi
+
+      echo "✅ Private endpoint connection approved."
+    EOT
+  }
+
+  triggers = {
+    private_endpoint_id = azurerm_private_endpoint.kms_private_link[0].id
+  }
 }
 
 # Key Vault: Creates Key Vault with network ACLs and certificate
@@ -184,7 +274,7 @@ module "application_gateway" {
   resource_group_name                                     = module.resource_group.name
   location                                                = module.resource_group.location
   subnet_id                                               = module.virtual_network.gateway_subnet_id
-  backend_address                                         = replace(module.confidential_ledger.ledger_endpoint, "https://", "")
+  backend_address                                         = local.kms_private_dns_record_fqdn != "" ? local.kms_private_dns_record_fqdn : replace(module.confidential_ledger.ledger_endpoint, "https://", "")
   backend_hostname                                        = module.confidential_ledger.name
   backend_port                                            = 443
   trusted_root_certificate                                = module.confidential_ledger.ledger_tls_certificate

@@ -162,3 +162,10 @@ variable "logs_storage_account_replication_type" {
   default     = "LRS"
 }
 
+variable "kms_private_link_resource_id_or_alias" {
+  type        = string
+  description = "Resource ID or alias of the KMS private link resource to connect via private endpoint."
+  default     = ""
+}
+
+
