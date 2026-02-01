@@ -49,6 +49,18 @@ variable "vm_virtual_network_id" {
   default     = ""
 }
 
+variable "kms_private_endpoint_id" {
+  type        = string
+  description = "Resource ID of the KMS private endpoint (from Phase 1 KMS deployment). If provided, a DNS A record will be created for KMS."
+  default     = ""
+}
+
+variable "kms_private_dns_record_name" {
+  type        = string
+  description = "DNS record name for KMS private link (e.g., depa-inferencing-kms-prod-cin-pls-api)."
+  default     = ""
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags applied to the networking resources."
