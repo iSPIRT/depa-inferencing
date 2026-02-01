@@ -39,3 +39,10 @@ data "azurerm_subnet" "vm_private_endpoint" {
   resource_group_name  = local.vm_vnet_resource_group_name
 }
 
+# Discover KMS private endpoint created in Phase 1
+# Pattern: ${resource_group_name}-kmspls-pe
+data "azurerm_private_endpoint" "kms_private_link" {
+  name                = "${local.resource_group_name}-kmspls-pe"
+  resource_group_name = local.resource_group_name
+}
+

@@ -16,11 +16,14 @@ module "key_vault_networking" {
   additional_virtual_network_ids = local.additional_virtual_network_ids
   vm_private_endpoint_subnet_id  = data.azurerm_subnet.vm_private_endpoint.id
   vm_virtual_network_id          = data.azurerm_virtual_network.vm.id
+  kms_private_endpoint_id        = data.azurerm_private_endpoint.kms_private_link.id
+  kms_private_dns_record_name    = local.kms_private_dns_record_name
   tags                           = local.extra_tags
 
   depends_on = [
     data.azurerm_subnet.vm_private_endpoint,
     data.azurerm_virtual_network.vm,
+    data.azurerm_private_endpoint.kms_private_link,
   ]
 }
 

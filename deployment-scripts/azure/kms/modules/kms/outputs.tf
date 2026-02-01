@@ -112,3 +112,18 @@ output "logs_storage_account_primary_access_key" {
   sensitive   = true
 }
 
+output "kms_private_endpoint_id" {
+  description = "Resource ID of the KMS private endpoint (for Phase 2 DNS record creation)."
+  value       = length(azurerm_private_endpoint.kms_private_link) > 0 ? azurerm_private_endpoint.kms_private_link[0].id : ""
+}
+
+output "kms_private_dns_record_name" {
+  description = "DNS record name for KMS private link."
+  value       = local.kms_private_dns_record_name
+}
+
+output "kms_private_dns_record_fqdn" {
+  description = "FQDN for KMS private link (hostname + domain)."
+  value       = local.kms_private_dns_record_fqdn
+}
+

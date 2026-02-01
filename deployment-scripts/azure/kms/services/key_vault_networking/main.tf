@@ -119,3 +119,36 @@ resource "azurerm_private_dns_a_record" "key_vault" {
   ]
 }
 
+# Data source to get the KMS private endpoint network interface (Phase 2 - created in Phase 1)
+data "azurerm_private_endpoint" "kms_private_link" {
+  count               = var.kms_private_endpoint_id != "" ? 1 : 0
+  resource_id         = var.kms_private_endpoint_id
+}
+
+data "azurerm_network_interface" "kms_private_link_pe" {
+  count               = var.kms_private_endpoint_id != "" ? 1 : 0
+  name                = split("/", data.azurerm_private_endpoint.kms_private_link[0].network_interface[0].id)[8]
+  resource_group_name = split("/", data.azurerm_private_endpoint.kms_private_link[0].network_interface[0].id)[4]
+
+  depends_on = [
+    data.azurerm_private_endpoint.kms_private_link,
+  ]
+}
+
+# Private DNS A Record for KMS (Phase 2 - created after Phase 1 private endpoint)
+# Created in the same private DNS zone as Key Vault for unified DNS resolution
+resource "azurerm_private_dns_a_record" "kms_private_link" {
+  count               = var.kms_private_endpoint_id != "" && var.kms_private_dns_record_name != "" ? 1 : 0
+  name                = var.kms_private_dns_record_name
+  zone_name           = azurerm_private_dns_zone.key_vault.name
+  resource_group_name = var.resource_group_name
+  ttl                 = 300
+  records             = [data.azurerm_network_interface.kms_private_link_pe[0].ip_configuration[0].private_ip_address]
+  tags                = var.tags
+
+  depends_on = [
+    azurerm_private_dns_zone.key_vault,
+    data.azurerm_network_interface.kms_private_link_pe,
+  ]
+}
+

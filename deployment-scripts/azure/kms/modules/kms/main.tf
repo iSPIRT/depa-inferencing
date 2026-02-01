@@ -129,12 +129,6 @@ data "terraform_remote_state" "key_vault_networking" {
   }
 }
 
-data "azurerm_private_dns_zone" "kms" {
-  count               = local.kms_private_dns_zone_name != "" ? 1 : 0
-  name                = local.kms_private_dns_zone_name
-  resource_group_name = local.resource_group_name
-}
-
 resource "azurerm_private_endpoint" "kms_private_link" {
   count               = var.kms_private_link_resource_id_or_alias != "" ? 1 : 0
   name                = "${module.resource_group.name}-kmspls-pe"
@@ -153,15 +147,6 @@ resource "azurerm_private_endpoint" "kms_private_link" {
   depends_on = [
     module.virtual_network,
   ]
-}
-
-resource "azurerm_private_dns_a_record" "kms_private_link" {
-  count               = local.kms_private_dns_zone_name != "" && length(azurerm_private_endpoint.kms_private_link) > 0 ? 1 : 0
-  name                = local.kms_private_dns_record_name
-  zone_name           = data.azurerm_private_dns_zone.kms[0].name
-  resource_group_name = data.azurerm_private_dns_zone.kms[0].resource_group_name
-  ttl                 = 300
-  records             = [azurerm_private_endpoint.kms_private_link[0].private_service_connection[0].private_ip_address]
 }
 
 resource "null_resource" "kms_private_link_approval_check" {

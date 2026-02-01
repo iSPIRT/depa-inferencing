@@ -31,5 +31,8 @@ locals {
   vm_vnet_resource_group_name = "depa-inferencing-prod"
   vm_vnet_name                = "vnet-depainf-cicd"
   vm_subnet_name              = "snet-depainf-cicd" # Subnet name for private endpoint in VM VNet
+
+  # KMS private link DNS configuration (from Phase 1 KMS deployment)
+  kms_private_dns_record_name = "depa-inferencing-kms-${local.environment}-${local.region_short}-pls-api"
 }
 
