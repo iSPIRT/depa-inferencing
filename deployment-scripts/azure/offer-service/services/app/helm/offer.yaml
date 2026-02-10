@@ -17,7 +17,7 @@ domain: "ad_selection.microsoft"
 services:
   offer-service:
     replicas: 1
-    image: "depainferencing.azurecr.io/azure/bidding-service:prod-4.8.0.3"
+    image: "ispirt.azurecr.io/depainferencing/azure/bidding-service:prod-4.8.0.3"
     containerPorts:
       - name: grpc
         port: 50057
@@ -43,7 +43,7 @@ services:
       TEE_KV_SERVER_GRPC_ARG_DEFAULT_AUTHORITY: ""
   ofe:
     replicas: 1
-    image: "depainferencing.azurecr.io/azure/buyer-frontend-service:prod-4.8.0.3"
+    image: "ispirt.azurecr.io/depainferencing/azure/buyer-frontend-service:prod-4.8.0.3"
     containerPorts:
       - name: grpc
         port: 50051
@@ -76,7 +76,7 @@ services:
       ENABLE_TKV_V2_BROWSER: ""
   kv:
     replicas: 1
-    image: "depainferencing.azurecr.io/azure/key-value-service:prod-1.2.0.3"
+    image: "ispirt.azurecr.io/depainferencing/azure/key-value-service:prod-1.2.0.3"
     containerPorts:
       - name: grpc
         port: 50051

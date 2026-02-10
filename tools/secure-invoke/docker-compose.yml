@@ -1,6 +1,6 @@
 services:
   secure-invoke:
-    image: ${SECURE_INVOKE_IMAGE:-${REGISTRY:-depainferencing.azurecr.io/tools}/secure_invoke:${TAG}}
+    image: ${SECURE_INVOKE_IMAGE:-${REGISTRY:-ispirt.azurecr.io/depainferencing/tools}/secure_invoke:${TAG}}
     network_mode: "host"
     container_name: secure_invoke_container
     volumes:

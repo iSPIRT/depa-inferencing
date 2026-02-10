@@ -98,7 +98,7 @@ resource "helm_release" "external_dns" {
 
   set {
     name  = "image.registry"
-    value = "depainferencing.azurecr.io"
+    value = "ispirt.azurecr.io"
   }
 
   set {
