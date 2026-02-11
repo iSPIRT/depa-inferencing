@@ -5,7 +5,7 @@
     {
       "name": "offer-container",
       "properties": {
-        "image": "depainferencing.azurecr.io/azure/bidding-service:prod-4.8.0.3",
+        "image": "ispirt.azurecr.io/depainferencing/azure/bidding-service:prod-4.8.0.3",
         "command": [],
         "environmentVariables": [
           {

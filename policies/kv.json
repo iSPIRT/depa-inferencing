@@ -352,7 +352,7 @@
           {
             "name": "[parameters('containerGroupName')]",
             "properties": {
-              "image": "depainferencing.azurecr.io/azure/key-value-service:prod-squashed-1.2.0.2",
+              "image": "ispirt.azurecr.io/depainferencing/azure/key-value-service:prod-1.2.0.3",
               "resources": {
                 "requests": {
                   "cpu": "[parameters('cpu')]",
