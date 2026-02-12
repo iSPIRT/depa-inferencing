@@ -393,7 +393,7 @@
           {
             "name": "[parameters('containerGroupName')]",
             "properties": {
-              "image": "depainferencing.azurecr.io/azure/bidding-service:prod-4.8.0.2",
+              "image": "ispirt.azurecr.io/depainferencing/azure/bidding-service:prod-4.8.0.3",
               "resources": {
                 "requests": {
                   "cpu": "[parameters('cpu')]",

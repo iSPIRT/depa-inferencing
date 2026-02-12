@@ -23,8 +23,8 @@ locals {
   subscription_id = "<your_subscription_id>"
   tenant_id       = "<your_tenant_id>"
 
-  image_registry = "depainferencing.azurecr.io"
-  registry_path  = "azure"
+  image_registry = "ispirt.azurecr.io"
+  registry_path  = "depainferencing/azure"
   image_tag      = "prod-4.8.0.3"
   kv_image_tag   = "prod-1.2.0.3"
   kms_url        = "https://depa-inferencing-kms-azure.ispirt.in"
