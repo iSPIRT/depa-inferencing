@@ -172,6 +172,7 @@ module "offer" {
         KV_HEALTHCHECK_PORT           = "50051"          # Do not change unless you are modifying the default Azure architecture.
         AZURE_LOCAL_DATA_DIR          = "/data/deltas"   # Do not change unless you are modifying the default Azure architecture.
         AZURE_LOCAL_REALTIME_DATA_DIR = "/data/realtime" # Do not change unless you are modifying the default Azure architecture.
+        DATA_LOADING_NUM_THREADS      = "1"              # Azure SMB does not work well with large number of threads
       }
     }
   ]
@@ -185,7 +186,7 @@ module "offer" {
     ENABLE_AUCTION_COMPRESSION         = "false"      # Example: "false"
     ENABLE_BUYER_COMPRESSION           = "false"      # Example: "false"
     ENABLE_CHAFFING                    = "false"      # Example: "false"
-    ENABLE_OTEL_BASED_LOGGING          = "false"      # Example: "false"
+    ENABLE_OTEL_BASED_LOGGING          = "true"      # Example: "false"
     ENABLE_PROTECTED_APP_SIGNALS       = "false"      # Example: "true"
     INFERENCE_MODEL_BUCKET_NAME        = ""
     INFERENCE_MODEL_BUCKET_PATHS       = ""
