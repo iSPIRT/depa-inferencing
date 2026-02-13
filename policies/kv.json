@@ -68,6 +68,12 @@
         "description": "AZURE_LOCAL_REALTIME_DATA_DIR environment variable"
       }
     },
+    "env_DATA_LOADING_NUM_THREADS": {
+      "type": "string",
+      "metadata": {
+        "description": "DATA_LOADING_NUM_THREADS environment variable"
+      }
+    },
     "env_AD_RETRIEVAL_KV_SERVER_ADDR": {
       "type": "string",
       "metadata": {
@@ -377,6 +383,10 @@
                 {
                   "name": "AZURE_LOCAL_DATA_DIR",
                   "value": "[parameters('env_AZURE_LOCAL_DATA_DIR')]"
+                },
+                {
+                  "name": "DATA_LOADING_NUM_THREADS",
+                  "value": "[parameters('env_DATA_LOADING_NUM_THREADS')]"
                 },
                 {
                   "name": "AZURE_LOCAL_REALTIME_DATA_DIR",

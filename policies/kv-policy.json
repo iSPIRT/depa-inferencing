@@ -29,6 +29,11 @@
             "regex": true
           },
           {
+            "name": "DATA_LOADING_NUM_THREADS",
+            "value": ".*",
+            "regex": true
+          },
+          {
             "name": "AD_RETRIEVAL_KV_SERVER_ADDR",
             "value": ".*",
             "regex": true
