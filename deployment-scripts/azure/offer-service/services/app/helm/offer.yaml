@@ -76,7 +76,7 @@ services:
       ENABLE_TKV_V2_BROWSER: ""
   kv:
     replicas: 1
-    image: "ispirt.azurecr.io/depainferencing/azure/key-value-service:prod-1.2.0.3"
+    image: "ispirt.azurecr.io/depainferencing/azure/key-value-service:prod-1.2.0.4"
     containerPorts:
       - name: grpc
         port: 50051
