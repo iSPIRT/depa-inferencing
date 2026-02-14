@@ -5,7 +5,7 @@
     {
       "name": "kv-container",
       "properties": {
-        "image": "ispirt.azurecr.io/depainferencing/azure/key-value-service:prod-1.2.0.3",
+        "image": "ispirt.azurecr.io/depainferencing/azure/key-value-service:prod-1.2.0.4",
         "command": [],
         "environmentVariables": [
           {
