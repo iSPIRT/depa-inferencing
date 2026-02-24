@@ -159,6 +159,7 @@ jobs:
             --resource-group "${{ needs.provision.outputs.resource_group }}" \
             --name "${{ env.ACI_NAME }}" \
             --image "${{ inputs.kv_image }}" \
+            --os-type Linux \
             --registry-login-server "$LOGIN_SERVER" \
             --registry-username "$ACR_USERNAME" \
             --registry-password "$ACR_PASSWORD" \
@@ -226,10 +227,8 @@ jobs:
             || true
 
       - name: Clean up resource group
-        if: success()
+        if: always()
         run: |
-          az group delete \
-            --name "${{ needs.provision.outputs.resource_group }}" \
-            --yes \
-            --no-wait \
-            || true
+          RG="${{ needs.provision.outputs.resource_group }}"
+          echo "Deleting resource group: $RG"
+          az group delete --name "$RG" --yes --no-wait || true
