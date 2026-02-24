@@ -142,6 +142,7 @@ jobs:
               AZURE_LOCAL_DATA_DIR=/data/deltas \
               AZURE_LOCAL_REALTIME_DATA_DIR=/data/realtime \
               DATA_LOADING_NUM_THREADS=1 \
+            --registry-login-server ispirt.azurecr.io \
             --azure-file-volume-share-name "${{ env.FILE_SHARE }}" \
             --azure-file-volume-account-name "${{ needs.provision.outputs.storage_account }}" \
             --azure-file-volume-account-key "$STORAGE_KEY" \
