@@ -3,8 +3,8 @@
 #
 # Creates a resource group and storage account (with fslogix share) in the workflow.
 # Uses same Azure credentials as azure_deploy.
-# ACR: az container create requires --registry-username for custom registries. Set repo secrets:
-#   ACR_USERNAME, ACR_PASSWORD (and optionally ACR_LOGIN_SERVER, default ispirt.azurecr.io).
+# ACR: az container create requires --registry-username for custom registries.
+# Pass acr_username and acr_password as workflow inputs, or set repo secrets ACR_USERNAME, ACR_PASSWORD.
 
 name: KV test
 
@@ -25,6 +25,19 @@ on:
         required: false
         type: string
         default: 'ispirt.azurecr.io/depainferencing/azure/key-value-service:prod-1.2.0.4'
+      acr_username:
+        description: 'ACR registry username (or set repo secret ACR_USERNAME)'
+        required: false
+        type: string
+      acr_password:
+        description: 'ACR registry password (or set repo secret ACR_PASSWORD)'
+        required: false
+        type: string
+      acr_login_server:
+        description: 'ACR login server (optional, default ispirt.azurecr.io)'
+        required: false
+        type: string
+        default: 'ispirt.azurecr.io'
 
 env:
   FILE_SHARE: fslogix
@@ -132,12 +145,12 @@ jobs:
       - name: Deploy KV service to ACI
         env:
           STORAGE_KEY: ${{ steps.storage.outputs.key }}
-          ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
-          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+          ACR_USERNAME: ${{ inputs.acr_username || secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ inputs.acr_password || secrets.ACR_PASSWORD }}
+          ACR_LOGIN_SERVER: ${{ inputs.acr_login_server || secrets.ACR_LOGIN_SERVER }}
         run: |
           if [ -z "$ACR_USERNAME" ] || [ -z "$ACR_PASSWORD" ]; then
-            echo "::error::Set repo secrets ACR_USERNAME and ACR_PASSWORD (az container create requires them for custom registry)."
+            echo "::error::Provide acr_username and acr_password as workflow inputs, or set repo secrets ACR_USERNAME and ACR_PASSWORD."
             exit 1
           fi
           echo "::add-mask::$ACR_PASSWORD"
