@@ -3,6 +3,8 @@
 #
 # Creates a resource group and storage account (with fslogix share) in the workflow.
 # Uses same Azure credentials as azure_deploy.
+# ACR: az container create requires --registry-username for custom registries. Set repo secrets:
+#   ACR_USERNAME, ACR_PASSWORD (and optionally ACR_LOGIN_SERVER, default ispirt.azurecr.io).
 
 name: KV test
 
@@ -130,11 +132,23 @@ jobs:
       - name: Deploy KV service to ACI
         env:
           STORAGE_KEY: ${{ steps.storage.outputs.key }}
+          ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
         run: |
+          if [ -z "$ACR_USERNAME" ] || [ -z "$ACR_PASSWORD" ]; then
+            echo "::error::Set repo secrets ACR_USERNAME and ACR_PASSWORD (az container create requires them for custom registry)."
+            exit 1
+          fi
+          echo "::add-mask::$ACR_PASSWORD"
+          LOGIN_SERVER="${ACR_LOGIN_SERVER:-ispirt.azurecr.io}"
           az container create \
             --resource-group "${{ needs.provision.outputs.resource_group }}" \
             --name "${{ env.ACI_NAME }}" \
             --image "${{ inputs.kv_image }}" \
+            --registry-login-server "$LOGIN_SERVER" \
+            --registry-username "$ACR_USERNAME" \
+            --registry-password "$ACR_PASSWORD" \
             --ports 50051 51052 \
             --environment-variables \
               KV_PORT=50051 \
@@ -142,7 +156,6 @@ jobs:
               AZURE_LOCAL_DATA_DIR=/data/deltas \
               AZURE_LOCAL_REALTIME_DATA_DIR=/data/realtime \
               DATA_LOADING_NUM_THREADS=1 \
-            --registry-login-server ispirt.azurecr.io \
             --azure-file-volume-share-name "${{ env.FILE_SHARE }}" \
             --azure-file-volume-account-name "${{ needs.provision.outputs.storage_account }}" \
             --azure-file-volume-account-key "$STORAGE_KEY" \
