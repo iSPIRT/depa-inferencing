@@ -160,6 +160,8 @@ jobs:
             --name "${{ env.ACI_NAME }}" \
             --image "${{ inputs.kv_image }}" \
             --os-type Linux \
+            --cpu 4 \
+            --memory 16 \
             --registry-login-server "$LOGIN_SERVER" \
             --registry-username "$ACR_USERNAME" \
             --registry-password "$ACR_PASSWORD" \
