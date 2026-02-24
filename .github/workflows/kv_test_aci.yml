@@ -31,7 +31,7 @@ env:
 
 jobs:
   provision:
-    runs-on: ubuntu-22.04
+    runs-on: self-hosted
     outputs:
       resource_group: ${{ steps.provision.outputs.resource_group }}
       storage_account: ${{ steps.provision.outputs.storage_account }}
