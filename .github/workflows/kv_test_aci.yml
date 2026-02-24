@@ -67,7 +67,6 @@ jobs:
             --name "${{ env.FILE_SHARE }}" \
             --account-name "$SA_NAME" \
             --account-key "$SA_KEY" \
-            --auth-mode key \
             --output none
           echo "resource_group=$RG_NAME" >> $GITHUB_OUTPUT
           echo "storage_account=$SA_NAME" >> $GITHUB_OUTPUT
@@ -105,8 +104,7 @@ jobs:
             --account-key "$ACCOUNT_KEY" \
             --destination "${{ env.FILE_SHARE }}" \
             --destination-path "${{ env.DELTAS_PATH }}" \
-            --source ./tools/key-value-service/tmp \
-            --auth-mode key
+            --source ./tools/key-value-service/tmp
 
   deploy-aci-and-test:
     needs: [provision, generate-and-upload]
