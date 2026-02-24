@@ -30,8 +30,8 @@ env:
   ACI_NAME: kv-load-test
 
 jobs:
-  provision:
-    runs-on: self-hosted
+  provision:    
+    runs-on: ubuntu-22.04
     outputs:
       resource_group: ${{ steps.provision.outputs.resource_group }}
       storage_account: ${{ steps.provision.outputs.storage_account }}
