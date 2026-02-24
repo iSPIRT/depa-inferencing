@@ -155,6 +155,7 @@ jobs:
           fi
           echo "::add-mask::$ACR_PASSWORD"
           LOGIN_SERVER="${ACR_LOGIN_SERVER:-ispirt.azurecr.io}"
+          # Env vars match offer-service Terraform: kv runtime_flags + global_runtime_flags (offer.tf)
           az container create \
             --resource-group "${{ needs.provision.outputs.resource_group }}" \
             --name "${{ env.ACI_NAME }}" \
@@ -172,6 +173,46 @@ jobs:
               AZURE_LOCAL_DATA_DIR=/data/deltas \
               AZURE_LOCAL_REALTIME_DATA_DIR=/data/realtime \
               DATA_LOADING_NUM_THREADS=1 \
+              AD_RETRIEVAL_KV_SERVER_ADDR="" \
+              AD_RETRIEVAL_KV_SERVER_EGRESS_TLS="" \
+              AD_RETRIEVAL_TIMEOUT_MS=60000 \
+              BUYER_EGRESS_TLS="" \
+              CONSENTED_DEBUG_TOKEN=test-token \
+              ENABLE_AUCTION_COMPRESSION=false \
+              ENABLE_BUYER_COMPRESSION=false \
+              ENABLE_CHAFFING=false \
+              ENABLE_OTEL_BASED_LOGGING=false \
+              ENABLE_PROTECTED_APP_SIGNALS=false \
+              INFERENCE_MODEL_BUCKET_NAME="" \
+              INFERENCE_MODEL_BUCKET_PATHS="" \
+              INFERENCE_MODEL_CONFIG_PATH="" \
+              INFERENCE_MODEL_FETCH_PERIOD_MS=60000 \
+              INFERENCE_MODEL_LOCAL_PATHS="" \
+              INFERENCE_SIDECAR_BINARY_PATH="" \
+              K_ANONYMITY_SERVER_ADDR="" \
+              K_ANONYMITY_SERVER_TIMEOUT_MS=60000 \
+              KV_SERVER_EGRESS_TLS="" \
+              MAX_ALLOWED_SIZE_DEBUG_URL_BYTES=65536 \
+              MAX_ALLOWED_SIZE_ALL_DEBUG_URLS_KB=3000 \
+              PS_VERBOSITY=10 \
+              ROMA_TIMEOUT_MS="" \
+              SELECTION_KV_SERVER_ADDR="" \
+              SELECTION_KV_SERVER_EGRESS_TLS="" \
+              SELECTION_KV_SERVER_TIMEOUT_MS=60000 \
+              TEE_AD_RETRIEVAL_KV_SERVER_ADDR="" \
+              TEE_KV_SERVER_ADDR=kv.ad_selection.microsoft:51052 \
+              TELEMETRY_CONFIG="mode: EXPERIMENT" \
+              AZURE_BA_PARAM_GET_TOKEN_URL=http://169.254.169.254/metadata/identity/oauth2/token \
+              AZURE_BA_PARAM_CLIENT_ID="" \
+              AZURE_BA_PARAM_KMS_UNWRAP_URL=https://depa-inferencing-kms-azure.ispirt.in/app/unwrapKey?fmt=tink \
+              ENABLE_PROTECTED_AUDIENCE=true \
+              KEY_REFRESH_FLOW_RUN_FREQUENCY_SECONDS=10800 \
+              PRIMARY_COORDINATOR_ACCOUNT_IDENTITY="" \
+              PRIMARY_COORDINATOR_PRIVATE_KEY_ENDPOINT=https://depa-inferencing-kms-azure.ispirt.in/app/key?fmt=tink \
+              PRIMARY_COORDINATOR_REGION="" \
+              PRIVATE_KEY_CACHE_TTL_SECONDS=3888000 \
+              PUBLIC_KEY_ENDPOINT=https://depa-inferencing-kms-azure.ispirt.in/app/listpubkeys \
+              TEST_MODE=false \
             --azure-file-volume-share-name "${{ env.FILE_SHARE }}" \
             --azure-file-volume-account-name "${{ needs.provision.outputs.storage_account }}" \
             --azure-file-volume-account-key "$STORAGE_KEY" \
@@ -218,6 +259,16 @@ jobs:
             exit 1
           fi
           echo "getValues test passed: keys and expected value found in response."
+
+      - name: Get container logs
+        if: always()
+        run: |
+          echo "=== KV container logs (including if container terminated) ==="
+          az container logs \
+            --resource-group "${{ needs.provision.outputs.resource_group }}" \
+            --name "${{ env.ACI_NAME }}" \
+            --tail 500 \
+            || echo "Could not fetch logs (container may not exist or not yet started)."
 
       - name: Clean up ACI
         if: always()
