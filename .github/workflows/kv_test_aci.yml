@@ -1,0 +1,210 @@
+# Generate test delta data, create RG + storage + file share, deploy KV service to ACI,
+# and verify data load via getValues HTTP API.
+#
+# Creates a resource group and storage account (with fslogix share) in the workflow.
+# Uses same Azure credentials as azure_deploy.
+
+name: KV test
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: 'Azure region for resource group, storage, and ACI'
+        required: false
+        type: string
+        default: 'centralindia'
+      kv_image:
+        description: 'KV service container image'
+        required: false
+        type: string
+        default: 'ispirt.azurecr.io/depainferencing/azure/key-value-service:prod-1.2.0.4'
+
+env:
+  FILE_SHARE: fslogix
+  DELTAS_PATH: deltas
+  ACI_NAME: kv-load-test
+
+jobs:
+  provision:
+    runs-on: ubuntu-22.04
+    outputs:
+      resource_group: ${{ steps.provision.outputs.resource_group }}
+      storage_account: ${{ steps.provision.outputs.storage_account }}
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
+
+      - name: Create resource group and storage account
+        id: provision
+        run: |
+          RG_NAME="kv-load-test-rg-${{ github.run_id }}"
+          # Storage account name: 3–24 chars, lowercase alphanumeric, globally unique
+          SA_NAME="kvloadtest${{ github.run_id }}"
+          REGION="${{ inputs.region }}"
+          az group create --name "$RG_NAME" --location "$REGION" --output none
+          az storage account create \
+            --resource-group "$RG_NAME" \
+            --name "$SA_NAME" \
+            --location "$REGION" \
+            --sku Standard_LRS \
+            --kind StorageV2 \
+            --output none
+          SA_KEY=$(az storage account keys list \
+            --resource-group "$RG_NAME" \
+            --account-name "$SA_NAME" \
+            --query "[0].value" -o tsv)
+          echo "::add-mask::$SA_KEY"
+          az storage share create \
+            --name "${{ env.FILE_SHARE }}" \
+            --account-name "$SA_NAME" \
+            --account-key "$SA_KEY" \
+            --auth-mode key \
+            --output none
+          echo "resource_group=$RG_NAME" >> $GITHUB_OUTPUT
+          echo "storage_account=$SA_NAME" >> $GITHUB_OUTPUT
+          echo "Created resource group: $RG_NAME, storage account: $SA_NAME"
+
+  generate-and-upload:
+    needs: provision
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
+
+      - name: Generate test delta
+        working-directory: ./tools/key-value-service
+        run: |
+          mkdir -p ./tmp
+          ./data_cli.sh format_delta ./data.csv ./tmp/DELTA_0000000000000001
+          ls -la ./tmp/
+
+      - name: Upload deltas to file share
+        run: |
+          ACCOUNT_KEY=$(az storage account keys list \
+            --resource-group "${{ needs.provision.outputs.resource_group }}" \
+            --account-name "${{ needs.provision.outputs.storage_account }}" \
+            --query "[0].value" -o tsv)
+          az storage file upload-batch \
+            --account-name "${{ needs.provision.outputs.storage_account }}" \
+            --account-key "$ACCOUNT_KEY" \
+            --destination "${{ env.FILE_SHARE }}" \
+            --destination-path "${{ env.DELTAS_PATH }}" \
+            --source ./tools/key-value-service/tmp \
+            --auth-mode key
+
+  deploy-aci-and-test:
+    needs: [provision, generate-and-upload]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
+
+      - name: Get storage key
+        id: storage
+        run: |
+          KEY=$(az storage account keys list \
+            --resource-group "${{ needs.provision.outputs.resource_group }}" \
+            --account-name "${{ needs.provision.outputs.storage_account }}" \
+            --query "[0].value" -o tsv)
+          echo "key=$KEY" >> $GITHUB_OUTPUT
+          echo "::add-mask::$KEY"
+
+      - name: Deploy KV service to ACI
+        env:
+          STORAGE_KEY: ${{ steps.storage.outputs.key }}
+        run: |
+          az container create \
+            --resource-group "${{ needs.provision.outputs.resource_group }}" \
+            --name "${{ env.ACI_NAME }}" \
+            --image "${{ inputs.kv_image }}" \
+            --ports 50051 51052 \
+            --environment-variables \
+              KV_PORT=50051 \
+              KV_HEALTHCHECK_PORT=50051 \
+              AZURE_LOCAL_DATA_DIR=/data/deltas \
+              AZURE_LOCAL_REALTIME_DATA_DIR=/data/realtime \
+              DATA_LOADING_NUM_THREADS=1 \
+            --azure-file-volume-share-name "${{ env.FILE_SHARE }}" \
+            --azure-file-volume-account-name "${{ needs.provision.outputs.storage_account }}" \
+            --azure-file-volume-account-key "$STORAGE_KEY" \
+            --azure-file-volume-mount-path /data \
+            --ip-address Public \
+            --location "${{ inputs.region }}"
+          echo "ACI created."
+
+      - name: Get ACI IP
+        id: aci
+        run: |
+          IP=$(az container show \
+            --resource-group "${{ needs.provision.outputs.resource_group }}" \
+            --name "${{ env.ACI_NAME }}" \
+            --query "ipAddress.ip" -o tsv)
+          echo "ip=$IP" >> $GITHUB_OUTPUT
+          echo "KV service IP: $IP"
+
+      - name: Wait for KV to load data
+        run: |
+          echo "Waiting 90s for KV service to start and load deltas..."
+          sleep 90
+
+      - name: Test getValues API
+        run: |
+          IP="${{ steps.aci.outputs.ip }}"
+          URL="http://${IP}:51052/getvalues?hostname=test.com&experimentGroupId=1&keys=9999999990,9999999991"
+          echo "Request: $URL"
+          HTTP_CODE=$(curl -s -o /tmp/getvalues.json -w "%{http_code}" --connect-timeout 10 --max-time 30 "$URL")
+          echo "HTTP status: $HTTP_CODE"
+          cat /tmp/getvalues.json | head -c 500
+          echo ""
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Expected HTTP 200, got $HTTP_CODE"
+            exit 1
+          fi
+          BODY=$(cat /tmp/getvalues.json)
+          if ! echo "$BODY" | grep -q "9999999990"; then
+            echo "Response missing key 9999999990"
+            exit 1
+          fi
+          if ! echo "$BODY" | grep -q "PLATINUM_CARD\|60000"; then
+            echo "Response missing expected value for 9999999990 (PLATINUM_CARD|60000)"
+            exit 1
+          fi
+          echo "getValues test passed: keys and expected value found in response."
+
+      - name: Clean up ACI
+        if: always()
+        run: |
+          az container delete \
+            --resource-group "${{ needs.provision.outputs.resource_group }}" \
+            --name "${{ env.ACI_NAME }}" \
+            --yes \
+            || true
+
+      - name: Clean up resource group
+        if: success()
+        run: |
+          az group delete \
+            --name "${{ needs.provision.outputs.resource_group }}" \
+            --yes \
+            --no-wait \
+            || true
