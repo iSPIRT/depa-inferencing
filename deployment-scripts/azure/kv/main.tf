@@ -52,6 +52,31 @@ resource "azurerm_storage_share_directory" "realtime" {
   storage_share_url  = "https://${azurerm_storage_account.sa.name}.file.core.windows.net/${azurerm_storage_share.share.name}"
 }
 
+# Empty deltas and realtime dirs on destroy so azurerm_storage_share_directory can be removed (Azure does not delete non-empty dirs).
+resource "null_resource" "cleanup_share_dirs_on_destroy" {
+  depends_on = [azurerm_storage_share_directory.deltas, azurerm_storage_share_directory.realtime]
+
+  triggers = {
+    share_name = azurerm_storage_share.share.name
+    account    = azurerm_storage_account.sa.name
+  }
+
+  provisioner "local-exec" {
+    when = destroy
+    command = <<-EOT
+      for dir in deltas realtime; do
+        names=$(az storage file list --share-name "${self.triggers.share_name}" --path "$dir" --account-name "${self.triggers.account}" --account-key "$AZURE_STORAGE_KEY" -o tsv --query "[].name" 2>/dev/null) || true
+        for name in $names; do
+          [ -n "$name" ] && az storage file delete --share-name "${self.triggers.share_name}" --path "$dir/$name" --account-name "${self.triggers.account}" --account-key "$AZURE_STORAGE_KEY" || true
+        done
+      done
+    EOT
+    environment = {
+      AZURE_STORAGE_KEY = azurerm_storage_account.sa.primary_access_key
+    }
+  }
+}
+
 resource "azurerm_container_group" "kv" {
   depends_on = [azurerm_storage_share_directory.deltas, azurerm_storage_share_directory.realtime]
   name                = local.aci_name

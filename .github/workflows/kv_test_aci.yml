@@ -19,7 +19,7 @@ on:
         description: 'KV service container image'
         required: false
         type: string
-        default: 'ispirt.azurecr.io/depainferencing/azure/key-value-service:prod-1.2.0.4'
+        default: 'ispirt.azurecr.io/depainferencing/azure/key-value-service:nonprod-1.2.0.4'
 env:
   DELTAS_PATH: deltas   # subdirectory in share fslogix = /data/deltas in container
 
@@ -100,7 +100,7 @@ jobs:
       - name: Test getValues API
         run: |
           IP="${{ steps.aci.outputs.ip }}"
-          URL="http://${IP}:51052/getvalues?hostname=test.com&experimentGroupId=1&keys=9999999990,9999999991"
+          URL="http://${IP}:51052/v2/getvalues?hostname=test.com&experimentGroupId=1&keys=9999999990,9999999991"
           echo "Request: $URL"
           HTTP_CODE=$(curl -s -o /tmp/getvalues.json -w "%{http_code}" --connect-timeout 10 --max-time 30 "$URL")
           echo "HTTP status: $HTTP_CODE"
