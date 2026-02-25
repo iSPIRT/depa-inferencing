@@ -100,32 +100,41 @@ jobs:
       - name: Test getValues API
         run: |
           # Query protocol: PUT /v2/getvalues with JSON body (see https://github.com/iSPIRT/protected-auction-key-value-service/blob/main/docs/testing_the_query_protocol.md)
+          # Response: compressionGroups[].content is base64-encoded payload with keyValues
           IP="${{ steps.aci.outputs.ip }}"
           URL="http://${IP}:51052/v2/getvalues"
           BODY='{"metadata":{"hostname":"test.com"},"partitions":[{"id":0,"compressionGroupId":0,"arguments":[{"tags":["structured","groupNames"],"data":["9999999990","9999999991"]},{"tags":["custom","keys"],"data":["9999999990","9999999991"]}]},{"id":1,"compressionGroupId":0,"arguments":[{"tags":["structured","groupNames"],"data":["9999999990","9999999991"]},{"tags":["custom","keys"],"data":["9999999990","9999999991"]}]}]}'
           echo "Request: PUT $URL"
           HTTP_CODE=$(curl -s -o /tmp/getvalues.json -w "%{http_code}" -X PUT -H "Content-Type: application/json" -d "$BODY" --connect-timeout 10 --max-time 30 "$URL")
           echo "HTTP status: $HTTP_CODE"
-          cat /tmp/getvalues.json | head -c 500
-          echo ""
           if [ "$HTTP_CODE" != "200" ]; then
             echo "Expected HTTP 200, got $HTTP_CODE"
+            cat /tmp/getvalues.json | head -c 500
             exit 1
           fi
-          RESP=$(cat /tmp/getvalues.json)
-          if ! echo "$RESP" | grep -q "9999999990"; then
-            echo "Response missing key 9999999990"
+          # Response is {"compressionGroups":[{"compressionGroupId":0,"content":"<base64>"},...]} - decode first content and check keys/values
+          CONTENT=$(jq -r '.compressionGroups[0].content // empty' /tmp/getvalues.json)
+          if [ -z "$CONTENT" ]; then
+            echo "Response missing compressionGroups[0].content"
+            cat /tmp/getvalues.json | head -c 500
             exit 1
           fi
-          if ! echo "$RESP" | grep -q "PLATINUM_CARD\|60000"; then
-            echo "Response missing expected value for 9999999990 (PLATINUM_CARD|60000)"
+          DECODED=$(echo "$CONTENT" | base64 -d 2>/dev/null)
+          if [ -z "$DECODED" ]; then
+            echo "Failed to base64-decode content"
             exit 1
           fi
-          if ! echo "$RESP" | grep -q "partitions\|keyGroupOutputs\|keyValues"; then
-            echo "Response missing expected query protocol structure (partitions/keyGroupOutputs/keyValues)"
+          if ! echo "$DECODED" | grep -q "9999999990"; then
+            echo "Decoded content missing key 9999999990"
+            echo "$DECODED" | head -c 300
             exit 1
           fi
-          echo "getValues test passed: PUT /v2/getvalues returned 200 with expected keys and structure."
+          if ! echo "$DECODED" | grep -q "PLATINUM_CARD\|60000"; then
+            echo "Decoded content missing expected value (PLATINUM_CARD|60000)"
+            echo "$DECODED" | head -c 300
+            exit 1
+          fi
+          echo "getValues test passed: PUT /v2/getvalues returned 200, compressionGroups[0].content decodes to expected keys and values."
 
       - name: Get container logs
         if: always()
