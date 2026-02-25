@@ -15,6 +15,8 @@ provider "azurerm" {
   features {}
 }
 
+data "azurerm_client_config" "current" {}
+
 locals {
   resource_group_name  = "kv-load-test-rg"
   storage_account_name = "kvloadtestaci"
@@ -42,6 +44,13 @@ resource "azurerm_storage_share" "share" {
   quota               = 5120
 }
 
+# Grant Terraform identity permission to list/delete files in the share (needed for destroy-time cleanup).
+resource "azurerm_role_assignment" "storage_file_contributor" {
+  scope                = azurerm_storage_account.sa.id
+  role_definition_name = "Storage File Data SMB Share Elevated Contributor"
+  principal_id         = data.azurerm_client_config.current.object_id
+}
+
 resource "azurerm_storage_share_directory" "deltas" {
   name               = "deltas"
   storage_share_url  = "https://${azurerm_storage_account.sa.name}.file.core.windows.net/${azurerm_storage_share.share.name}"
@@ -53,6 +62,7 @@ resource "azurerm_storage_share_directory" "realtime" {
 }
 
 # Empty deltas and realtime dirs on destroy so azurerm_storage_share_directory can be removed (Azure does not delete non-empty dirs).
+# Uses Azure CLI auth (az login); ensure the identity has Storage File Data permissions on the account (e.g. Storage File Data SMB Share Elevated Contributor).
 resource "null_resource" "cleanup_share_dirs_on_destroy" {
   depends_on = [azurerm_storage_share_directory.deltas, azurerm_storage_share_directory.realtime]
 
@@ -65,15 +75,12 @@ resource "null_resource" "cleanup_share_dirs_on_destroy" {
     when = destroy
     command = <<-EOT
       for dir in deltas realtime; do
-        names=$(az storage file list --share-name "${self.triggers.share_name}" --path "$dir" --account-name "${self.triggers.account}" --account-key "$AZURE_STORAGE_KEY" -o tsv --query "[].name" 2>/dev/null) || true
+        names=$(az storage file list --share-name "${self.triggers.share_name}" --path "$dir" --account-name "${self.triggers.account}" --auth-mode login -o tsv --query "[].name" 2>/dev/null) || true
         for name in $names; do
-          [ -n "$name" ] && az storage file delete --share-name "${self.triggers.share_name}" --path "$dir/$name" --account-name "${self.triggers.account}" --account-key "$AZURE_STORAGE_KEY" || true
+          [ -n "$name" ] && az storage file delete --share-name "${self.triggers.share_name}" --path "$dir/$name" --account-name "${self.triggers.account}" --auth-mode login || true
         done
       done
     EOT
-    environment = {
-      AZURE_STORAGE_KEY = azurerm_storage_account.sa.primary_access_key
-    }
   }
 }
 
