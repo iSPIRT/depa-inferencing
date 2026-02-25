@@ -137,6 +137,27 @@ jobs:
             echo "Could not get resource group name (Terraform state may be gone)."
           fi
 
+      - name: Empty share dirs before destroy
+        if: always()
+        working-directory: deployment-scripts/azure/kv
+        env:
+          STORAGE_KEY: ${{ steps.tf_outputs.outputs.storage_primary_key }}
+          SHARE: ${{ steps.tf_outputs.outputs.file_share_name }}
+        run: |
+          if [ -z "$STORAGE_KEY" ] || [ -z "$SHARE" ]; then
+            echo "Skipping (no storage key or share name from Terraform output)."
+            exit 0
+          fi
+          SA_NAME=$(terraform output -raw storage_account_name 2>/dev/null) || true
+          [ -z "$SA_NAME" ] && echo "Skipping (no Terraform state)." && exit 0
+          echo "::add-mask::$STORAGE_KEY"
+          for dir in deltas realtime; do
+            names=$(az storage file list --share-name "$SHARE" --path "$dir" --account-name "$SA_NAME" --account-key "$STORAGE_KEY" -o tsv --query "[].name" 2>/dev/null) || true
+            for name in $names; do
+              [ -n "$name" ] && az storage file delete --share-name "$SHARE" --path "$dir/$name" --account-name "$SA_NAME" --account-key "$STORAGE_KEY" || true
+            done
+          done
+
       - name: Terraform Destroy (all resources)
         if: always()
         working-directory: deployment-scripts/azure/kv
