@@ -67,74 +67,71 @@ jobs:
         run: |
           KEY=$(terraform output -raw storage_primary_key)
           SHARE=$(terraform output -raw file_share_name)
+          SA_NAME=$(terraform output -raw storage_account_name)
           echo "storage_primary_key=$KEY" >> $GITHUB_OUTPUT
           echo "file_share_name=$SHARE" >> $GITHUB_OUTPUT
+          echo "storage_account_name=$SA_NAME" >> $GITHUB_OUTPUT
           echo "::add-mask::$KEY"
 
-      - name: Generate test delta
-        working-directory: ./tools/key-value-service
-        run: |
-          mkdir -p ./tmp
-          ./data_cli.sh format_delta ./data.csv ./tmp/DELTA_0000000000000001
-          ls -la ./tmp/
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Upload deltas to file share
-        working-directory: deployment-scripts/azure/kv
-        env:
-          STORAGE_KEY: ${{ steps.tf_outputs.outputs.storage_primary_key }}
+      - name: Install KV test dependencies
         run: |
-          SA_NAME=$(terraform output -raw storage_account_name)
-          echo "::add-mask::$STORAGE_KEY"
-          az storage file upload-batch \
-            --account-name "$SA_NAME" \
-            --account-key "$STORAGE_KEY" \
-            --destination "${{ steps.tf_outputs.outputs.file_share_name }}" \
-            --destination-path "${{ env.DELTAS_PATH }}" \
-            --source "$GITHUB_WORKSPACE/tools/key-value-service/tmp"
+          pip install -r tools/key-value-service/requirements-test.txt
+
+      - name: Generate and upload first delta (Python)
+        working-directory: ./tools/key-value-service
+        env:
+          KV_STORAGE_ACCOUNT: ${{ steps.tf_outputs.outputs.storage_account_name }}
+          KV_STORAGE_KEY: ${{ steps.tf_outputs.outputs.storage_primary_key }}
+          KV_SHARE_NAME: ${{ steps.tf_outputs.outputs.file_share_name }}
+          KV_SHARE_PATH: ${{ env.DELTAS_PATH }}
+        run: |
+          echo "::add-mask::$KV_STORAGE_KEY"
+          python generate_and_upload_delta.py --csv data.csv --delta-name DELTA_0000000000000001
 
       - name: Wait for KV to load data
         run: |
           echo "Waiting 90s for KV service to start and load deltas..."
           sleep 90
 
-      - name: Test getValues API
+      - name: Run KV Python tests (initial load)
+        env:
+          KV_BASE_URL: http://${{ steps.aci.outputs.ip }}:51052
+          KV_TEST_HOSTNAME: test.com
         run: |
-          # Query protocol: PUT /v2/getvalues with JSON body (see https://github.com/iSPIRT/protected-auction-key-value-service/blob/main/docs/testing_the_query_protocol.md)
-          # Response: compressionGroups[].content is base64-encoded payload with keyValues
-          IP="${{ steps.aci.outputs.ip }}"
-          URL="http://${IP}:51052/v2/getvalues"
-          BODY='{"metadata":{"hostname":"test.com"},"partitions":[{"id":0,"compressionGroupId":0,"arguments":[{"tags":["structured","groupNames"],"data":["9999999990","9999999991"]},{"tags":["custom","keys"],"data":["9999999990","9999999991"]}]},{"id":1,"compressionGroupId":0,"arguments":[{"tags":["structured","groupNames"],"data":["9999999990","9999999991"]},{"tags":["custom","keys"],"data":["9999999990","9999999991"]}]}]}'
-          echo "Request: PUT $URL"
-          HTTP_CODE=$(curl -s -o /tmp/getvalues.json -w "%{http_code}" -X PUT -H "Content-Type: application/json" -d "$BODY" --connect-timeout 10 --max-time 30 "$URL")
-          echo "HTTP status: $HTTP_CODE"
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "Expected HTTP 200, got $HTTP_CODE"
-            cat /tmp/getvalues.json | head -c 500
-            exit 1
-          fi
-          # Response is {"compressionGroups":[{"compressionGroupId":0,"content":"<base64>"},...]} - decode first content and check keys/values
-          CONTENT=$(jq -r '.compressionGroups[0].content // empty' /tmp/getvalues.json)
-          if [ -z "$CONTENT" ]; then
-            echo "Response missing compressionGroups[0].content"
-            cat /tmp/getvalues.json | head -c 500
-            exit 1
-          fi
-          DECODED=$(echo "$CONTENT" | base64 -d 2>/dev/null)
-          if [ -z "$DECODED" ]; then
-            echo "Failed to base64-decode content"
-            exit 1
-          fi
-          if ! echo "$DECODED" | grep -q "9999999990"; then
-            echo "Decoded content missing key 9999999990"
-            echo "$DECODED" | head -c 300
-            exit 1
-          fi
-          if ! echo "$DECODED" | grep -q "PLATINUM_CARD\|60000"; then
-            echo "Decoded content missing expected value (PLATINUM_CARD|60000)"
-            echo "$DECODED" | head -c 300
-            exit 1
-          fi
-          echo "getValues test passed: PUT /v2/getvalues returned 200, compressionGroups[0].content decodes to expected keys and values."
+          cd tools/key-value-service && python -m pytest tests/test_getvalues.py -v
+
+      - name: Generate and upload second delta (Python)
+        working-directory: ./tools/key-value-service
+        env:
+          KV_STORAGE_ACCOUNT: ${{ steps.tf_outputs.outputs.storage_account_name }}
+          KV_STORAGE_KEY: ${{ steps.tf_outputs.outputs.storage_primary_key }}
+          KV_SHARE_NAME: ${{ steps.tf_outputs.outputs.file_share_name }}
+          KV_SHARE_PATH: ${{ env.DELTAS_PATH }}
+        run: |
+          echo "::add-mask::$KV_STORAGE_KEY"
+          python generate_and_upload_delta.py --csv tests/data_delta2.csv --delta-name DELTA_0000000000000002
+
+      - name: Wait for KV to reload second delta
+        run: |
+          echo "Waiting 90s for KV to pick up second delta..."
+          sleep 90
+
+      - name: Run KV Python tests (incremental / second delta)
+        env:
+          KV_BASE_URL: http://${{ steps.aci.outputs.ip }}:51052
+          KV_TEST_HOSTNAME: test.com
+          KV_TEST_STORAGE_ACCOUNT: ${{ steps.tf_outputs.outputs.storage_account_name }}
+          KV_TEST_STORAGE_KEY: ${{ steps.tf_outputs.outputs.storage_primary_key }}
+          KV_TEST_SHARE_NAME: ${{ steps.tf_outputs.outputs.file_share_name }}
+          KV_TEST_SHARE_PATH: ${{ env.DELTAS_PATH }}
+          KV_TEST_RELOAD_WAIT_SEC: "30"
+        run: |
+          cd tools/key-value-service && python -m pytest tests/test_getvalues_incremental.py -v
 
       - name: Get container logs
         if: always()
