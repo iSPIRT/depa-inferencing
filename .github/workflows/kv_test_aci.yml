@@ -99,10 +99,12 @@ jobs:
 
       - name: Test getValues API
         run: |
+          # Query protocol: PUT /v2/getvalues with JSON body (see https://github.com/iSPIRT/protected-auction-key-value-service/blob/main/docs/testing_the_query_protocol.md)
           IP="${{ steps.aci.outputs.ip }}"
-          URL="http://${IP}:51052/v2/getvalues?hostname=test.com&experimentGroupId=1&keys=9999999990,9999999991"
-          echo "Request: $URL"
-          HTTP_CODE=$(curl -s -o /tmp/getvalues.json -w "%{http_code}" --connect-timeout 10 --max-time 30 "$URL")
+          URL="http://${IP}:51052/v2/getvalues"
+          BODY='{"metadata":{"hostname":"test.com"},"partitions":[{"id":0,"compressionGroupId":0,"arguments":[{"tags":["structured","groupNames"],"data":["9999999990","9999999991"]},{"tags":["custom","keys"],"data":["9999999990","9999999991"]}]},{"id":1,"compressionGroupId":0,"arguments":[{"tags":["structured","groupNames"],"data":["9999999990","9999999991"]},{"tags":["custom","keys"],"data":["9999999990","9999999991"]}]}]}'
+          echo "Request: PUT $URL"
+          HTTP_CODE=$(curl -s -o /tmp/getvalues.json -w "%{http_code}" -X PUT -H "Content-Type: application/json" -d "$BODY" --connect-timeout 10 --max-time 30 "$URL")
           echo "HTTP status: $HTTP_CODE"
           cat /tmp/getvalues.json | head -c 500
           echo ""
@@ -110,16 +112,20 @@ jobs:
             echo "Expected HTTP 200, got $HTTP_CODE"
             exit 1
           fi
-          BODY=$(cat /tmp/getvalues.json)
-          if ! echo "$BODY" | grep -q "9999999990"; then
+          RESP=$(cat /tmp/getvalues.json)
+          if ! echo "$RESP" | grep -q "9999999990"; then
             echo "Response missing key 9999999990"
             exit 1
           fi
-          if ! echo "$BODY" | grep -q "PLATINUM_CARD\|60000"; then
+          if ! echo "$RESP" | grep -q "PLATINUM_CARD\|60000"; then
             echo "Response missing expected value for 9999999990 (PLATINUM_CARD|60000)"
             exit 1
           fi
-          echo "getValues test passed: keys and expected value found in response."
+          if ! echo "$RESP" | grep -q "partitions\|keyGroupOutputs\|keyValues"; then
+            echo "Response missing expected query protocol structure (partitions/keyGroupOutputs/keyValues)"
+            exit 1
+          fi
+          echo "getValues test passed: PUT /v2/getvalues returned 200 with expected keys and structure."
 
       - name: Get container logs
         if: always()
