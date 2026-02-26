@@ -19,8 +19,7 @@ terraform {
 provider "azurerm" {
   features {}
 
-  subscription_id       = local.subscription_id
-  tenant_id             = local.tenant_id
-  storage_use_azuread   = true
+  subscription_id = local.subscription_id
+  tenant_id       = local.tenant_id
 }
 
