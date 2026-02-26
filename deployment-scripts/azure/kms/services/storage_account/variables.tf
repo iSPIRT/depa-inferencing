@@ -28,23 +28,6 @@ variable "account_replication_type" {
   default     = "LRS"
 }
 
-variable "file_share_name" {
-  type        = string
-  description = "Name of the file share for storing ledger backups."
-  default     = "depa-inferencing-kms-ledger-backup"
-}
-
-variable "file_share_quota_gb" {
-  type        = number
-  description = "The maximum size of the file share in gigabytes. Must be greater than 0, and less than or equal to 102400."
-  default     = 100
-}
-
-variable "managed_identity_principal_id" {
-  type        = string
-  description = "Principal ID of the managed identity that will be granted access to the storage account."
-}
-
 variable "tags" {
   type        = map(string)
   description = "Tags to apply to the storage account."

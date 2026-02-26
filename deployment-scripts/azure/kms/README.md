@@ -69,7 +69,6 @@ terraform apply
 - Key Vault (with public access enabled initially)
 - Confidential Ledger
 - Application Gateway
-- Storage Account (for ledger backups)
 
 ### Phase 2: Key Vault Networking Deployment
 
