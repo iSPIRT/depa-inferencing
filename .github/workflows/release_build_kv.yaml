@@ -19,11 +19,6 @@ on:
         options:
         - nonprod
         - prod
-      services:
-        description: 'Services to build (comma-separated)'
-        required: true
-        default: 'key_value_service'
-        type: string
       run_tests:
         description: 'Run tests'
         required: true
@@ -65,7 +60,6 @@ jobs:
         echo "🚀 Manual Build Triggered on Self-Hosted Runner"
         echo "Build Ref: ${{ github.event.inputs.build_ref }}"
         echo "Build Flavor: ${{ github.event.inputs.build_flavor }}"
-        echo "Services: ${{ github.event.inputs.services }}"
         echo "Run tests?: ${{ github.event.inputs.run_tests }}"
         echo "Run precommit checks?: ${{ github.event.inputs.run_precommit_checks }}"
         echo "Release Version: ${{ github.event.inputs.release_tag }}"
@@ -132,19 +126,6 @@ jobs:
     - name: Make Build Script Executable
       run: |
         chmod +x ./production/packaging/build_and_test_all_in_docker
-        
-    - name: Parse Service Paths
-      id: parse_services
-      run: |
-        # Convert comma-separated services to --service-path arguments
-        services="${{ github.event.inputs.services }}"
-        service_args=""
-        IFS=',' read -ra SERVICE_ARRAY <<< "$services"
-        for service in "${SERVICE_ARRAY[@]}"; do
-          service_args="$service_args --service-path ${service// /}"
-        done
-        echo "service_args=$service_args" >> $GITHUB_OUTPUT
-        echo "Parsed service arguments: $service_args"
         
     - name: Run Custom Build Command
       run: |
@@ -224,7 +205,6 @@ jobs:
         echo "Key Value Service image: $KV_SERVICE_IMAGE"
 
     - name: Load and Push Key Value Service Image
-      if: contains(github.event.inputs.services, 'key_value_service')
       run: |
         # Load the key value service image from tar file
         if [ -f "./dist/key_value_service_image.tar" ]; then

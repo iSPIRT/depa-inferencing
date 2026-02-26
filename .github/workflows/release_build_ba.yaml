@@ -19,6 +19,16 @@ on:
         options:
         - non_prod
         - prod
+      run_tests:
+        description: 'Run tests'
+        required: true
+        default: false
+        type: boolean
+      run_precommit_checks:
+        description: 'Run precommit checks'
+        required: true
+        default: false
+        type: boolean
       services:
         description: 'Services to build (comma-separated)'
         required: true
@@ -74,6 +84,8 @@ jobs:
         echo "🚀 Manual Build Triggered on Self-Hosted Runner"
         echo "Build Ref: ${{ github.event.inputs.build_ref }}"
         echo "Build Flavor: ${{ github.event.inputs.build_flavor }}"
+        echo "Run tests?: ${{ github.event.inputs.run_tests }}"
+        echo "Run precommit checks?: ${{ github.event.inputs.run_precommit_checks }}"
         echo "Services: ${{ github.event.inputs.services }}"
         echo "Release Version: ${{ github.event.inputs.release_tag }}"
         echo "Push to ACR: ${{ github.event.inputs.push_to_acr }}"
@@ -155,10 +167,21 @@ jobs:
         
     - name: Run Custom Build Command
       run: |
+        TEST_FLAG="--no-tests"
+        PRECOMMIT_FLAG="--no-precommit"
+
+        if [ "${{ github.event.inputs.run_tests }}" = "true" ]; then
+          TEST_FLAG=""
+        fi
+
+        if [ "${{ github.event.inputs.run_precommit_checks }}" = "true" ]; then
+          PRECOMMIT_FLAG=""
+        fi
+
         ./production/packaging/build_and_test_all_in_docker \
           ${{ steps.parse_services.outputs.service_args }} \
-          --no-precommit \
-          --no-tests \
+          $TEST_FLAG \
+          $PRECOMMIT_FLAG \
           --build-flavor ${{ github.event.inputs.build_flavor }} \
           --platform azure \
           --instance local

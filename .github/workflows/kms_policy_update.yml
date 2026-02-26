@@ -12,22 +12,22 @@ on:
         description: 'DEPA Inferencing Release Version for Bidding and Auction Services'
         required: true
         type: string
-        default: 'prod-4.8.0.1'
+        default: 'prod-4.8.0.3'
       kv-services-version:
-        description: 'DEPA Inferencing Release Version for KV Services'
+        description: 'DEPA Inferencing Release Version for Key-Value Services'
         required: true
         type: string
-        default: 'prod-1.2.0.0'
+        default: 'prod-1.2.0.3'
       azure-vault-name:
-        description: 'Azure Key Vault'
+        description: 'KMS: Azure Key Vault name'
         required: true
         type: string
-        default: 'depa-inferencing-vault'
+        default: 'depa-inferencing-cin-kv'
       deployment-name:
-        description: 'Azure Confidential Ledger deployment name'
+        description: 'KMS: Azure Confidential Ledger name'
         required: true
         type: string
-        default: 'depa-inferencing-kms'
+        default: 'depa-inferencing-kms-prod-cin'
 
 jobs:
   azure-login:
