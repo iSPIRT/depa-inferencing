@@ -48,9 +48,3 @@ variable "certificate_name" {
   description = "Name of the certificate in Key Vault."
 }
 
-variable "logs_storage_account_id" {
-  type        = string
-  description = "Resource ID of the storage account for storing Confidential Ledger logs. If empty, diagnostics are disabled."
-  default     = ""
-}
-

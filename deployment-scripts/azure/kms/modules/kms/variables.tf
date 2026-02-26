@@ -103,36 +103,6 @@ variable "extra_tags" {
   default     = {}
 }
 
-variable "storage_account_name" {
-  type        = string
-  description = "Optional explicit name for the ledger backup storage account. Must be globally unique, 3-24 characters, lowercase alphanumeric only. Defaults to a convention-based value when empty."
-  default     = ""
-}
-
-variable "storage_account_tier" {
-  type        = string
-  description = "Defines the Tier to use for the storage account. Valid options are Standard and Premium."
-  default     = "Standard"
-}
-
-variable "storage_account_replication_type" {
-  type        = string
-  description = "Defines the type of replication to use for the storage account. Valid options are LRS, GRS, RAGRS, ZRS, GZRS and RAGZRS."
-  default     = "LRS"
-}
-
-variable "storage_file_share_name" {
-  type        = string
-  description = "Name of the file share for storing ledger backups."
-  default     = "ledger-backup"
-}
-
-variable "storage_file_share_quota_gb" {
-  type        = number
-  description = "The maximum size of the file share in gigabytes for ledger backups. Must be greater than 0, and less than or equal to 102400."
-  default     = 100
-}
-
 variable "additional_virtual_network_ids" {
   type        = list(string)
   description = "List of additional Virtual Network IDs to link the Key Vault private DNS zone to. This allows VMs in other VNets to access the Key Vault via private endpoint. NOTE: This variable is NOT used in the main KMS deployment - it is only used in the separate key-vault-networking deployment."
@@ -142,23 +112,5 @@ variable "additional_virtual_network_ids" {
 variable "allowed_hostname" {
   type        = string
   description = "Allowed hostname for Application Gateway Host header validation. Requests with Host headers not matching this hostname will be blocked by WAF."
-}
-
-variable "logs_storage_account_name" {
-  type        = string
-  description = "Optional explicit name for the KMS logs storage account. Must be globally unique, 3-24 characters, lowercase alphanumeric only. Defaults to a convention-based value when empty."
-  default     = ""
-}
-
-variable "logs_storage_account_tier" {
-  type        = string
-  description = "Defines the Tier to use for the logs storage account. Valid options are Standard and Premium."
-  default     = "Standard"
-}
-
-variable "logs_storage_account_replication_type" {
-  type        = string
-  description = "Defines the type of replication to use for the logs storage account. Valid options are LRS, GRS, RAGRS, ZRS, GZRS and RAGZRS."
-  default     = "LRS"
 }
 

@@ -9,8 +9,6 @@ locals {
   default_ledger_name          = "depa-inferencing-kms-${var.environment}-${var.region_short}"
   default_vnet_name            = "depa-inferencing-kms-${var.environment}-${var.region_short}-vnet"
   default_app_gateway_name     = "depa-inferencing-kms-${var.environment}-${var.region_short}-agw"
-  default_storage_account_name = lower(substr(replace(replace("depainfkms${var.environment}${var.region_short}ldgbk", "-", ""), "_", ""), 0, 24))
-  default_logs_storage_account_name = lower(substr(replace(replace("depainfkms${var.environment}${var.region_short}logs", "-", ""), "_", ""), 0, 24))
 
   resource_group_name = (
     var.resource_group_name != "" ?
@@ -52,18 +50,6 @@ locals {
     var.application_gateway_name != "" ?
     var.application_gateway_name :
     local.default_app_gateway_name
-  )
-
-  storage_account_name = (
-    var.storage_account_name != "" ?
-    var.storage_account_name :
-    local.default_storage_account_name
-  )
-
-  logs_storage_account_name = (
-    var.logs_storage_account_name != "" ?
-    var.logs_storage_account_name :
-    local.default_logs_storage_account_name
   )
 
   base_tags = {
@@ -129,36 +115,6 @@ module "key_vault" {
   ]
 }
 
-# Storage Account for KMS logs (created before Confidential Ledger for diagnostics)
-resource "azurerm_storage_account" "logs" {
-  name                            = local.logs_storage_account_name
-  resource_group_name             = module.resource_group.name
-  location                        = module.resource_group.location
-  account_tier                    = var.logs_storage_account_tier
-  account_replication_type        = var.logs_storage_account_replication_type
-  account_kind                    = "StorageV2"
-  min_tls_version                 = "TLS1_2"
-  https_traffic_only_enabled      = true
-  allow_nested_items_to_be_public = false
-
-  tags = merge(local.base_tags, var.extra_tags, {
-    Purpose = "KMS-Logs"
-  })
-}
-
-# Grant the managed identity Storage Blob Data Contributor role for logs
-resource "azurerm_role_assignment" "logs_storage_blob_data_contributor" {
-  scope                            = azurerm_storage_account.logs.id
-  role_definition_name             = "Storage Blob Data Contributor"
-  principal_id                     = module.managed_identity.principal_id
-  skip_service_principal_aad_check = true
-
-  depends_on = [
-    azurerm_storage_account.logs,
-    module.managed_identity,
-  ]
-}
-
 module "confidential_ledger" {
   source                                       = "../../services/confidential_ledger"
   name                                         = local.ledger_name
@@ -169,12 +125,10 @@ module "confidential_ledger" {
   azuread_based_service_principal_principal_id = module.managed_identity.principal_id
   key_vault_id                                 = module.key_vault.id
   certificate_name                             = local.certificate_name
-  logs_storage_account_id                      = azurerm_storage_account.logs.id
 
   depends_on = [
     module.key_vault,
     module.managed_identity,
-    azurerm_storage_account.logs,
   ]
 }
 
@@ -199,24 +153,6 @@ module "application_gateway" {
   depends_on = [
     module.virtual_network,
     module.confidential_ledger,
-  ]
-}
-
-module "storage_account" {
-  source                        = "../../services/storage_account"
-  name                          = local.storage_account_name
-  resource_group_name           = module.resource_group.name
-  location                      = module.resource_group.location
-  account_tier                  = var.storage_account_tier
-  account_replication_type      = var.storage_account_replication_type
-  file_share_name               = var.storage_file_share_name
-  file_share_quota_gb           = var.storage_file_share_quota_gb
-  managed_identity_principal_id = module.managed_identity.principal_id
-  tags                          = merge(local.base_tags, var.extra_tags)
-
-  depends_on = [
-    module.resource_group,
-    module.managed_identity,
   ]
 }
 
