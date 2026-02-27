@@ -21,7 +21,7 @@ on:
       kv_release_tag:
         description: 'KV Service: Release version'
         required: true
-        default: '1.2.0.3'
+        default: '1.2.0.4'
         type: string
       kv_run_tests:
         description: 'KV Service: Run tests'

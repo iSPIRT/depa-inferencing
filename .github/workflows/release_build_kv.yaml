@@ -32,7 +32,7 @@ on:
       release_tag:
         description: 'Release version for Docker images (e.g., 1.0.0.0)'
         required: true
-        default: '1.2.0.0'
+        default: '1.2.0.4'
         type: string
       push_to_acr:
         description: 'Push images to Azure Container Registry'
