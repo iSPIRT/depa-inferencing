@@ -12,12 +12,12 @@ on:
         description: 'DEPA Inferencing Release Version for Bidding and Auction Services'
         required: true
         type: string
-        default: 'prod-4.8.0.3'
+        default: 'prod-4.8.0.4'
       kv-services-version:
         description: 'DEPA Inferencing Release Version for Key-Value Services'
         required: true
         type: string
-        default: 'prod-1.2.0.3'
+        default: 'prod-1.2.0.5'
       azure-vault-name:
         description: 'KMS: Azure Key Vault name'
         required: true

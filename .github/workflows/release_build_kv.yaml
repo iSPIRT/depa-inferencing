@@ -32,7 +32,7 @@ on:
       release_tag:
         description: 'Release version for Docker images (e.g., 1.0.0.0)'
         required: true
-        default: '1.2.0.4'
+        default: '1.2.0.5'
         type: string
       push_to_acr:
         description: 'Push images to Azure Container Registry'
@@ -230,19 +230,27 @@ jobs:
           SQUASHED_BASE=$(docker import kv-squashed.tar kv-squashed-base:temp)
           echo "Created squashed base image: $SQUASHED_BASE"
           
-          # step 4: extract original image metadata
+          # step 4: extract original image metadata (ENTRYPOINT + CMD)
           ENTRYPOINT_JSON=$(docker inspect $LOADED_IMAGE --format '{{json .Config.Entrypoint}}')
+          CMD_JSON=$(docker inspect $LOADED_IMAGE --format '{{json .Config.Cmd}}')
           ENV_VARS=$(docker inspect $LOADED_IMAGE --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
           WORKDIR=$(docker inspect $LOADED_IMAGE --format '{{.Config.WorkingDir}}')
           
           echo "Original ENTRYPOINT: $ENTRYPOINT_JSON"
-          echo "Original ENV vars: $ENV_VARS"
+          echo "Original CMD: $CMD_JSON"
           
           # step 5: create Dockerfile to restore metadata
-          echo "FROM kv-squashed-base:temp" > Dockerfile.squashed
-          echo "$ENV_VARS" >> Dockerfile.squashed
-          echo "WORKDIR ${WORKDIR:-/}" >> Dockerfile.squashed
-          echo "ENTRYPOINT $ENTRYPOINT_JSON" >> Dockerfile.squashed
+          {
+            echo "FROM kv-squashed-base:temp"
+            echo "$ENV_VARS"
+            echo "WORKDIR ${WORKDIR:-/}"
+            if [ "$ENTRYPOINT_JSON" != "null" ] && [ -n "$ENTRYPOINT_JSON" ]; then
+              echo "ENTRYPOINT $ENTRYPOINT_JSON"
+            fi
+            if [ "$CMD_JSON" != "null" ] && [ -n "$CMD_JSON" ]; then
+              echo "CMD $CMD_JSON"
+            fi
+          } > Dockerfile.squashed
           
           echo "Generated Dockerfile.squashed:"
           cat Dockerfile.squashed

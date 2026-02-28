@@ -21,7 +21,7 @@ on:
       kv_release_tag:
         description: 'KV Service: Release version'
         required: true
-        default: '1.2.0.4'
+        default: '1.2.0.5'
         type: string
       kv_run_tests:
         description: 'KV Service: Run tests'
@@ -43,7 +43,7 @@ on:
       ba_release_tag:
         description: 'BA Services: Release version'
         required: true
-        default: '4.8.0.3'
+        default: '4.8.0.4'
         type: string
       ba_services:
         description: 'BA Services to build (comma-separated)'
@@ -182,14 +182,22 @@ jobs:
         docker export kv-squash-temp -o kv-squashed.tar
 
         ENTRYPOINT_JSON=$(docker inspect $KV_IMAGE --format '{{json .Config.Entrypoint}}')
+        CMD_JSON=$(docker inspect $KV_IMAGE --format '{{json .Config.Cmd}}')
         ENV_VARS=$(docker inspect $KV_IMAGE --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
         WORKDIR=$(docker inspect $KV_IMAGE --format '{{.Config.WorkingDir}}')
 
         docker import kv-squashed.tar kv-squashed-base:temp
-        echo "FROM kv-squashed-base:temp" > Dockerfile.squashed
-        echo "$ENV_VARS" >> Dockerfile.squashed
-        echo "WORKDIR ${WORKDIR:-/}" >> Dockerfile.squashed
-        echo "ENTRYPOINT $ENTRYPOINT_JSON" >> Dockerfile.squashed
+        {
+          echo "FROM kv-squashed-base:temp"
+          echo "$ENV_VARS"
+          echo "WORKDIR ${WORKDIR:-/}"
+          if [ "$ENTRYPOINT_JSON" != "null" ] && [ -n "$ENTRYPOINT_JSON" ]; then
+            echo "ENTRYPOINT $ENTRYPOINT_JSON"
+          fi
+          if [ "$CMD_JSON" != "null" ] && [ -n "$CMD_JSON" ]; then
+            echo "CMD $CMD_JSON"
+          fi
+        } > Dockerfile.squashed
         docker build -f Dockerfile.squashed -t kv-squashed-final:temp .
 
         LAYER_COUNT=$(docker inspect kv-squashed-final:temp | jq '.[0].RootFS.Layers | length')
@@ -235,14 +243,22 @@ jobs:
         docker export kv-nonprod-squash-temp -o kv-nonprod-squashed.tar
 
         ENTRYPOINT_JSON=$(docker inspect $KV_IMAGE --format '{{json .Config.Entrypoint}}')
+        CMD_JSON=$(docker inspect $KV_IMAGE --format '{{json .Config.Cmd}}')
         ENV_VARS=$(docker inspect $KV_IMAGE --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
         WORKDIR=$(docker inspect $KV_IMAGE --format '{{.Config.WorkingDir}}')
 
         docker import kv-nonprod-squashed.tar kv-nonprod-squashed-base:temp
-        echo "FROM kv-nonprod-squashed-base:temp" > Dockerfile.nonprod.squashed
-        echo "$ENV_VARS" >> Dockerfile.nonprod.squashed
-        echo "WORKDIR ${WORKDIR:-/}" >> Dockerfile.nonprod.squashed
-        echo "ENTRYPOINT $ENTRYPOINT_JSON" >> Dockerfile.nonprod.squashed
+        {
+          echo "FROM kv-nonprod-squashed-base:temp"
+          echo "$ENV_VARS"
+          echo "WORKDIR ${WORKDIR:-/}"
+          if [ "$ENTRYPOINT_JSON" != "null" ] && [ -n "$ENTRYPOINT_JSON" ]; then
+            echo "ENTRYPOINT $ENTRYPOINT_JSON"
+          fi
+          if [ "$CMD_JSON" != "null" ] && [ -n "$CMD_JSON" ]; then
+            echo "CMD $CMD_JSON"
+          fi
+        } > Dockerfile.nonprod.squashed
         docker build -f Dockerfile.nonprod.squashed -t kv-nonprod-squashed-final:temp .
 
         docker rm kv-nonprod-squash-temp
@@ -355,16 +371,51 @@ jobs:
           --platform azure \
           --instance local
 
-    - name: Stage BA tars for downstream jobs
+    - name: Squash and Stage BA tars for downstream jobs
       run: |
         mkdir -p ${{ env.STAGING_DIR }}/ba
+
+        squash_and_stage() {
+          local TAR_PATH="$1"
+          local STAGING_NAME="$2"
+          local TEMP_PREFIX="$3"
+
+          LOAD_OUT=$(docker load -i "$TAR_PATH")
+          IMG=$(echo "$LOAD_OUT" | grep "Loaded image:" | sed 's/Loaded image: //')
+
+          docker create --name "${TEMP_PREFIX}-temp" "$IMG"
+          docker export "${TEMP_PREFIX}-temp" -o "${TEMP_PREFIX}.tar"
+
+          ENTRYPOINT_JSON=$(docker inspect "$IMG" --format '{{json .Config.Entrypoint}}')
+          CMD_JSON=$(docker inspect "$IMG" --format '{{json .Config.Cmd}}')
+          ENV_VARS=$(docker inspect "$IMG" --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
+          WORKDIR=$(docker inspect "$IMG" --format '{{.Config.WorkingDir}}')
+
+          docker import "${TEMP_PREFIX}.tar" "${TEMP_PREFIX}-base:temp"
+          {
+            echo "FROM ${TEMP_PREFIX}-base:temp"
+            echo "$ENV_VARS"
+            echo "WORKDIR ${WORKDIR:-/}"
+            [ "$ENTRYPOINT_JSON" != "null" ] && [ -n "$ENTRYPOINT_JSON" ] && echo "ENTRYPOINT $ENTRYPOINT_JSON"
+            [ "$CMD_JSON" != "null" ] && [ -n "$CMD_JSON" ] && echo "CMD $CMD_JSON"
+          } > "Dockerfile.${TEMP_PREFIX}"
+          docker build -f "Dockerfile.${TEMP_PREFIX}" -t "${TEMP_PREFIX}-final:temp" .
+
+          docker save "${TEMP_PREFIX}-final:temp" -o "${{ env.STAGING_DIR }}/ba/${STAGING_NAME}"
+          docker rm "${TEMP_PREFIX}-temp"
+          docker rmi "${TEMP_PREFIX}-base:temp" "${TEMP_PREFIX}-final:temp" "$IMG" || true
+          rm -f "${TEMP_PREFIX}.tar" "Dockerfile.${TEMP_PREFIX}"
+        }
+
         if echo "${{ github.event.inputs.ba_services }}" | grep -q "bidding_service"; then
-          cp ./dist/azure/bidding_service_image.tar ${{ env.STAGING_DIR }}/ba/bidding_service_image.tar
-          echo "✅ Staged bidding_service_image.tar"
+          echo "Squashing bidding_service..."
+          squash_and_stage ./dist/azure/bidding_service_image.tar bidding_service_image.tar bidding-squash
+          echo "✅ Staged squashed bidding_service_image.tar"
         fi
         if echo "${{ github.event.inputs.ba_services }}" | grep -q "buyer_frontend_service"; then
-          cp ./dist/azure/buyer_frontend_service_image.tar ${{ env.STAGING_DIR }}/ba/buyer_frontend_service_image.tar
-          echo "✅ Staged buyer_frontend_service_image.tar"
+          echo "Squashing buyer_frontend_service..."
+          squash_and_stage ./dist/azure/buyer_frontend_service_image.tar buyer_frontend_service_image.tar bfe-squash
+          echo "✅ Staged squashed buyer_frontend_service_image.tar"
         fi
         ls -lh ${{ env.STAGING_DIR }}/ba/
 
@@ -388,15 +439,50 @@ jobs:
           --platform azure \
           --instance local
 
-        # Stage BA non-prod images
+        # Squash and stage BA non-prod images
         mkdir -p ${{ env.STAGING_DIR }}/ba
+
+        squash_and_stage_nonprod() {
+          local TAR_PATH="$1"
+          local STAGING_NAME="$2"
+          local TEMP_PREFIX="$3"
+
+          LOAD_OUT=$(docker load -i "$TAR_PATH")
+          IMG=$(echo "$LOAD_OUT" | grep "Loaded image:" | sed 's/Loaded image: //')
+
+          docker create --name "${TEMP_PREFIX}-temp" "$IMG"
+          docker export "${TEMP_PREFIX}-temp" -o "${TEMP_PREFIX}.tar"
+
+          ENTRYPOINT_JSON=$(docker inspect "$IMG" --format '{{json .Config.Entrypoint}}')
+          CMD_JSON=$(docker inspect "$IMG" --format '{{json .Config.Cmd}}')
+          ENV_VARS=$(docker inspect "$IMG" --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
+          WORKDIR=$(docker inspect "$IMG" --format '{{.Config.WorkingDir}}')
+
+          docker import "${TEMP_PREFIX}.tar" "${TEMP_PREFIX}-base:temp"
+          {
+            echo "FROM ${TEMP_PREFIX}-base:temp"
+            echo "$ENV_VARS"
+            echo "WORKDIR ${WORKDIR:-/}"
+            [ "$ENTRYPOINT_JSON" != "null" ] && [ -n "$ENTRYPOINT_JSON" ] && echo "ENTRYPOINT $ENTRYPOINT_JSON"
+            [ "$CMD_JSON" != "null" ] && [ -n "$CMD_JSON" ] && echo "CMD $CMD_JSON"
+          } > "Dockerfile.${TEMP_PREFIX}"
+          docker build -f "Dockerfile.${TEMP_PREFIX}" -t "${TEMP_PREFIX}-final:temp" .
+
+          docker save "${TEMP_PREFIX}-final:temp" -o "${{ env.STAGING_DIR }}/ba/${STAGING_NAME}"
+          docker rm "${TEMP_PREFIX}-temp"
+          docker rmi "${TEMP_PREFIX}-base:temp" "${TEMP_PREFIX}-final:temp" "$IMG" || true
+          rm -f "${TEMP_PREFIX}.tar" "Dockerfile.${TEMP_PREFIX}"
+        }
+
         if echo "${{ github.event.inputs.ba_services }}" | grep -q "bidding_service"; then
-          cp ./dist/azure/bidding_service_image.tar ${{ env.STAGING_DIR }}/ba/bidding_service_image_nonprod.tar
-          echo "✅ Staged nonprod bidding_service image"
+          echo "Squashing nonprod bidding_service..."
+          squash_and_stage_nonprod ./dist/azure/bidding_service_image.tar bidding_service_image_nonprod.tar bidding-nonprod-squash
+          echo "✅ Staged squashed nonprod bidding_service image"
         fi
         if echo "${{ github.event.inputs.ba_services }}" | grep -q "buyer_frontend_service"; then
-          cp ./dist/azure/buyer_frontend_service_image.tar ${{ env.STAGING_DIR }}/ba/buyer_frontend_service_image_nonprod.tar
-          echo "✅ Staged nonprod buyer_frontend_service image"
+          echo "Squashing nonprod buyer_frontend_service..."
+          squash_and_stage_nonprod ./dist/azure/buyer_frontend_service_image.tar buyer_frontend_service_image_nonprod.tar bfe-nonprod-squash
+          echo "✅ Staged squashed nonprod buyer_frontend_service image"
         fi
         ls -lh ${{ env.STAGING_DIR }}/ba/
 
