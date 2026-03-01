@@ -56,18 +56,3 @@ output "kms_ledger_endpoint_name" {
   value       = module.kms.ledger_endpoint_name
 }
 
-output "kms_logs_storage_account_id" {
-  description = "Resource ID of the storage account for KMS logs."
-  value       = module.kms.logs_storage_account_id
-}
-
-output "kms_logs_storage_account_name" {
-  description = "Name of the storage account for KMS logs."
-  value       = module.kms.logs_storage_account_name
-}
-
-output "kms_logs_storage_account_primary_blob_endpoint" {
-  description = "Primary blob endpoint URL of the storage account for KMS logs."
-  value       = module.kms.logs_storage_account_primary_blob_endpoint
-}
-
