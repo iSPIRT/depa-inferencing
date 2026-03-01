@@ -1,0 +1,802 @@
+name: Master Release Build
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_nonprod:
+        description: 'Build non-prod images'
+        required: true
+        default: false
+        type: boolean
+
+      # ── KV Service ────────────────────────────────────────────────────────
+      kv_build_ref:
+        description: 'KV Service: Branch/tag to build from'
+        required: true
+        default: 'main'
+        type: string
+      kv_release_tag:
+        description: 'KV Service: Release version'
+        required: true
+        default: '1.2.0.5'
+        type: string
+      kv_run_tests:
+        description: 'KV Service: Run tests'
+        required: true
+        default: false
+        type: boolean
+      kv_run_precommit_checks:
+        description: 'KV Service: Run precommit checks'
+        required: true
+        default: false
+        type: boolean
+
+      # ── BA Services ───────────────────────────────────────────────────────
+      ba_build_ref:
+        description: 'BA Services: Branch/tag to build from'
+        required: true
+        default: 'main'
+        type: string
+      ba_release_tag:
+        description: 'BA Services: Release version'
+        required: true
+        default: '4.8.0.4'
+        type: string
+      ba_services:
+        description: 'BA Services to build (comma-separated)'
+        required: true
+        default: 'bidding_service,buyer_frontend_service'
+        type: string
+      ba_run_tests:
+        description: 'BA Services: Run tests'
+        required: true
+        default: false
+        type: boolean
+      ba_run_precommit_checks:
+        description: 'BA Services: Run precommit checks'
+        required: true
+        default: false
+        type: boolean
+
+      # ── KMS Policy ────────────────────────────────────────────────────────
+      update_kms_policy:
+        description: 'Update KMS key release policy'
+        required: true
+        default: false
+        type: boolean
+      azure_vault_name:
+        description: 'KMS: Azure Key Vault name'
+        required: false
+        default: 'depa-inferencing-cin-kv'
+        type: string
+      deployment_name:
+        description: 'KMS: Azure Confidential Ledger name'
+        required: false
+        default: 'depa-inferencing-kms-prod-cin'
+        type: string
+
+      # ── ACR & SBOMs ───────────────────────────────────────────────────────
+      push_to_acr:
+        description: 'Push all images to Azure Container Registry'
+        required: true
+        default: true
+        type: boolean
+      generate_sboms:
+        description: 'Generate SBOMs (requires ACR push)'
+        required: true
+        default: false
+        type: boolean
+
+env:
+  BUILD_TYPE: Release
+  REGISTRY: ${{ vars.REGISTRY }}
+  REPO_PATH: ${{ vars.REPO_PATH }}
+  # Shared staging directory on the self-hosted runner for inter-job tar handoff
+  STAGING_DIR: /opt/runner-staging/${{ github.run_id }}
+
+jobs:
+
+  # ============================================================
+  # BUILD KV AND BA IN PARALLEL
+  # ============================================================
+
+  build-kv:
+    runs-on: self-hosted
+    timeout-minutes: 1440
+    steps:
+    - name: Display KV Build Parameters
+      run: |
+        echo "🚀 KV Service Build"
+        echo "Build Ref:    ${{ github.event.inputs.kv_build_ref }}"
+        echo "Build Flavor: prod"
+        echo "Release Tag:  ${{ github.event.inputs.kv_release_tag }}"
+        echo "Run Tests:    ${{ github.event.inputs.kv_run_tests }}"
+        echo "Precommit:    ${{ github.event.inputs.kv_run_precommit_checks }}"
+
+    - name: Checkout KV Repository
+      uses: actions/checkout@v4
+      with:
+        repository: ispirt/protected-auction-key-value-service
+        ref: ${{ github.event.inputs.kv_build_ref }}
+        fetch-depth: 0
+
+    - name: Setup Build Environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake git
+
+    - name: Setup Dependencies
+      run: |
+        sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
+        sudo apt-get autoremove -y
+        sudo apt-get install -y \
+          apt-transport-https ca-certificates curl gnupg lsb-release \
+          libssl-dev libcurl4-openssl-dev libprotobuf-dev protobuf-compiler pkg-config
+
+    - name: Install Docker
+      run: |
+        sudo apt-get clean && sudo apt-get autoclean
+        sudo rm -rf /var/lib/apt/lists/*
+        curl -fsSL https://get.docker.com -o get-docker.sh
+        sudo sh get-docker.sh && rm get-docker.sh
+        sudo usermod -aG docker $USER
+        docker --version
+
+    - name: Setup Docker
+      run: |
+        sudo systemctl start docker
+        sudo systemctl enable docker
+        sudo usermod -aG docker $USER
+
+    - name: Make Build Script Executable
+      run: chmod +x ./production/packaging/build_and_test_all_in_docker
+
+    - name: Run KV Build
+      run: |
+        TEST_FLAG=""
+        PRECOMMIT_FLAG="--no-precommit"
+        if [ "${{ github.event.inputs.kv_run_tests }}" = "true" ]; then
+          TEST_FLAG="--with-tests"
+        fi
+        if [ "${{ github.event.inputs.kv_run_precommit_checks }}" = "true" ]; then
+          PRECOMMIT_FLAG=""
+        fi
+        ./production/packaging/build_and_test_all_in_docker \
+          --instance azure_microsoft \
+          --platform azure_microsoft \
+          --mode prod \
+          --service-path key_value_service \
+          $TEST_FLAG \
+          $PRECOMMIT_FLAG
+
+    - name: Squash KV image for CCE policy compatibility
+      run: |
+        echo "Loading KV image for squashing..."
+        KV_LOAD=$(docker load -i ./dist/key_value_service_image.tar)
+        KV_IMAGE=$(echo "$KV_LOAD" | grep "Loaded image:" | sed 's/Loaded image: //')
+
+        docker create --name kv-squash-temp $KV_IMAGE
+        docker export kv-squash-temp -o kv-squashed.tar
+
+        ENTRYPOINT_JSON=$(docker inspect $KV_IMAGE --format '{{json .Config.Entrypoint}}')
+        CMD_JSON=$(docker inspect $KV_IMAGE --format '{{json .Config.Cmd}}')
+        ENV_VARS=$(docker inspect $KV_IMAGE --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
+        WORKDIR=$(docker inspect $KV_IMAGE --format '{{.Config.WorkingDir}}')
+
+        docker import kv-squashed.tar kv-squashed-base:temp
+        {
+          echo "FROM kv-squashed-base:temp"
+          echo "$ENV_VARS"
+          echo "WORKDIR ${WORKDIR:-/}"
+          if [ "$ENTRYPOINT_JSON" != "null" ] && [ -n "$ENTRYPOINT_JSON" ]; then
+            echo "ENTRYPOINT $ENTRYPOINT_JSON"
+          fi
+          if [ "$CMD_JSON" != "null" ] && [ -n "$CMD_JSON" ]; then
+            echo "CMD $CMD_JSON"
+          fi
+        } > Dockerfile.squashed
+        docker build -f Dockerfile.squashed -t kv-squashed-final:temp .
+
+        LAYER_COUNT=$(docker inspect kv-squashed-final:temp | jq '.[0].RootFS.Layers | length')
+        echo "Squashed image has $LAYER_COUNT layers"
+
+        docker rm kv-squash-temp
+        docker rmi kv-squashed-base:temp $KV_IMAGE || true
+        rm -f kv-squashed.tar Dockerfile.squashed
+        echo "✅ KV image squashed"
+
+    - name: Stage KV tar for downstream jobs
+      run: |
+        mkdir -p ${{ env.STAGING_DIR }}/kv
+        docker save kv-squashed-final:temp -o ${{ env.STAGING_DIR }}/kv/key_value_service_image.tar
+        docker rmi kv-squashed-final:temp || true
+        echo "✅ Staged squashed KV tar to ${{ env.STAGING_DIR }}/kv/"
+        ls -lh ${{ env.STAGING_DIR }}/kv/
+
+    - name: Build KV non-prod image
+      if: ${{ github.event.inputs.build_nonprod == 'true' }}
+      run: |
+        TEST_FLAG=""
+        PRECOMMIT_FLAG="--no-precommit"
+        if [ "${{ github.event.inputs.kv_run_tests }}" = "true" ]; then
+          TEST_FLAG="--with-tests"
+        fi
+        if [ "${{ github.event.inputs.kv_run_precommit_checks }}" = "true" ]; then
+          PRECOMMIT_FLAG=""
+        fi
+        ./production/packaging/build_and_test_all_in_docker \
+          --instance azure_microsoft \
+          --platform azure_microsoft \
+          --mode nonprod \
+          --service-path key_value_service \
+          $TEST_FLAG \
+          $PRECOMMIT_FLAG
+
+        # Squash KV non-prod image
+        KV_LOAD=$(docker load -i ./dist/key_value_service_image.tar)
+        KV_IMAGE=$(echo "$KV_LOAD" | grep "Loaded image:" | sed 's/Loaded image: //')
+
+        docker create --name kv-nonprod-squash-temp $KV_IMAGE
+        docker export kv-nonprod-squash-temp -o kv-nonprod-squashed.tar
+
+        ENTRYPOINT_JSON=$(docker inspect $KV_IMAGE --format '{{json .Config.Entrypoint}}')
+        CMD_JSON=$(docker inspect $KV_IMAGE --format '{{json .Config.Cmd}}')
+        ENV_VARS=$(docker inspect $KV_IMAGE --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
+        WORKDIR=$(docker inspect $KV_IMAGE --format '{{.Config.WorkingDir}}')
+
+        docker import kv-nonprod-squashed.tar kv-nonprod-squashed-base:temp
+        {
+          echo "FROM kv-nonprod-squashed-base:temp"
+          echo "$ENV_VARS"
+          echo "WORKDIR ${WORKDIR:-/}"
+          if [ "$ENTRYPOINT_JSON" != "null" ] && [ -n "$ENTRYPOINT_JSON" ]; then
+            echo "ENTRYPOINT $ENTRYPOINT_JSON"
+          fi
+          if [ "$CMD_JSON" != "null" ] && [ -n "$CMD_JSON" ]; then
+            echo "CMD $CMD_JSON"
+          fi
+        } > Dockerfile.nonprod.squashed
+        docker build -f Dockerfile.nonprod.squashed -t kv-nonprod-squashed-final:temp .
+
+        docker rm kv-nonprod-squash-temp
+        docker rmi kv-nonprod-squashed-base:temp $KV_IMAGE || true
+        rm -f kv-nonprod-squashed.tar Dockerfile.nonprod.squashed
+        echo "✅ KV nonprod image squashed"
+
+        # Stage KV non-prod tar for downstream jobs
+        mkdir -p ${{ env.STAGING_DIR }}/kv
+        docker save kv-nonprod-squashed-final:temp -o ${{ env.STAGING_DIR }}/kv/key_value_service_image_nonprod.tar
+        docker rmi kv-nonprod-squashed-final:temp || true
+        echo "✅ Staged nonprod KV tar to ${{ env.STAGING_DIR }}/kv/"
+
+    - name: Cleanup KV build artifacts
+      if: always()
+      run: |
+        docker container prune -f || true
+        docker image prune -f || true
+        sudo rm -rf /tmp/docker-* /tmp/buildkit-* || true
+        df -h
+
+  build-ba:
+    runs-on: self-hosted
+    timeout-minutes: 1440
+    steps:
+    - name: Display BA Build Parameters
+      run: |
+        echo "🚀 BA Services Build"
+        echo "Build Ref:    ${{ github.event.inputs.ba_build_ref }}"
+        echo "Build Flavor: prod"
+        echo "Release Tag:  ${{ github.event.inputs.ba_release_tag }}"
+        echo "Services:     ${{ github.event.inputs.ba_services }}"
+        echo "Run Tests:    ${{ github.event.inputs.ba_run_tests }}"
+        echo "Precommit:    ${{ github.event.inputs.ba_run_precommit_checks }}"
+
+    - name: Initial Cleanup
+      run: |
+        docker container prune -f || true
+        docker image prune -a -f || true
+        docker system prune -f || true
+        sudo rm -rf ${GITHUB_WORKSPACE}/* || true
+        sudo rm -rf ./dist/ ../dist/ || true
+
+    - name: Checkout BA Repository
+      uses: actions/checkout@v4
+      with:
+        repository: ispirt/ad-selection-api.bidding-and-auction-servers
+        ref: ${{ github.event.inputs.ba_build_ref }}
+        fetch-depth: 0
+
+    - name: Setup Build Environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake git
+
+    - name: Setup Dependencies
+      run: |
+        sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
+        sudo apt-get autoremove -y
+        sudo apt-get install -y \
+          apt-transport-https ca-certificates curl gnupg lsb-release \
+          libssl-dev libcurl4-openssl-dev libprotobuf-dev protobuf-compiler pkg-config
+
+    - name: Install Docker
+      run: |
+        sudo apt-get clean && sudo apt-get autoclean
+        sudo rm -rf /var/lib/apt/lists/*
+        curl -fsSL https://get.docker.com -o get-docker.sh
+        sudo sh get-docker.sh && rm get-docker.sh
+        sudo usermod -aG docker $USER
+        docker --version
+
+    - name: Setup Docker
+      run: |
+        sudo systemctl start docker
+        sudo systemctl enable docker
+        sudo usermod -aG docker $USER
+
+    - name: Make Build Script Executable
+      run: chmod +x ./production/packaging/build_and_test_all_in_docker
+
+    - name: Parse BA Service Paths
+      id: parse_services
+      run: |
+        services="${{ github.event.inputs.ba_services }}"
+        service_args=""
+        IFS=',' read -ra SERVICE_ARRAY <<< "$services"
+        for service in "${SERVICE_ARRAY[@]}"; do
+          service_args="$service_args --service-path ${service// /}"
+        done
+        echo "service_args=$service_args" >> $GITHUB_OUTPUT
+        echo "Parsed: $service_args"
+
+    - name: Run BA Build
+      run: |
+        TEST_FLAG="--no-tests"
+        PRECOMMIT_FLAG="--no-precommit"
+        if [ "${{ github.event.inputs.ba_run_tests }}" = "true" ]; then
+          TEST_FLAG=""
+        fi
+        if [ "${{ github.event.inputs.ba_run_precommit_checks }}" = "true" ]; then
+          PRECOMMIT_FLAG=""
+        fi
+
+        ./production/packaging/build_and_test_all_in_docker \
+          ${{ steps.parse_services.outputs.service_args }} \
+          $TEST_FLAG \
+          $PRECOMMIT_FLAG \
+          --build-flavor prod \
+          --platform azure \
+          --instance local
+
+    - name: Squash and Stage BA tars for downstream jobs
+      run: |
+        mkdir -p ${{ env.STAGING_DIR }}/ba
+
+        squash_and_stage() {
+          local TAR_PATH="$1"
+          local STAGING_NAME="$2"
+          local TEMP_PREFIX="$3"
+
+          LOAD_OUT=$(docker load -i "$TAR_PATH")
+          IMG=$(echo "$LOAD_OUT" | grep "Loaded image:" | sed 's/Loaded image: //')
+
+          docker create --name "${TEMP_PREFIX}-temp" "$IMG"
+          docker export "${TEMP_PREFIX}-temp" -o "${TEMP_PREFIX}.tar"
+
+          ENTRYPOINT_JSON=$(docker inspect "$IMG" --format '{{json .Config.Entrypoint}}')
+          CMD_JSON=$(docker inspect "$IMG" --format '{{json .Config.Cmd}}')
+          ENV_VARS=$(docker inspect "$IMG" --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
+          WORKDIR=$(docker inspect "$IMG" --format '{{.Config.WorkingDir}}')
+
+          docker import "${TEMP_PREFIX}.tar" "${TEMP_PREFIX}-base:temp"
+          {
+            echo "FROM ${TEMP_PREFIX}-base:temp"
+            echo "$ENV_VARS"
+            echo "WORKDIR ${WORKDIR:-/}"
+            [ "$ENTRYPOINT_JSON" != "null" ] && [ -n "$ENTRYPOINT_JSON" ] && echo "ENTRYPOINT $ENTRYPOINT_JSON"
+            [ "$CMD_JSON" != "null" ] && [ -n "$CMD_JSON" ] && echo "CMD $CMD_JSON"
+          } > "Dockerfile.${TEMP_PREFIX}"
+          docker build -f "Dockerfile.${TEMP_PREFIX}" -t "${TEMP_PREFIX}-final:temp" .
+
+          docker save "${TEMP_PREFIX}-final:temp" -o "${{ env.STAGING_DIR }}/ba/${STAGING_NAME}"
+          docker rm "${TEMP_PREFIX}-temp"
+          docker rmi "${TEMP_PREFIX}-base:temp" "${TEMP_PREFIX}-final:temp" "$IMG" || true
+          rm -f "${TEMP_PREFIX}.tar" "Dockerfile.${TEMP_PREFIX}"
+        }
+
+        if echo "${{ github.event.inputs.ba_services }}" | grep -q "bidding_service"; then
+          echo "Squashing bidding_service..."
+          squash_and_stage ./dist/azure/bidding_service_image.tar bidding_service_image.tar bidding-squash
+          echo "✅ Staged squashed bidding_service_image.tar"
+        fi
+        if echo "${{ github.event.inputs.ba_services }}" | grep -q "buyer_frontend_service"; then
+          echo "Squashing buyer_frontend_service..."
+          squash_and_stage ./dist/azure/buyer_frontend_service_image.tar buyer_frontend_service_image.tar bfe-squash
+          echo "✅ Staged squashed buyer_frontend_service_image.tar"
+        fi
+        ls -lh ${{ env.STAGING_DIR }}/ba/
+
+    - name: Build BA non-prod images
+      if: ${{ github.event.inputs.build_nonprod == 'true' }}
+      run: |
+        TEST_FLAG="--no-tests"
+        PRECOMMIT_FLAG="--no-precommit"
+        if [ "${{ github.event.inputs.ba_run_tests }}" = "true" ]; then
+          TEST_FLAG=""
+        fi
+        if [ "${{ github.event.inputs.ba_run_precommit_checks }}" = "true" ]; then
+          PRECOMMIT_FLAG=""
+        fi
+
+        ./production/packaging/build_and_test_all_in_docker \
+          ${{ steps.parse_services.outputs.service_args }} \
+          $TEST_FLAG \
+          $PRECOMMIT_FLAG \
+          --build-flavor non_prod \
+          --platform azure \
+          --instance local
+
+        # Squash and stage BA non-prod images
+        mkdir -p ${{ env.STAGING_DIR }}/ba
+
+        squash_and_stage_nonprod() {
+          local TAR_PATH="$1"
+          local STAGING_NAME="$2"
+          local TEMP_PREFIX="$3"
+
+          LOAD_OUT=$(docker load -i "$TAR_PATH")
+          IMG=$(echo "$LOAD_OUT" | grep "Loaded image:" | sed 's/Loaded image: //')
+
+          docker create --name "${TEMP_PREFIX}-temp" "$IMG"
+          docker export "${TEMP_PREFIX}-temp" -o "${TEMP_PREFIX}.tar"
+
+          ENTRYPOINT_JSON=$(docker inspect "$IMG" --format '{{json .Config.Entrypoint}}')
+          CMD_JSON=$(docker inspect "$IMG" --format '{{json .Config.Cmd}}')
+          ENV_VARS=$(docker inspect "$IMG" --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
+          WORKDIR=$(docker inspect "$IMG" --format '{{.Config.WorkingDir}}')
+
+          docker import "${TEMP_PREFIX}.tar" "${TEMP_PREFIX}-base:temp"
+          {
+            echo "FROM ${TEMP_PREFIX}-base:temp"
+            echo "$ENV_VARS"
+            echo "WORKDIR ${WORKDIR:-/}"
+            [ "$ENTRYPOINT_JSON" != "null" ] && [ -n "$ENTRYPOINT_JSON" ] && echo "ENTRYPOINT $ENTRYPOINT_JSON"
+            [ "$CMD_JSON" != "null" ] && [ -n "$CMD_JSON" ] && echo "CMD $CMD_JSON"
+          } > "Dockerfile.${TEMP_PREFIX}"
+          docker build -f "Dockerfile.${TEMP_PREFIX}" -t "${TEMP_PREFIX}-final:temp" .
+
+          docker save "${TEMP_PREFIX}-final:temp" -o "${{ env.STAGING_DIR }}/ba/${STAGING_NAME}"
+          docker rm "${TEMP_PREFIX}-temp"
+          docker rmi "${TEMP_PREFIX}-base:temp" "${TEMP_PREFIX}-final:temp" "$IMG" || true
+          rm -f "${TEMP_PREFIX}.tar" "Dockerfile.${TEMP_PREFIX}"
+        }
+
+        if echo "${{ github.event.inputs.ba_services }}" | grep -q "bidding_service"; then
+          echo "Squashing nonprod bidding_service..."
+          squash_and_stage_nonprod ./dist/azure/bidding_service_image.tar bidding_service_image_nonprod.tar bidding-nonprod-squash
+          echo "✅ Staged squashed nonprod bidding_service image"
+        fi
+        if echo "${{ github.event.inputs.ba_services }}" | grep -q "buyer_frontend_service"; then
+          echo "Squashing nonprod buyer_frontend_service..."
+          squash_and_stage_nonprod ./dist/azure/buyer_frontend_service_image.tar buyer_frontend_service_image_nonprod.tar bfe-nonprod-squash
+          echo "✅ Staged squashed nonprod buyer_frontend_service image"
+        fi
+        ls -lh ${{ env.STAGING_DIR }}/ba/
+
+    - name: Cleanup BA build artifacts
+      if: always()
+      run: |
+        docker container prune -f || true
+        docker image prune -f || true
+        sudo rm -rf ./bidding-and-auction-servers/ ../bidding-and-auction-servers/ || true
+        sudo rm -rf /tmp/docker-* /tmp/buildkit-* || true
+        sudo chown -R $(whoami):$(whoami) ${GITHUB_WORKSPACE} || true
+        df -h
+
+  # ============================================================
+  # KMS POLICY UPDATE — uses local tar images
+  # ============================================================
+
+  update-kms-policy:
+    needs: [build-kv, build-ba]
+    runs-on: self-hosted
+    if: ${{ github.event.inputs.update_kms_policy == 'true' }}
+    env:
+      KV_TAG: ${{ github.event.inputs.kv_release_tag }}
+      BA_TAG: ${{ github.event.inputs.ba_release_tag }}
+      
+    steps:
+    - name: Checkout repository (for policy files and signing script)
+      uses: actions/checkout@v4
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
+
+    - name: Install Azure CLI Confcom extension
+      run: |
+        az extension add --name confcom
+        az extension update --name confcom
+        az version
+
+    - name: Setup Python virtual environment
+      run: |
+        python3 -m venv ccf_env
+        source ccf_env/bin/activate
+        pip install --upgrade pip
+        pip install ccf==6.0.10
+        echo "ccf_env/bin" >> $GITHUB_PATH
+
+    - name: Load images from staging directory
+      run: |
+        echo "Loading KV service image..."
+        KV_LOAD=$(docker load -i ${{ env.STAGING_DIR }}/kv/key_value_service_image.tar)
+        KV_IMAGE=$(echo "$KV_LOAD" | grep "Loaded image:" | sed 's/Loaded image: //')
+        docker tag $KV_IMAGE kv-service:prod-${KV_TAG}
+        echo "✅ kv-service:prod-${KV_TAG} ready"
+
+        echo "Loading bidding service image..."
+        OFFER_LOAD=$(docker load -i ${{ env.STAGING_DIR }}/ba/bidding_service_image.tar)
+        OFFER_IMAGE=$(echo "$OFFER_LOAD" | grep "Loaded image:" | sed 's/Loaded image: //')
+        docker tag $OFFER_IMAGE offer-service:prod-${BA_TAG}
+        echo "✅ offer-service:prod-${BA_TAG} ready"
+
+        echo "Loading buyer frontend service image..."
+        OFE_LOAD=$(docker load -i ${{ env.STAGING_DIR }}/ba/buyer_frontend_service_image.tar)
+        OFE_IMAGE=$(echo "$OFE_LOAD" | grep "Loaded image:" | sed 's/Loaded image: //')
+        docker tag $OFE_IMAGE ofe-service:prod-${BA_TAG}
+        echo "✅ ofe-service:prod-${BA_TAG} ready"
+
+    - name: Generate CCE policies from local images
+      run: |
+        KV_POLICY=$(az confcom acipolicygen -y -i policies/kv-policy.json \
+          --image kv-service:prod-${KV_TAG} \
+          --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
+        echo "KV_POLICY=$KV_POLICY" >> $GITHUB_ENV
+        echo "✅ KV policy:      $KV_POLICY"
+
+        OFE_POLICY=$(az confcom acipolicygen -y -i policies/ofe-policy.json \
+          --image ofe-service:prod-${BA_TAG} \
+          --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
+        echo "OFE_POLICY=$OFE_POLICY" >> $GITHUB_ENV
+        echo "✅ OFE policy:     $OFE_POLICY"
+
+        OFFER_POLICY=$(az confcom acipolicygen -y -i policies/offer-policy.json \
+          --image offer-service:prod-${BA_TAG} \
+          --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
+        echo "OFFER_POLICY=$OFFER_POLICY" >> $GITHUB_ENV
+        echo "✅ Offer policy: $OFFER_POLICY"
+
+    - name: Generate key release policy JSON
+      run: |
+        cat > $GITHUB_WORKSPACE/key_release_policy.json << EOF
+        {
+          "actions": [
+            {
+              "name": "set_key_release_policy",
+              "args": {
+                "service": "offer-services",
+                "type": "add",
+                "claims": {
+                  "x-ms-sevsnpvm-hostdata": [
+                    "${{ env.KV_POLICY }}",
+                    "${{ env.OFE_POLICY }}",
+                    "${{ env.OFFER_POLICY }}"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+        EOF
+
+        echo "Key release policy JSON generated:"
+        cat $GITHUB_WORKSPACE/key_release_policy.json
+
+    - name: Sign and submit key release policy proposal
+      env:
+        AZURE_VAULT_NAME: ${{ github.event.inputs.azure_vault_name }}
+        KMS_DEPLOYMENT_NAME: ${{ github.event.inputs.deployment_name }}
+        PROPOSAL: ${{ github.workspace }}/key_release_policy.json
+      run: |
+        source ccf_env/bin/activate
+        ./tools/signing/sign.sh
+
+    - name: Display current key release policy
+      env:
+        KMS_DEPLOYMENT_NAME: ${{ github.event.inputs.deployment_name }}
+      run: |
+        KMS_URL="https://${KMS_DEPLOYMENT_NAME}.confidential-ledger.azure.com"
+        TOKEN=$(az account get-access-token --resource https://confidential-ledger.azure.com | jq -r '.accessToken')
+        curl $KMS_URL/app/keyReleasePolicy -k \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer $TOKEN" | jq
+
+    - name: Cleanup KMS job artifacts
+      if: always()
+      run: |
+        docker rmi kv-service:prod-${KV_TAG} offer-service:prod-${BA_TAG} ofe-service:prod-${BA_TAG} || true
+        docker container prune -f || true
+        docker image prune -f || true
+        rm -f $GITHUB_WORKSPACE/key_release_policy.json || true
+
+  # ============================================================
+  # ACR PUSH — push all images to container registry
+  # ============================================================
+
+  push-to-acr:
+    needs: [build-kv, build-ba]
+    runs-on: self-hosted
+    if: ${{ github.event.inputs.push_to_acr == 'true' }}
+
+    steps:
+    - name: Log in to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ env.REGISTRY }}
+        username: ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}
+        password: ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
+
+    - name: Load and Push Prod Images
+      run: |
+        REPO="${{ env.REGISTRY }}/${{ env.REPO_PATH }}"
+
+        echo "Loading KV image..."
+        KV_LOAD=$(docker load -i ${{ env.STAGING_DIR }}/kv/key_value_service_image.tar)
+        KV_IMAGE=$(echo "$KV_LOAD" | grep "Loaded image:" | sed 's/Loaded image: //')
+        KV_ACR_IMAGE="$REPO/key-value-service:prod-${{ github.event.inputs.kv_release_tag }}"
+        docker tag $KV_IMAGE $KV_ACR_IMAGE
+        docker push $KV_ACR_IMAGE
+        echo "✅ Pushed: $KV_ACR_IMAGE"
+        docker rmi $KV_IMAGE || true
+
+        # Bidding service
+        if echo "${{ github.event.inputs.ba_services }}" | grep -q "bidding_service"; then
+          echo "Loading bidding service image..."
+          BIDDING_LOAD=$(docker load -i ${{ env.STAGING_DIR }}/ba/bidding_service_image.tar)
+          BIDDING_IMAGE=$(echo "$BIDDING_LOAD" | grep "Loaded image:" | sed 's/Loaded image: //')
+          BIDDING_ACR_IMAGE="$REPO/bidding-service:prod-${{ github.event.inputs.ba_release_tag }}"
+          docker tag $BIDDING_IMAGE $BIDDING_ACR_IMAGE
+          docker push $BIDDING_ACR_IMAGE
+          echo "✅ Pushed: $BIDDING_ACR_IMAGE"
+          docker rmi $BIDDING_IMAGE || true
+        fi
+
+        # Buyer frontend service
+        if echo "${{ github.event.inputs.ba_services }}" | grep -q "buyer_frontend_service"; then
+          echo "Loading buyer frontend service image..."
+          OFE_LOAD=$(docker load -i ${{ env.STAGING_DIR }}/ba/buyer_frontend_service_image.tar)
+          OFE_IMAGE=$(echo "$OFE_LOAD" | grep "Loaded image:" | sed 's/Loaded image: //')
+          OFE_ACR_IMAGE="$REPO/buyer-frontend-service:prod-${{ github.event.inputs.ba_release_tag }}"
+          docker tag $OFE_IMAGE $OFE_ACR_IMAGE
+          docker push $OFE_ACR_IMAGE
+          echo "✅ Pushed: $OFE_ACR_IMAGE"
+          docker rmi $OFE_IMAGE || true
+        fi
+
+    - name: Load and Push Non-prod Images
+      if: ${{ github.event.inputs.build_nonprod == 'true' }}
+      run: |
+        REPO="${{ env.REGISTRY }}/${{ env.REPO_PATH }}"
+
+        echo "Loading KV nonprod image..."
+        KV_NONPROD_LOAD=$(docker load -i ${{ env.STAGING_DIR }}/kv/key_value_service_image_nonprod.tar)
+        KV_NONPROD_IMAGE=$(echo "$KV_NONPROD_LOAD" | grep "Loaded image:" | sed 's/Loaded image: //')
+        KV_NONPROD_ACR_IMAGE="$REPO/key-value-service:nonprod-${{ github.event.inputs.kv_release_tag }}"
+        docker tag $KV_NONPROD_IMAGE $KV_NONPROD_ACR_IMAGE
+        docker push $KV_NONPROD_ACR_IMAGE
+        echo "✅ Pushed: $KV_NONPROD_ACR_IMAGE"
+        docker rmi $KV_NONPROD_IMAGE || true
+
+        if echo "${{ github.event.inputs.ba_services }}" | grep -q "bidding_service"; then
+          BIDDING_NONPROD_LOAD=$(docker load -i ${{ env.STAGING_DIR }}/ba/bidding_service_image_nonprod.tar)
+          BIDDING_NONPROD_IMAGE=$(echo "$BIDDING_NONPROD_LOAD" | grep "Loaded image:" | sed 's/Loaded image: //')
+          BIDDING_NONPROD_ACR_IMAGE="$REPO/bidding-service:nonprod-${{ github.event.inputs.ba_release_tag }}"
+          docker tag $BIDDING_NONPROD_IMAGE $BIDDING_NONPROD_ACR_IMAGE
+          docker push $BIDDING_NONPROD_ACR_IMAGE
+          echo "✅ Pushed: $BIDDING_NONPROD_ACR_IMAGE"
+          docker rmi $BIDDING_NONPROD_IMAGE || true
+        fi
+
+        if echo "${{ github.event.inputs.ba_services }}" | grep -q "buyer_frontend_service"; then
+          OFE_NONPROD_LOAD=$(docker load -i ${{ env.STAGING_DIR }}/ba/buyer_frontend_service_image_nonprod.tar)
+          OFE_NONPROD_IMAGE=$(echo "$OFE_NONPROD_LOAD" | grep "Loaded image:" | sed 's/Loaded image: //')
+          OFE_NONPROD_ACR_IMAGE="$REPO/buyer-frontend-service:nonprod-${{ github.event.inputs.ba_release_tag }}"
+          docker tag $OFE_NONPROD_IMAGE $OFE_NONPROD_ACR_IMAGE
+          docker push $OFE_NONPROD_ACR_IMAGE
+          echo "✅ Pushed: $OFE_NONPROD_ACR_IMAGE"
+          docker rmi $OFE_NONPROD_IMAGE || true
+        fi
+
+    - name: Cleanup ACR push artifacts
+      if: always()
+      run: |
+        docker container prune -f || true
+        docker image prune -f || true
+        sudo chown -R $(whoami):$(whoami) ${GITHUB_WORKSPACE} || true
+
+  # ============================================================
+  # SBOM GENERATION — after ACR pushes complete
+  # ============================================================
+
+  generate-sboms:
+    needs: [push-to-acr]
+    runs-on: self-hosted
+    if: ${{ github.event.inputs.push_to_acr == 'true' && github.event.inputs.generate_sboms == 'true' }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install Syft
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sudo sh -s -- -b /usr/local/bin
+        syft version
+
+    - name: Log in to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ env.REGISTRY }}
+        username: ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}
+        password: ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
+
+    - name: Generate SBOMs
+      run: |
+        KV_TAG="${{ github.event.inputs.kv_release_tag }}"
+        BA_TAG="${{ github.event.inputs.ba_release_tag }}"
+        REPO="${{ env.REGISTRY }}/${{ env.REPO_PATH }}"
+        SERVICES="${{ github.event.inputs.ba_services }}"
+
+        echo "🔍 Generating SBOMs..."
+
+        syft $REPO/key-value-service:prod-${KV_TAG} \
+          -o spdx-json=kv-prod-${KV_TAG}-sbom.spdx.json
+
+        if echo "$SERVICES" | grep -q "bidding_service"; then
+          syft $REPO/bidding-service:prod-${BA_TAG} \
+            -o spdx-json=bidding-service-prod-${BA_TAG}-sbom.spdx.json
+        fi
+
+        if echo "$SERVICES" | grep -q "buyer_frontend_service"; then
+          syft $REPO/buyer-frontend-service:prod-${BA_TAG} \
+            -o spdx-json=buyer-frontend-service-prod-${BA_TAG}-sbom.spdx.json
+        fi
+
+        syft dir:. -o spdx-json=repo-sbom.spdx.json
+
+        echo "✅ SBOMs generated:"
+        ls -lh *-sbom.spdx.json
+
+    - name: Upload SBOM Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom-files-prod-${{ github.event.inputs.ba_release_tag }}
+        path: '*-sbom.spdx.json'
+        retention-days: 90
+
+    - name: Cleanup SBOM job
+      if: always()
+      run: |
+        rm -f *-sbom.spdx.json || true
+        docker logout ${{ env.REGISTRY }} || true
+
+  # ============================================================
+  # STAGING CLEANUP — always runs last regardless of path taken
+  # ============================================================
+
+  cleanup-staging:
+    needs: [build-kv, build-ba]
+    runs-on: self-hosted
+    if: always()
+    steps:
+    - name: Remove staging directory
+      run: |
+        echo "🧹 Removing staging directory ${{ env.STAGING_DIR }}..."
+        sudo rm -rf ${{ env.STAGING_DIR }} || true
+        echo "✅ Staging cleanup complete"
