@@ -19,6 +19,16 @@ on:
         options:
         - non_prod
         - prod
+      run_tests:
+        description: 'Run tests'
+        required: true
+        default: false
+        type: boolean
+      run_precommit_checks:
+        description: 'Run precommit checks'
+        required: true
+        default: false
+        type: boolean
       services:
         description: 'Services to build (comma-separated)'
         required: true
@@ -27,7 +37,7 @@ on:
       release_tag:
         description: 'Release version for Docker images (e.g., 4.8.0.1)'
         required: true
-        default: '4.8.0.1'
+        default: '4.8.0.4'
         type: string
       push_to_acr:
         description: 'Push images to Azure Container Registry'
@@ -74,6 +84,8 @@ jobs:
         echo "🚀 Manual Build Triggered on Self-Hosted Runner"
         echo "Build Ref: ${{ github.event.inputs.build_ref }}"
         echo "Build Flavor: ${{ github.event.inputs.build_flavor }}"
+        echo "Run tests?: ${{ github.event.inputs.run_tests }}"
+        echo "Run precommit checks?: ${{ github.event.inputs.run_precommit_checks }}"
         echo "Services: ${{ github.event.inputs.services }}"
         echo "Release Version: ${{ github.event.inputs.release_tag }}"
         echo "Push to ACR: ${{ github.event.inputs.push_to_acr }}"
@@ -155,10 +167,21 @@ jobs:
         
     - name: Run Custom Build Command
       run: |
+        TEST_FLAG="--no-tests"
+        PRECOMMIT_FLAG="--no-precommit"
+
+        if [ "${{ github.event.inputs.run_tests }}" = "true" ]; then
+          TEST_FLAG=""
+        fi
+
+        if [ "${{ github.event.inputs.run_precommit_checks }}" = "true" ]; then
+          PRECOMMIT_FLAG=""
+        fi
+
         ./production/packaging/build_and_test_all_in_docker \
           ${{ steps.parse_services.outputs.service_args }} \
-          --no-precommit \
-          --no-tests \
+          $TEST_FLAG \
+          $PRECOMMIT_FLAG \
           --build-flavor ${{ github.event.inputs.build_flavor }} \
           --platform azure \
           --instance local
@@ -237,59 +260,119 @@ jobs:
         echo "  Bidding Service: $BIDDING_SERVICE_IMAGE"
         echo "  Buyer Frontend Service: $BUYER_FRONTEND_IMAGE"
 
-    - name: Load and Push Bidding Service Image
+    - name: Load, Squash, and Push Bidding Service Image
       if: contains(github.event.inputs.services, 'bidding_service')
       run: |
-        # Load the bidding service image from tar file
         if [ -f "./dist/azure/bidding_service_image.tar" ]; then
           echo "Loading bidding_service_image.tar..."
           LOAD_OUTPUT=$(docker load -i ./dist/azure/bidding_service_image.tar)
-          
-          # Get the loaded image name
           LOADED_IMAGE=$(echo "$LOAD_OUTPUT" | grep "Loaded image:" | sed 's/Loaded image: //')
           echo "Loaded image: $LOADED_IMAGE"
-          
-          # Tag the image with service-specific naming following Azure best practices
+
+          # Squash to single layer for Azure confidential container CCE policy compatibility
+          echo "🔧 Squashing image layers for CCE policy compatibility..."
+          docker create --name bidding-squash-temp "$LOADED_IMAGE"
+          docker export bidding-squash-temp -o bidding-squashed.tar
+          docker import bidding-squashed.tar bidding-squashed-base:temp
+
+          ENTRYPOINT_JSON=$(docker inspect "$LOADED_IMAGE" --format '{{json .Config.Entrypoint}}')
+          CMD_JSON=$(docker inspect "$LOADED_IMAGE" --format '{{json .Config.Cmd}}')
+          ENV_VARS=$(docker inspect "$LOADED_IMAGE" --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
+          WORKDIR=$(docker inspect "$LOADED_IMAGE" --format '{{.Config.WorkingDir}}')
+          echo "Original ENTRYPOINT: $ENTRYPOINT_JSON"
+          echo "Original CMD: $CMD_JSON"
+
+          {
+            echo "FROM bidding-squashed-base:temp"
+            echo "$ENV_VARS"
+            echo "WORKDIR ${WORKDIR:-/}"
+            if [ "$ENTRYPOINT_JSON" != "null" ] && [ -n "$ENTRYPOINT_JSON" ]; then
+              echo "ENTRYPOINT $ENTRYPOINT_JSON"
+            fi
+            if [ "$CMD_JSON" != "null" ] && [ -n "$CMD_JSON" ]; then
+              echo "CMD $CMD_JSON"
+            fi
+          } > Dockerfile.bidding-squashed
+
+          echo "Generated Dockerfile:" && cat Dockerfile.bidding-squashed
+          docker build -f Dockerfile.bidding-squashed -t bidding-squashed-final:temp .
+
+          LAYER_COUNT=$(docker inspect bidding-squashed-final:temp | jq '.[0].RootFS.Layers | length')
+          echo "Squashed image has $LAYER_COUNT layer(s)"
+
+          docker rm bidding-squash-temp
+          docker rmi bidding-squashed-base:temp || true
+          rm -f bidding-squashed.tar Dockerfile.bidding-squashed
+
           SERVICE_REPO_PATH="${{ env.REPO_PATH }}"
-          
-          # Service-specific tag: bidding-service:nonprod:4.8.0.1
-          docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.bidding_service_image}}
-            
-          # Push all tags to Azure Container Registry
-          echo "Pushing bidding service to ACR with service-specific tags..."
+          docker tag bidding-squashed-final:temp ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.bidding_service_image}}
+          echo "Pushing bidding service to ACR..."
           docker push ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.bidding_service_image}}
-          
-          echo "✅ Successfully pushed bidding service image with tags:"
+
+          echo "✅ Successfully pushed bidding service image (squashed):"
           echo "  - ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.bidding_service_image }}"
+
+          docker rmi bidding-squashed-final:temp || true
+          docker rmi "$LOADED_IMAGE" || true
         else
           echo "❌ bidding_service_image.tar not found"
           exit 1
         fi
-        
-    - name: Load and Push Buyer Frontend Service Image
+
+    - name: Load, Squash, and Push Buyer Frontend Service Image
       if: contains(github.event.inputs.services, 'buyer_frontend_service')
       run: |
-        # Load the buyer frontend service image from tar file
         if [ -f "./dist/azure/buyer_frontend_service_image.tar" ]; then
           echo "Loading buyer_frontend_service_image.tar..."
           LOAD_OUTPUT=$(docker load -i ./dist/azure/buyer_frontend_service_image.tar)
-          
-          # Get the loaded image name (skip the first one which is bidding service)
           LOADED_IMAGE=$(echo "$LOAD_OUTPUT" | grep "Loaded image:" | sed 's/Loaded image: //')
           echo "Loaded image: $LOADED_IMAGE"
-          
-          # Tag the image with service-specific naming following Azure best practices
+
+          # Squash to single layer for Azure confidential container CCE policy compatibility
+          echo "🔧 Squashing image layers for CCE policy compatibility..."
+          docker create --name bfe-squash-temp "$LOADED_IMAGE"
+          docker export bfe-squash-temp -o bfe-squashed.tar
+          docker import bfe-squashed.tar bfe-squashed-base:temp
+
+          ENTRYPOINT_JSON=$(docker inspect "$LOADED_IMAGE" --format '{{json .Config.Entrypoint}}')
+          CMD_JSON=$(docker inspect "$LOADED_IMAGE" --format '{{json .Config.Cmd}}')
+          ENV_VARS=$(docker inspect "$LOADED_IMAGE" --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
+          WORKDIR=$(docker inspect "$LOADED_IMAGE" --format '{{.Config.WorkingDir}}')
+          echo "Original ENTRYPOINT: $ENTRYPOINT_JSON"
+          echo "Original CMD: $CMD_JSON"
+
+          {
+            echo "FROM bfe-squashed-base:temp"
+            echo "$ENV_VARS"
+            echo "WORKDIR ${WORKDIR:-/}"
+            if [ "$ENTRYPOINT_JSON" != "null" ] && [ -n "$ENTRYPOINT_JSON" ]; then
+              echo "ENTRYPOINT $ENTRYPOINT_JSON"
+            fi
+            if [ "$CMD_JSON" != "null" ] && [ -n "$CMD_JSON" ]; then
+              echo "CMD $CMD_JSON"
+            fi
+          } > Dockerfile.bfe-squashed
+
+          echo "Generated Dockerfile:" && cat Dockerfile.bfe-squashed
+          docker build -f Dockerfile.bfe-squashed -t bfe-squashed-final:temp .
+
+          LAYER_COUNT=$(docker inspect bfe-squashed-final:temp | jq '.[0].RootFS.Layers | length')
+          echo "Squashed image has $LAYER_COUNT layer(s)"
+
+          docker rm bfe-squash-temp
+          docker rmi bfe-squashed-base:temp || true
+          rm -f bfe-squashed.tar Dockerfile.bfe-squashed
+
           SERVICE_REPO_PATH="${{ env.REPO_PATH }}"
-          
-          # Service-specific tag: buyer-frontend-service:nonprod:4.8.0.1
-          docker tag $LOADED_IMAGE ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.buyer_frontend_image}}
-          
-          # Push all tags to Azure Container Registry
-          echo "Pushing buyer frontend service to ACR with service-specific tags..."
+          docker tag bfe-squashed-final:temp ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.buyer_frontend_image}}
+          echo "Pushing buyer frontend service to ACR..."
           docker push ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.buyer_frontend_image}}
-          
-          echo "✅ Successfully pushed buyer frontend service image with tags:"
+
+          echo "✅ Successfully pushed buyer frontend service image (squashed):"
           echo "  - ${{ env.REGISTRY }}/$SERVICE_REPO_PATH/${{ steps.generate_tags.outputs.buyer_frontend_image}}"
+
+          docker rmi bfe-squashed-final:temp || true
+          docker rmi "$LOADED_IMAGE" || true
         else
           echo "❌ buyer_frontend_service_image.tar not found"
           exit 1
