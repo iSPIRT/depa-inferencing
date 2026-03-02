@@ -95,7 +95,8 @@ env:
   REGISTRY: ${{ vars.REGISTRY }}
   REPO_PATH: ${{ vars.REPO_PATH }}
   # Shared staging directory on the self-hosted runner for inter-job tar handoff
-  STAGING_DIR: /opt/runner-staging/${{ github.run_id }}
+  # Uses /tmp to avoid permission issues (runner may not have write access to /opt)
+  STAGING_DIR: /tmp/runner-staging-${{ github.run_id }}
 
 jobs:
 
@@ -168,7 +169,6 @@ jobs:
           --instance azure_microsoft \
           --platform azure_microsoft \
           --mode prod \
-          --service-path key_value_service \
           $TEST_FLAG \
           $PRECOMMIT_FLAG
 
@@ -231,7 +231,6 @@ jobs:
           --instance azure_microsoft \
           --platform azure_microsoft \
           --mode nonprod \
-          --service-path key_value_service \
           $TEST_FLAG \
           $PRECOMMIT_FLAG
 
@@ -349,6 +348,7 @@ jobs:
         for service in "${SERVICE_ARRAY[@]}"; do
           service_args="$service_args --service-path ${service// /}"
         done
+        service_args="${service_args# }"
         echo "service_args=$service_args" >> $GITHUB_OUTPUT
         echo "Parsed: $service_args"
 
