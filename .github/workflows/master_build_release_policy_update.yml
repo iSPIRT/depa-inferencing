@@ -279,6 +279,12 @@ jobs:
         sudo rm -rf /tmp/docker-* /tmp/buildkit-* || true
         df -h
 
+    - name: Remove embedded JDK from Bazel cache
+      if: always()
+      run: |
+        find ${HOME}/.cache/bazel -type d -path "*/install/*/embedded_tools/jdk" -exec rm -rf {} + 2>/dev/null || true
+        echo "Embedded JDK cleanup done"
+
   build-ba:
     runs-on: self-hosted
     timeout-minutes: 1440
@@ -495,6 +501,12 @@ jobs:
         sudo rm -rf /tmp/docker-* /tmp/buildkit-* || true
         sudo chown -R $(whoami):$(whoami) ${GITHUB_WORKSPACE} || true
         df -h
+
+    - name: Remove embedded JDK from Bazel cache
+      if: always()
+      run: |
+        find ${HOME}/.cache/bazel -type d -path "*/install/*/embedded_tools/jdk" -exec rm -rf {} + 2>/dev/null || true
+        echo "Embedded JDK cleanup done"
 
   # ============================================================
   # KMS POLICY UPDATE — uses local tar images
