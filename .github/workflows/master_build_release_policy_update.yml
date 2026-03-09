@@ -791,7 +791,7 @@ jobs:
   # ============================================================
 
   cleanup-staging:
-    needs: [build-kv, build-ba]
+    needs: [build-kv, build-ba, push-to-acr, update-kms-policy]
     runs-on: self-hosted
     if: always()
     steps:
