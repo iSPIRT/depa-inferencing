@@ -38,7 +38,6 @@ kms/
     ├── key_vault_networking/             # Key Vault networking (private endpoints)
     ├── managed_identity/                 # Managed Identity service
     ├── resource_group/                   # Resource Group service
-    ├── storage_account/                  # Storage Account service
     └── virtual_network/                  # Virtual Network service
 ```
 
