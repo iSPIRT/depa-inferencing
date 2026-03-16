@@ -35,9 +35,9 @@ on:
         default: 'bidding_service,buyer_frontend_service'
         type: string
       release_tag:
-        description: 'Release version for Docker images (e.g., 4.8.0.1)'
+        description: 'Release version for Docker images'
         required: true
-        default: '4.8.0.4'
+        default: '4.8.1.0'
         type: string
       push_to_acr:
         description: 'Push images to Azure Container Registry'
@@ -340,6 +340,12 @@ jobs:
           WORKDIR=$(docker inspect "$LOADED_IMAGE" --format '{{.Config.WorkingDir}}')
           echo "Original ENTRYPOINT: $ENTRYPOINT_JSON"
           echo "Original CMD: $CMD_JSON"
+
+          # Match local squash script behavior for envoy-distroless BFE image:
+          # override WORKDIR /home/nonroot → / for single-layer image
+          if [ "$WORKDIR" = "/home/nonroot" ]; then
+            WORKDIR="/"
+          fi
 
           {
             echo "FROM bfe-squashed-base:temp"
