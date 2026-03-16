@@ -19,7 +19,6 @@ locals {
   region = "centralindia"
   region_short = "cin"
 
-
   subscription_id = "<your_subscription_id>"
   tenant_id       = "<your_tenant_id>"
 
@@ -29,6 +28,8 @@ locals {
   kv_image_tag   = "prod-1.2.0.4"
   kms_url        = "https://depa-inferencing-kms-azure.ispirt.in"
 
+  virtual_node_identity_id           = "<your_virtual_node_identity_resource_id>"
+  virtual_node_identity_principal_id = "<your_virtual_node_identity_principal_id>"
 }
 
 module "offer" {
@@ -38,9 +39,8 @@ module "offer" {
   region          = local.region
   subscription_id = local.subscription_id
   tenant_id       = local.tenant_id
-
-  virtual_node_identity_id           = "<your_virtual_node_identity_resource_id>"
-  virtual_node_identity_principal_id = "<your_virtual_node_identity_principal_id>"
+  virtual_node_identity_id           = local.virtual_node_identity_id
+  virtual_node_identity_principal_id = local.virtual_node_identity_principal_id
 
   # Please refer to documentation https://learn.microsoft.com/en-us/azure/aks/quotas-skus-regions#supported-vm-sizes for node_pool_settings variables
   node_pool_settings = {
