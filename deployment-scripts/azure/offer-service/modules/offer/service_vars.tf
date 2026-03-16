@@ -93,3 +93,13 @@ variable "custom_aks_workload_identity_id" {
   nullable    = true
   default     = null
 }
+
+variable "virtual_node_identity_id" {
+  description = "Resource ID of the preallocated user-assigned managed identity for virtual nodes"
+  type        = string
+}
+
+variable "virtual_node_identity_principal_id" {
+  description = "Principal (object) ID of the preallocated user-assigned managed identity for virtual nodes"
+  type        = string
+}

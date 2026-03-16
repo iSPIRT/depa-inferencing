@@ -29,9 +29,13 @@ jobs:
         env: 
           AZURE_AKS_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
           AZURE_AKS_TENANT_ID: ${{ secrets.AZURE_AKS_TENANT_ID }}
+          AZURE_VIRTUAL_NODE_IDENTITY_RESOURCE_ID: ${{ secrets.AZURE_VIRTUAL_NODE_IDENTITY_RESOURCE_ID }}
+          AZURE_VIRTUAL_NODE_IDENTITY_PRINCIPAL_ID: ${{ secrets.AZURE_VIRTUAL_NODE_IDENTITY_PRINCIPAL_ID }}
         run: |
           sed -i 's|<your_subscription_id>|'"$AZURE_AKS_SUBSCRIPTION_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
           sed -i 's|<your_tenant_id>|'"$AZURE_AKS_TENANT_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
+          sed -i 's|<your_virtual_node_identity_resource_id>|'"$AZURE_VIRTUAL_NODE_IDENTITY_RESOURCE_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
+          sed -i 's|<your_virtual_node_identity_principal_id>|'"$AZURE_VIRTUAL_NODE_IDENTITY_PRINCIPAL_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
 
       - name: Terraform init
         working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
