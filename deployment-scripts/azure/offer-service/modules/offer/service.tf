@@ -44,17 +44,19 @@ module "networking" {
 }
 
 module "aks" {
-  source                = "../../services/aks"
-  resource_group_id     = module.resource_group.id
-  resource_group_name   = module.resource_group.name
-  frontend_service_name = local.frontend_service_name
-  operator              = var.operator
-  environment           = var.environment
-  region                = module.regions.location_cli
-  subnet_id             = module.networking.aks_subnet_id
-  virtual_network_id    = module.networking.vnet_id
-  region_short          = module.regions.location_short
-  node_pool_settings    = var.node_pool_settings
+  source                             = "../../services/aks"
+  resource_group_id                  = module.resource_group.id
+  resource_group_name                = module.resource_group.name
+  frontend_service_name              = local.frontend_service_name
+  operator                           = var.operator
+  environment                        = var.environment
+  region                             = module.regions.location_cli
+  subnet_id                          = module.networking.aks_subnet_id
+  virtual_network_id                 = module.networking.vnet_id
+  region_short                       = module.regions.location_short
+  node_pool_settings                 = var.node_pool_settings
+  virtual_node_identity_id           = var.virtual_node_identity_id
+  virtual_node_identity_principal_id = var.virtual_node_identity_principal_id
 }
 
 module "external_dns" {

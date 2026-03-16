@@ -16,3 +16,6 @@ __pycache__
 *.tfstate.*
 .terraform
 .terraform.lock.hcl
+**/.venv/
+ispirt
+uat

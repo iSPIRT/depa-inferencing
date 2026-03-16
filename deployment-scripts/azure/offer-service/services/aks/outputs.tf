@@ -29,8 +29,8 @@ output "user_assigned_identity_principal_id" {
 }
 
 output "virtual_node_identity_id" {
-  value = azurerm_user_assigned_identity.this.id
+  value = var.virtual_node_identity_id
 }
 output "virtual_node_identity_principal_id" {
-  value = azurerm_user_assigned_identity.this.principal_id
+  value = var.virtual_node_identity_principal_id
 }

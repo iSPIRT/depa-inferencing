@@ -83,8 +83,3 @@ resource "azurerm_role_assignment" "aks_kubeidentity_mcrg_contributor" {
   skip_service_principal_aad_check = true
 }
 
-resource "azurerm_user_assigned_identity" "this" {
-  name                = "virtual-node-identity"
-  location            = var.region
-  resource_group_name = var.resource_group_name
-}

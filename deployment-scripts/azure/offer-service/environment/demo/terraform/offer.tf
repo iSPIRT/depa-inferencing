@@ -39,6 +39,9 @@ module "offer" {
   subscription_id = local.subscription_id
   tenant_id       = local.tenant_id
 
+  virtual_node_identity_id           = "<your_virtual_node_identity_resource_id>"
+  virtual_node_identity_principal_id = "<your_virtual_node_identity_principal_id>"
+
   # Please refer to documentation https://learn.microsoft.com/en-us/azure/aks/quotas-skus-regions#supported-vm-sizes for node_pool_settings variables
   node_pool_settings = {
     node_count = 3
