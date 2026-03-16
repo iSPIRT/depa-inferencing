@@ -83,3 +83,10 @@ resource "azurerm_role_assignment" "aks_kubeidentity_mcrg_contributor" {
   skip_service_principal_aad_check = true
 }
 
+resource "azurerm_role_assignment" "aks_kubeidentity_vni_operator" {
+  principal_id                     = azurerm_kubernetes_cluster.aks.kubelet_identity[0].object_id
+  role_definition_name             = "Managed Identity Operator"
+  scope                            = var.virtual_node_identity_id
+  skip_service_principal_aad_check = true
+}
+
