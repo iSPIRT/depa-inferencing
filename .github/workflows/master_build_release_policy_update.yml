@@ -21,7 +21,7 @@ on:
       kv_release_tag:
         description: 'KV Service: Release version'
         required: true
-        default: '1.2.0.5'
+        default: '1.2.1.0'
         type: string
       kv_run_tests:
         description: 'KV Service: Run tests'
@@ -43,7 +43,7 @@ on:
       ba_release_tag:
         description: 'BA Services: Release version'
         required: true
-        default: '4.8.0.4'
+        default: '4.8.1.0'
         type: string
       ba_services:
         description: 'BA Services to build (comma-separated)'
@@ -391,6 +391,12 @@ jobs:
           ENV_VARS=$(docker inspect "$IMG" --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
           WORKDIR=$(docker inspect "$IMG" --format '{{.Config.WorkingDir}}')
 
+          # Match local squash script behavior for envoy-distroless BFE image:
+          # override WORKDIR /home/nonroot → / for single-layer image
+          if [ "$TEMP_PREFIX" = "bfe-squash" ] && [ "$WORKDIR" = "/home/nonroot" ]; then
+            WORKDIR="/"
+          fi
+
           docker import "${TEMP_PREFIX}.tar" "${TEMP_PREFIX}-base:temp"
           {
             echo "FROM ${TEMP_PREFIX}-base:temp"
@@ -457,6 +463,12 @@ jobs:
           CMD_JSON=$(docker inspect "$IMG" --format '{{json .Config.Cmd}}')
           ENV_VARS=$(docker inspect "$IMG" --format '{{range .Config.Env}}ENV {{.}}{{"\n"}}{{end}}')
           WORKDIR=$(docker inspect "$IMG" --format '{{.Config.WorkingDir}}')
+
+          # Match local squash script behavior for envoy-distroless BFE image:
+          # override WORKDIR /home/nonroot → / for single-layer image
+          if [ "$TEMP_PREFIX" = "bfe-nonprod-squash" ] && [ "$WORKDIR" = "/home/nonroot" ]; then
+            WORKDIR="/"
+          fi
 
           docker import "${TEMP_PREFIX}.tar" "${TEMP_PREFIX}-base:temp"
           {
