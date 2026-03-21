@@ -50,6 +50,16 @@ jobs:
           ARM_USE_OIDC: true
         run: terraform apply -auto-approve
 
+      - name: Output OTEL monitoring URL
+        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
+        run: |
+          MONITOR_URL=$(terraform output -raw app_insights_portal_url)
+          echo "## OTEL monitoring (Application Insights)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[Open Application Insights]($MONITOR_URL) - traces, metrics, logs from bidding, buyer-frontend, KV" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "OTEL collector is enabled. Telemetry flows: services → otel-collector → Azure Monitor." >> $GITHUB_STEP_SUMMARY
+
       - name: Generate data and UDF
         working-directory: ./tools/key-value-service
         run: |

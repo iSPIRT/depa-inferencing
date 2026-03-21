@@ -37,7 +37,7 @@ on:
       release_tag:
         description: 'Release version for Docker images'
         required: true
-        default: '4.8.1.0'
+        default: '4.8.1.1'
         type: string
       push_to_acr:
         description: 'Push images to Azure Container Registry'
@@ -184,7 +184,7 @@ jobs:
           $PRECOMMIT_FLAG \
           --build-flavor ${{ github.event.inputs.build_flavor }} \
           --platform azure \
-          --instance local
+          --instance azure
           
     - name: List Generated Tar Files
       run: |

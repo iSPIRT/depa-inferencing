@@ -43,7 +43,7 @@ on:
       ba_release_tag:
         description: 'BA Services: Release version'
         required: true
-        default: '4.8.1.0'
+        default: '4.8.1.1'
         type: string
       ba_services:
         description: 'BA Services to build (comma-separated)'
@@ -369,7 +369,7 @@ jobs:
           $PRECOMMIT_FLAG \
           --build-flavor prod \
           --platform azure \
-          --instance local
+          --instance azure
 
     - name: Squash and Stage BA tars for downstream jobs
       run: |
@@ -443,7 +443,7 @@ jobs:
           $PRECOMMIT_FLAG \
           --build-flavor non_prod \
           --platform azure \
-          --instance local
+          --instance azure
 
         # Squash and stage BA non-prod images
         mkdir -p ${{ env.STAGING_DIR }}/ba
