@@ -192,6 +192,25 @@ rm -rf "$REPO_ROOT/deployment-scripts/gcp/offer-service/environment/ci/buyer/.te
 
 ---
 
+## Troubleshooting
+
+### `Field [payload] is required` (Secret Manager) on `terraform apply`
+
+The buyer module stores **every** runtime flag in Secret Manager as a secret version. **Google Secret Manager does not allow an empty string as `secret_data`.** Optional flags that would be “unset” in YAML must use a non-empty sentinel such as **`EMPTY_STRING`** (same pattern as the KV demo `*.tfvars.json`).
+
+If you see errors for `runtime_flag_secret_values[...]`, replace any `= ""` **inside the `runtime_flags` map** in `buyer.tf` with `= "EMPTY_STRING"`, then run `terraform apply` again. Terraform will create the missing secret versions; partial applies are OK.
+
+### `gcloud auth application-default login` scope / crash
+
+If ADC login fails after pasting the browser code, use:
+
+```bash
+gcloud auth application-default login \
+  --scopes=https://www.googleapis.com/auth/cloud-platform
+```
+
+---
+
 ## Differences vs GitHub Actions
 
 | Topic | Local | GitHub Actions |
