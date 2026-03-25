@@ -1,0 +1,38 @@
+name: GCP CI Pipeline
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  # schedule:
+  #   # Run daily at 3:00 AM UTC (offset from Azure CI at 2:00 AM)
+  #   - cron: '0 3 * * *'
+  
+  # workflow_dispatch until gcp pipeline ready for daily ci and on PR
+  workflow_dispatch:
+    inputs:
+      run_cleanup:
+        description: 'Cleanup after deployment'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  gcp_deploy:
+    name: Deploy on GCP
+    uses: ./.github/workflows/gcp_deploy.yml
+    secrets: inherit
+
+  gcp_test:
+    name: Test GCP Deployment
+    needs: gcp_deploy
+    uses: ./.github/workflows/gcp_test.yml
+    secrets: inherit
+
+  gcp_cleanup:
+    name: Cleanup GCP Deployments
+    needs: [gcp_deploy, gcp_test]
+    if: always() && (github.event_name != 'workflow_dispatch' || inputs.run_cleanup != 'false')
+    uses: ./.github/workflows/gcp_cleanup.yml
+    secrets: inherit

@@ -1,0 +1,52 @@
+name: Test GCP Deployment
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  test-gcp:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: GCP Auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Find IP address of buyer frontend load balancer
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_ENVIRONMENT: ${{ secrets.GCP_ENVIRONMENT }}
+        run: |
+          ADDR_NAME="ci-buyer-${GCP_ENVIRONMENT}-bfe-lb"
+          BFE_IP=$(gcloud compute addresses describe "$ADDR_NAME" \
+            --global \
+            --format="value(address)" \
+            --project="$GCP_PROJECT_ID")
+          echo "BFE_IP=$BFE_IP" >> $GITHUB_ENV
+          echo "Buyer Frontend IP: $BFE_IP"
+
+      - name: Run secure invoke
+        env:
+          GCP_KMS_URL: ${{ secrets.GCP_KMS_URL }}
+        working-directory: ./tools/secure-invoke
+        run: |
+          REQUESTS_DIR=${GITHUB_WORKSPACE}/tools/requests
+          sed -i 's|/home/azureuser/requests|'"$REQUESTS_DIR"'|g' ./.env
+          sed -i 's|<KMS_HOST>|'"$GCP_KMS_URL"'|g' ./.env
+          sed -i 's|<hostname>:51052|'"$BFE_IP"':443|g' ./.env
+          sed -i '/CA_CERT/d' ./.env
+          sed -i '/CLIENT_CERT/d' ./.env
+          sed -i '/CLIENT_KEY/d' ./.env
+          ./secure_invoke_test.sh

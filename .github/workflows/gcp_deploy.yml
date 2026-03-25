@@ -1,0 +1,77 @@
+name: Deploy on GCP
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set Up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: GCP Auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Update CI environment
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_ENVIRONMENT: ${{ secrets.GCP_ENVIRONMENT }}
+          GCP_REGION: ${{ secrets.GCP_REGION }}
+          GCP_BUYER_DOMAIN_NAME: ${{ secrets.GCP_BUYER_DOMAIN_NAME }}
+          GCP_DNS_ZONE: ${{ secrets.GCP_DNS_ZONE }}
+          GCP_SSL_CERTIFICATE_ID: ${{ secrets.GCP_SSL_CERTIFICATE_ID }}
+          GCP_VM_SERVICE_ACCOUNT: ${{ secrets.GCP_VM_SERVICE_ACCOUNT }}
+        run: |
+          sed -i 's|<gcp_project_id>|'"$GCP_PROJECT_ID"'|g' ./deployment-scripts/gcp/offer-service/environment/ci/buyer/buyer.tf
+          sed -i 's|<environment>|'"$GCP_ENVIRONMENT"'|g' ./deployment-scripts/gcp/offer-service/environment/ci/buyer/buyer.tf
+          sed -i 's|<gcp_region>|'"$GCP_REGION"'|g' ./deployment-scripts/gcp/offer-service/environment/ci/buyer/buyer.tf
+          sed -i 's|<buyer_domain_name>|'"$GCP_BUYER_DOMAIN_NAME"'|g' ./deployment-scripts/gcp/offer-service/environment/ci/buyer/buyer.tf
+          sed -i 's|<dns_zone>|'"$GCP_DNS_ZONE"'|g' ./deployment-scripts/gcp/offer-service/environment/ci/buyer/buyer.tf
+          sed -i 's|<ssl_certificate_id>|'"$GCP_SSL_CERTIFICATE_ID"'|g' ./deployment-scripts/gcp/offer-service/environment/ci/buyer/buyer.tf
+          sed -i 's|<vm_service_account>|'"$GCP_VM_SERVICE_ACCOUNT"'|g' ./deployment-scripts/gcp/offer-service/environment/ci/buyer/buyer.tf
+
+      - name: Terraform init
+        working-directory: ./deployment-scripts/gcp/offer-service/environment/ci/buyer
+        run: terraform init
+
+      - name: Terraform apply
+        working-directory: ./deployment-scripts/gcp/offer-service/environment/ci/buyer
+        run: terraform apply -auto-approve
+
+      - name: Persist Terraform state
+        if: always()
+        working-directory: ./deployment-scripts/gcp/offer-service/environment/ci/buyer
+        run: |
+          mkdir -p $HOME/.gcp-ci-tfstate
+          cp -f terraform.tfstate* $HOME/.gcp-ci-tfstate/ 2>/dev/null || true
+          cp -rf .terraform $HOME/.gcp-ci-tfstate/ 2>/dev/null || true
+
+      - name: Generate data and UDF
+        working-directory: ./tools/key-value-service
+        run: |
+          mkdir -p ./tmp
+          ./data_cli.sh format_delta ./data.csv ./tmp/delta_0000000000000001
+          ./udf_delta_file_generator.sh ${PWD}/tmp ${PWD}/udf.js
+
+      - name: Upload data and UDF to GCS
+        if: ${{ env.GCP_KV_DATA_BUCKET != '' }}
+        env:
+          GCP_KV_DATA_BUCKET: ${{ secrets.GCP_KV_DATA_BUCKET }}
+        working-directory: ./tools/key-value-service
+        run: |
+          gsutil -m cp -r ./tmp/* gs://${GCP_KV_DATA_BUCKET}/deltas/
