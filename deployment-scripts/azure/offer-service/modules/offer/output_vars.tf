@@ -20,7 +20,7 @@ output "storage_share_id" {
   value = module.storage_account.file_share_id
 }
 
-output "app_insights_portal_url" {
-  description = "Azure Portal URL for Application Insights - use for real-time OTEL monitoring"
-  value       = module.app_insights.app_insights_portal_url
-}
+# output "app_insights_portal_url" {
+#   description = "Azure Portal URL for Application Insights - use for real-time OTEL monitoring"
+#   value       = module.app_insights.app_insights_portal_url
+# }

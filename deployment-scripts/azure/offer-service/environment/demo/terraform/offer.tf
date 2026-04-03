@@ -227,7 +227,7 @@ module "offer" {
 
 }
 
-output "app_insights_portal_url" {
-  description = "Azure Portal URL for Application Insights - use for real-time OTEL monitoring (traces, metrics, logs)"
-  value       = module.offer.app_insights_portal_url
-}
+# output "app_insights_portal_url" {
+#   description = "Azure Portal URL for Application Insights - use for real-time OTEL monitoring (traces, metrics, logs)"
+#   value       = module.offer.app_insights_portal_url
+# }
