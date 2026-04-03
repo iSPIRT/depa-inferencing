@@ -15,3 +15,8 @@
 output "instrumentation_key" {
   value = azurerm_application_insights.app_insights.instrumentation_key
 }
+
+# output "app_insights_portal_url" {
+#   description = "Azure Portal URL for Application Insights (OTEL telemetry destination)"
+#   value       = "https://portal.azure.com/#@/resource${azurerm_application_insights.app_insights.id}"
+# }

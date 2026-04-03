@@ -24,7 +24,7 @@ locals {
 
   image_registry = "ispirt.azurecr.io"
   registry_path  = "depainferencing/azure"
-  image_tag      = "prod-4.8.1.0"
+  image_tag      = "prod-4.8.1.1"
   kv_image_tag   = "prod-1.2.1.0"
   kms_url        = "https://depa-inferencing-kms-azure.ispirt.in"
 
@@ -226,3 +226,8 @@ module "offer" {
   }
 
 }
+
+# output "app_insights_portal_url" {
+#   description = "Azure Portal URL for Application Insights - use for real-time OTEL monitoring (traces, metrics, logs)"
+#   value       = module.offer.app_insights_portal_url
+# }
