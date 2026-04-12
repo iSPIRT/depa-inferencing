@@ -18,6 +18,7 @@ locals {
 }
 
 resource "azurerm_public_ip" "gateway" {
+  count               = var.public_ip_id == "" ? 1 : 0
   name                = "${var.name}-pip"
   resource_group_name = var.resource_group_name
   location            = var.location
@@ -25,6 +26,18 @@ resource "azurerm_public_ip" "gateway" {
   sku                 = "Standard"
   zones               = var.zones
   tags                = var.tags
+}
+
+data "azurerm_public_ip" "existing" {
+  count               = var.public_ip_id != "" ? 1 : 0
+  name                = split("/", var.public_ip_id)[8]
+  resource_group_name = split("/", var.public_ip_id)[4]
+}
+
+locals {
+  public_ip_id      = var.public_ip_id != "" ? var.public_ip_id : azurerm_public_ip.gateway[0].id
+  public_ip_address = var.public_ip_id != "" ? data.azurerm_public_ip.existing[0].ip_address : azurerm_public_ip.gateway[0].ip_address
+  public_ip_fqdn    = var.public_ip_id != "" ? data.azurerm_public_ip.existing[0].fqdn : azurerm_public_ip.gateway[0].fqdn
 }
 
 resource "azurerm_web_application_firewall_policy" "this" {
@@ -75,7 +88,6 @@ resource "azurerm_application_gateway" "this" {
   location            = var.location
   zones               = var.zones
   tags                = var.tags
-  enable_http2        = true
 
   identity {
     type         = "UserAssigned"
@@ -102,7 +114,7 @@ resource "azurerm_application_gateway" "this" {
 
   frontend_ip_configuration {
     name                 = "frontend-ip"
-    public_ip_address_id = azurerm_public_ip.gateway.id
+    public_ip_address_id = local.public_ip_id
   }
 
   backend_address_pool {

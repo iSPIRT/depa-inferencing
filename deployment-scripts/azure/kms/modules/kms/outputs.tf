@@ -46,18 +46,23 @@ output "key_vault_uri" {
   value       = module.key_vault.uri
 }
 
-output "application_gateway_endpoint" {
-  description = "Endpoint URL of the Application Gateway."
-  value       = module.application_gateway.endpoint
+output "virtual_network_name" {
+  description = "Name of the KMS Virtual Network."
+  value       = module.virtual_network.name
 }
 
-output "application_gateway_public_ip" {
-  description = "Public IP address of the Application Gateway."
-  value       = module.application_gateway.public_ip_address
+output "gateway_subnet_id" {
+  description = "Resource ID of the Application Gateway subnet."
+  value       = module.virtual_network.gateway_subnet_id
 }
 
-output "ledger_endpoint_name" {
-  description = "Name of the Confidential Ledger endpoint."
+output "ledger_endpoint" {
+  description = "Ledger Endpoint for the Confidential Ledger."
+  value       = module.confidential_ledger.ledger_endpoint
+}
+
+output "confidential_ledger_name" {
+  description = "Name of the Confidential Ledger."
   value       = module.confidential_ledger.name
 }
 

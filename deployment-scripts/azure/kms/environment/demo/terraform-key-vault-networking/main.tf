@@ -72,24 +72,3 @@ resource "azurerm_key_vault" "disable_public_access" {
   ]
 }
 
-# Ensure Application Gateway uses private endpoint for Key Vault access
-# The Application Gateway's SSL certificate references Key Vault using key_vault_secret_id.
-# Once the private DNS zone is linked to the VNet, the Application Gateway will automatically
-# resolve Key Vault DNS to the private endpoint IP address.
-#
-# Note: The Application Gateway's key_vault_secret_id uses the format:
-# https://{vault-name}.vault.azure.net/secrets/{secret-name}
-# Azure's DNS resolution within the VNet will automatically use the private endpoint
-# when the private DNS zone (privatelink.vaultcore.azure.net) is linked to the VNet.
-#
-# This data source ensures the Application Gateway exists and will use the private endpoint
-# once the private DNS zone link is established.
-data "azurerm_application_gateway" "kms" {
-  name                = local.application_gateway_name
-  resource_group_name = local.resource_group_name
-
-  depends_on = [
-    module.key_vault_networking,
-  ]
-}
-
