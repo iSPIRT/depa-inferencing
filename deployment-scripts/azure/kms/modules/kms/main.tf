@@ -4,7 +4,7 @@
 locals {
   default_resource_group_name  = "depa-inferencing-kms-${var.environment}-${var.region_short}-rg"
   default_identity_name        = "depa-inferencing-kms-${var.region_short}-mi"
-  default_key_vault_name       = "depa-inferencing-uat-kv"
+  default_key_vault_name       = "depa-inferencing-${var.environment}-kv"
   default_certificate_name     = "depa-inferencing-kms-${var.environment}-${var.region_short}-member-cert"
   default_ledger_name          = "depa-inferencing-kms-${var.environment}-${var.region_short}"
   default_vnet_name            = "depa-inferencing-kms-${var.environment}-${var.region_short}-vnet"
