@@ -125,6 +125,12 @@ variable "diagnostics_log_analytics_workspace_resource_group_name" {
   default     = ""
 }
 
+variable "public_ip_id" {
+  type        = string
+  description = "Optional resource ID of an existing public IP to use. If empty, a new public IP is created."
+  default     = ""
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags applied to the Application Gateway."

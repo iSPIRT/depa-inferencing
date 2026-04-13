@@ -56,12 +56,6 @@ variable "ledger_name" {
   default     = ""
 }
 
-variable "application_gateway_name" {
-  type        = string
-  description = "Optional explicit name for the application gateway. Defaults to a convention-based value when empty."
-  default     = ""
-}
-
 variable "virtual_network_name" {
   type        = string
   description = "Optional explicit name for the virtual network. Defaults to a convention-based value when empty."
@@ -80,37 +74,16 @@ variable "github_branch" {
   default     = ""
 }
 
-variable "ssl_certificate_name" {
-  type        = string
-  description = "Name of the SSL certificate in Key Vault for Application Gateway."
-}
-
-variable "diagnostics_log_analytics_workspace_name" {
-  type        = string
-  description = "Log Analytics workspace name for Application Gateway diagnostics. If empty, diagnostics are disabled."
-  default     = ""
-}
-
-variable "diagnostics_log_analytics_workspace_resource_group_name" {
-  type        = string
-  description = "Resource group name of the Log Analytics workspace for Application Gateway diagnostics. If empty, defaults to the Application Gateway resource group."
-  default     = ""
-}
-
 variable "extra_tags" {
   type        = map(string)
   description = "Additional tags to append to the default KMS tag set."
   default     = {}
 }
 
-variable "additional_virtual_network_ids" {
-  type        = list(string)
-  description = "List of additional Virtual Network IDs to link the Key Vault private DNS zone to. This allows VMs in other VNets to access the Key Vault via private endpoint. NOTE: This variable is NOT used in the main KMS deployment - it is only used in the separate key-vault-networking deployment."
-  default     = []
+variable "enable_ddos_protection" {
+  type        = bool
+  description = "Whether to create a DDoS Protection Plan and attach it to the Virtual Network."
+  default     = false
 }
 
-variable "allowed_hostname" {
-  type        = string
-  description = "Allowed hostname for Application Gateway Host header validation. Requests with Host headers not matching this hostname will be blocked by WAF."
-}
 

@@ -7,14 +7,12 @@ locals {
   region       = "centralindia"
   region_short = "cin"
 
-  subscription_id = "2a5f1e30-b076-4cb2-9235-2036241dedf0"
-  tenant_id       = "3039a1ed-8db4-4652-a69b-9ff4e265e18d"
+  subscription_id = "<your_subscription_id>"
+  tenant_id       = "<your_tenant_id>"
 
   resource_group_name      = "depa-inferencing-kms-${local.environment}-${local.region_short}-rg"
   key_vault_name           = "depa-inferencing-${local.region_short}-kv"
   virtual_network_name     = "depa-inferencing-kms-${local.environment}-${local.region_short}-vnet"
-  application_gateway_name = "depa-inferencing-kms-${local.environment}-${local.region_short}-agw"
-
   extra_tags = {
     Owner = "ispirt"
   }

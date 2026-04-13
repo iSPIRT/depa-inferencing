@@ -4,11 +4,10 @@
 locals {
   default_resource_group_name  = "depa-inferencing-kms-${var.environment}-${var.region_short}-rg"
   default_identity_name        = "depa-inferencing-kms-${var.region_short}-mi"
-  default_key_vault_name       = "depa-inferencing-${var.region_short}-kv"
+  default_key_vault_name       = "depa-inferencing-${var.environment}-kv"
   default_certificate_name     = "depa-inferencing-kms-${var.environment}-${var.region_short}-member-cert"
   default_ledger_name          = "depa-inferencing-kms-${var.environment}-${var.region_short}"
   default_vnet_name            = "depa-inferencing-kms-${var.environment}-${var.region_short}-vnet"
-  default_app_gateway_name     = "depa-inferencing-kms-${var.environment}-${var.region_short}-agw"
 
   resource_group_name = (
     var.resource_group_name != "" ?
@@ -46,12 +45,6 @@ locals {
     local.default_vnet_name
   )
 
-  application_gateway_name = (
-    var.application_gateway_name != "" ?
-    var.application_gateway_name :
-    local.default_app_gateway_name
-  )
-
   base_tags = {
     Environment = var.environment
     ManagedBy   = "Terraform"
@@ -77,10 +70,9 @@ module "managed_identity" {
 }
 
 resource "azurerm_role_assignment" "managed_identity_rg_contributor" {
-  principal_id                     = module.managed_identity.principal_id
-  role_definition_name             = "Contributor"
-  scope                            = module.resource_group.id
-  skip_service_principal_aad_check = true
+  principal_id         = module.managed_identity.principal_id
+  role_definition_name = "Contributor"
+  scope                = module.resource_group.id
 
   depends_on = [
     module.managed_identity,
@@ -89,11 +81,12 @@ resource "azurerm_role_assignment" "managed_identity_rg_contributor" {
 }
 
 module "virtual_network" {
-  source              = "../../services/virtual_network"
-  name                = local.virtual_network_name
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
-  tags                = merge(local.base_tags, var.extra_tags)
+  source                 = "../../services/virtual_network"
+  name                   = local.virtual_network_name
+  resource_group_name    = module.resource_group.name
+  location               = module.resource_group.location
+  tags                   = merge(local.base_tags, var.extra_tags)
+  enable_ddos_protection = var.enable_ddos_protection
 }
 
 # Key Vault: Creates Key Vault with network ACLs and certificate
@@ -132,27 +125,4 @@ module "confidential_ledger" {
   ]
 }
 
-module "application_gateway" {
-  source                                                  = "../../services/application_gateway"
-  name                                                    = local.application_gateway_name
-  resource_group_name                                     = module.resource_group.name
-  location                                                = module.resource_group.location
-  subnet_id                                               = module.virtual_network.gateway_subnet_id
-  backend_address                                         = replace(module.confidential_ledger.ledger_endpoint, "https://", "")
-  backend_hostname                                        = module.confidential_ledger.name
-  backend_port                                            = 443
-  trusted_root_certificate                                = module.confidential_ledger.ledger_tls_certificate
-  ssl_certificate_name                                    = var.ssl_certificate_name
-  key_vault_uri                                           = module.key_vault.uri
-  managed_identity_id                                     = module.managed_identity.id
-  diagnostics_log_analytics_workspace_name                = var.diagnostics_log_analytics_workspace_name
-  diagnostics_log_analytics_workspace_resource_group_name = var.diagnostics_log_analytics_workspace_resource_group_name
-  tags                                                    = merge(local.base_tags, var.extra_tags)
-  health_probe_path                                       = "/node/metrics"
-  allowed_hostname                                        = var.allowed_hostname
-  depends_on = [
-    module.virtual_network,
-    module.confidential_ledger,
-  ]
-}
 

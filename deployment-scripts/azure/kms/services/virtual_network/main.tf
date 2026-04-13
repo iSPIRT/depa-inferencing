@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0.
 
 resource "azurerm_network_ddos_protection_plan" "this" {
+  count               = var.enable_ddos_protection ? 1 : 0
   name                = "${var.name}-ddos-plan"
   resource_group_name = var.resource_group_name
   location            = var.location
@@ -15,9 +16,12 @@ resource "azurerm_virtual_network" "this" {
   address_space       = var.address_space
   tags                = var.tags
 
-  ddos_protection_plan {
-    id     = azurerm_network_ddos_protection_plan.this.id
-    enable = true
+  dynamic "ddos_protection_plan" {
+    for_each = var.enable_ddos_protection ? [1] : []
+    content {
+      id     = azurerm_network_ddos_protection_plan.this[0].id
+      enable = true
+    }
   }
 }
 
