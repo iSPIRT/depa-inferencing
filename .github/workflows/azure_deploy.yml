@@ -7,6 +7,12 @@ permissions:
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      deploy_target:
+        description: 'prod = prod images/KMS; uat = uat images/KMS'
+        required: false
+        type: string
+        default: prod
 
 jobs:
   deploy:
@@ -36,6 +42,14 @@ jobs:
           sed -i 's|<your_tenant_id>|'"$AZURE_AKS_TENANT_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
           sed -i 's|<your_virtual_node_identity_resource_id>|'"$AZURE_VIRTUAL_NODE_IDENTITY_RESOURCE_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
           sed -i 's|<your_virtual_node_identity_principal_id>|'"$AZURE_VIRTUAL_NODE_IDENTITY_PRINCIPAL_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
+
+      - name: Apply UAT overrides (nonprod image tags + UAT KMS)
+        if: inputs.deploy_target == 'uat'
+        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
+        run: |
+          sed -i 's/^\(  image_tag      = "\)prod-/\1nonprod-/' offer.tf
+          sed -i 's/^\(  kv_image_tag   = "\)prod-/\1nonprod-/' offer.tf
+          sed -i 's|^\(  kms_url        = "\)https://depa-inferencing-kms-azure.ispirt.in"|\1https://depa-inferencing-kms-uat-azure.ispirt.in"|' offer.tf
 
       - name: Terraform init
         working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform

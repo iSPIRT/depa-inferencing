@@ -13,6 +13,14 @@ on:
       - main
   workflow_dispatch:
     inputs:
+      deploy_target:
+        description: 'prod = prod images/KMS; uat = uat images/KMS'
+        required: false
+        default: prod
+        type: choice
+        options:
+          - prod
+          - uat
       run_cleanup:
         description: 'Cleanup after deployment'
         required: false
@@ -24,12 +32,16 @@ jobs:
     name: Deploy on Azure
     uses: ./.github/workflows/azure_deploy.yml
     secrets: inherit
+    with:
+      deploy_target: ${{ github.event.inputs.deploy_target || 'prod' }}
 
   azure_test:
     name: Test Azure Deployment
     needs: azure_deploy
     uses: ./.github/workflows/azure_test.yml
     secrets: inherit
+    with:
+      deploy_target: ${{ github.event.inputs.deploy_target || 'prod' }}
 
   azure_cleanup:
     name: Cleanup Azure Deployments
