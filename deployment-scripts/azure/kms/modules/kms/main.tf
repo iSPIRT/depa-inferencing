@@ -81,11 +81,12 @@ resource "azurerm_role_assignment" "managed_identity_rg_contributor" {
 }
 
 module "virtual_network" {
-  source              = "../../services/virtual_network"
-  name                = local.virtual_network_name
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
-  tags                = merge(local.base_tags, var.extra_tags)
+  source                 = "../../services/virtual_network"
+  name                   = local.virtual_network_name
+  resource_group_name    = module.resource_group.name
+  location               = module.resource_group.location
+  tags                   = merge(local.base_tags, var.extra_tags)
+  enable_ddos_protection = var.enable_ddos_protection
 }
 
 # Key Vault: Creates Key Vault with network ACLs and certificate

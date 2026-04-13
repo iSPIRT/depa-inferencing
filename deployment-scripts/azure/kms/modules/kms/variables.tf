@@ -80,4 +80,10 @@ variable "extra_tags" {
   default     = {}
 }
 
+variable "enable_ddos_protection" {
+  type        = bool
+  description = "Whether to create a DDoS Protection Plan and attach it to the Virtual Network."
+  default     = false
+}
+
 
