@@ -59,6 +59,17 @@ jobs:
           sed -i 's/^\(  kv_image_tag   = "\)prod-/\1nonprod-/' offer.tf
           sed -i 's|^\(  kms_url        = "\)https://depa-inferencing-kms-azure.ispirt.in"|\1https://depa-inferencing-kms-uat-azure.ispirt.in"|' offer.tf
 
+      # Allow-all policies for nonprod images.
+      - name: UAT CCE allow-all policy (nonprod)
+        if: inputs.deploy_env == 'azure-uat'
+        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
+        run: |
+          sed -i \
+            -e 's|../cce-policies/offer.base64|../cce-policies/allow_all.base64|' \
+            -e 's|../cce-policies/ofe.base64|../cce-policies/allow_all.base64|' \
+            -e 's|../cce-policies/kv.base64|../cce-policies/allow_all.base64|' \
+            offer.tf
+
       # Storage account names are globally unique; prod keeps the Terraform default.
       - name: UAT distinct storage account name
         if: inputs.deploy_env == 'azure-uat'
