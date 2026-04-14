@@ -6,17 +6,25 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      deploy_env:
+        description: 'Deployment environment'
+        type: choice
+        options:
+          - azure-prod
+          - azure-uat
+        default: azure-prod
   workflow_call:
     inputs:
-      deploy_target:
-        description: 'prod = prod images/KMS; uat = uat images/KMS'
-        required: false
+      deploy_env:
+        description: 'Deployment environment'
         type: string
-        default: prod
+        required: true
 
 jobs:
   deploy:
     runs-on: ubuntu-22.04
+    environment: ${{ inputs.deploy_env }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,7 +52,7 @@ jobs:
           sed -i 's|<your_virtual_node_identity_principal_id>|'"$AZURE_VIRTUAL_NODE_IDENTITY_PRINCIPAL_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
 
       - name: Apply UAT overrides (nonprod image tags + UAT KMS)
-        if: inputs.deploy_target == 'uat'
+        if: inputs.deploy_env == 'azure-uat'
         working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
         run: |
           sed -i 's/^\(  image_tag      = "\)prod-/\1nonprod-/' offer.tf

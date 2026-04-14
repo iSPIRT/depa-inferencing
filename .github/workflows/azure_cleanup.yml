@@ -6,11 +6,24 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      deploy_env:
+        description: 'Deployment environment (must match deployed stack)'
+        type: choice
+        options:
+          - azure-prod
+          - azure-uat
+        default: azure-prod
   workflow_call:
+    inputs:
+      deploy_env:
+        type: string
+        required: true
 
 jobs:
   deploy-test-cleanup:
     runs-on: ubuntu-22.04
+    environment: ${{ inputs.deploy_env }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
