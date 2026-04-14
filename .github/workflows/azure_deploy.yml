@@ -59,6 +59,13 @@ jobs:
           sed -i 's/^\(  kv_image_tag   = "\)prod-/\1nonprod-/' offer.tf
           sed -i 's|^\(  kms_url        = "\)https://depa-inferencing-kms-azure.ispirt.in"|\1https://depa-inferencing-kms-uat-azure.ispirt.in"|' offer.tf
 
+      # Storage account names are globally unique; prod keeps the Terraform default.
+      - name: UAT distinct storage account name
+        if: inputs.deploy_env == 'azure-uat'
+        run: |
+          SA_TF="${GITHUB_WORKSPACE}/deployment-scripts/azure/offer-service/services/storage_account/main.tf"
+          sed -i 's|^  name[[:space:]]*=[[:space:]]*"${var.operator}${var.environment}${substr(var.frontend_service_name, 0, 3)}${var.region_short}storage"|  name                     = "tfdemouatoffincstorage"|' "$SA_TF"
+
       - name: Terraform init
         working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
         run: terraform init
@@ -80,14 +87,16 @@ jobs:
           ./udf_delta_file_generator.sh ${PWD}/tmp ${PWD}/udf.js
 
       - name: Upload data and UDF
+        env:
+          STORAGE_ACCOUNT_NAME: ${{ inputs.deploy_env == 'azure-uat' && 'tfdemouatoffincstorage' || 'tfdemooffincstorage' }}
         working-directory: ./tools/key-value-service
         run: |
           ACCOUNT_KEY=$(az storage account keys list \
-            --account-name tfdemooffincstorage \
+            --account-name "$STORAGE_ACCOUNT_NAME" \
             --query "[0].value" -o tsv)
   
           az storage file upload-batch \
-            --account-name tfdemooffincstorage \
+            --account-name "$STORAGE_ACCOUNT_NAME" \
             --destination fslogix \
             --destination-path deltas \
             --source ${PWD}/tmp \
