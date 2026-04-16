@@ -1,0 +1,41 @@
+# Chains deploy → test → cleanup for one Azure subscription.
+# deploy_env is the GitHub Environment name; it selects secrets and (via child workflows)
+# prod vs nonprod images and KMS.
+
+name: Azure stack (deploy, test, cleanup)
+
+on:
+  workflow_call:
+    inputs:
+      deploy_env:
+        description: 'Deployment environment'
+        type: string
+        required: true
+      run_cleanup:
+        description: 'Cleanup resource group after test'
+        type: boolean
+        required: false
+        default: true
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/azure_deploy.yml
+    secrets: inherit
+    with:
+      deploy_env: ${{ inputs.deploy_env }}
+
+  test:
+    needs: deploy
+    if: always() && needs.deploy.result == 'success'
+    uses: ./.github/workflows/azure_test.yml
+    secrets: inherit
+    with:
+      deploy_env: ${{ inputs.deploy_env }}
+
+  cleanup:
+    needs: [deploy, test]
+    if: always() && inputs.run_cleanup
+    uses: ./.github/workflows/azure_cleanup.yml
+    secrets: inherit
+    with:
+      deploy_env: ${{ inputs.deploy_env }}
