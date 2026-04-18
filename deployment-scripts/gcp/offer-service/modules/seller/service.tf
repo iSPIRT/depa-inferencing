@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Google LLC
+ * Copyright 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-################ Common Setup ################
-
 module "networking" {
   source                 = "../../services/networking"
-  frontend_service       = "bfe"
+  frontend_service       = "sfe"
   operator               = var.operator
   environment            = var.environment
   regions                = keys(var.region_config)
@@ -41,21 +39,21 @@ module "autoscaling" {
   vpc_id                                = module.networking.network_id
   subnets                               = module.networking.subnets
   mesh_name                             = module.networking.mesh.name
+  cpu_utilization_percent               = var.cpu_utilization_percent
   service_account_email                 = var.service_account_email
   environment                           = var.environment
   operator                              = var.operator
-  backend_tee_image                     = var.bidding_image
-  backend_service_port                  = tonumber(var.runtime_flags["BIDDING_PORT"])
-  backend_service_name                  = "bidding"
-  frontend_tee_image                    = var.buyer_frontend_image
-  frontend_service_port                 = tonumber(var.runtime_flags["BUYER_FRONTEND_PORT"])
-  frontend_service_healthcheck_port     = tonumber(var.runtime_flags["BUYER_FRONTEND_HEALTHCHECK_PORT"])
-  frontend_service_name                 = "bfe"
+  backend_tee_image                     = var.auction_image
+  backend_service_port                  = tonumber(var.runtime_flags["AUCTION_PORT"])
+  backend_service_name                  = "auction"
+  frontend_tee_image                    = var.seller_frontend_image
+  frontend_service_port                 = var.envoy_port
+  frontend_service_healthcheck_port     = tonumber(var.runtime_flags["SELLER_FRONTEND_HEALTHCHECK_PORT"])
+  frontend_service_name                 = "sfe"
   collector_service_name                = "collector"
   collector_service_port                = var.collector_service_port
   region_config                         = var.region_config
   vm_startup_delay_seconds              = var.vm_startup_delay_seconds
-  cpu_utilization_percent               = var.cpu_utilization_percent
   use_confidential_space_debug_image    = var.use_confidential_space_debug_image
   tee_impersonate_service_accounts      = tobool(var.runtime_flags["TEST_MODE"]) ? "" : var.tee_impersonate_service_accounts
   runtime_flags                         = var.runtime_flags
@@ -75,12 +73,12 @@ module "load_balancing" {
   frontend_domain_name              = var.frontend_domain_name
   frontend_dns_zone                 = var.frontend_dns_zone
   frontend_instance_group_managers  = module.autoscaling.frontend_instance_group_managers
-  frontend_service_name             = "bfe"
-  frontend_service_healthcheck_port = tonumber(var.runtime_flags["BUYER_FRONTEND_HEALTHCHECK_PORT"])
+  frontend_service_name             = "sfe"
+  frontend_service_healthcheck_port = tonumber(var.runtime_flags["SELLER_FRONTEND_HEALTHCHECK_PORT"])
   backend_instance_group_managers   = module.autoscaling.backend_instance_group_managers
-  backend_service_name              = "bidding"
-  backend_address                   = var.runtime_flags["BIDDING_SERVER_ADDR"]
-  backend_service_port              = tonumber(var.runtime_flags["BIDDING_PORT"])
+  backend_address                   = var.runtime_flags["AUCTION_SERVER_HOST"]
+  backend_service_name              = "auction"
+  backend_service_port              = tonumber(var.runtime_flags["AUCTION_PORT"])
   collector_instance_group_managers = module.autoscaling.collector_instance_group_managers
   collector_service_name            = "collector"
   collector_service_port            = var.collector_service_port

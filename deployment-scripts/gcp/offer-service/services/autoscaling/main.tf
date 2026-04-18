@@ -67,6 +67,9 @@ resource "google_compute_instance_template" "frontends" {
     enable_vtpm                 = true
   }
   confidential_instance_config {
+    # You should use terraform-provider-google newer or equal to 5.36.0 for
+    # confidential_instance_type field.
+    confidential_instance_type  = "SEV"
     enable_confidential_compute = true
   }
 
@@ -76,6 +79,14 @@ resource "google_compute_instance_template" "frontends" {
   network_interface {
     network    = var.vpc_id
     subnetwork = each.value.id
+
+    // Notes that this instance is a dual-stack resource.
+    stack_type = "IPV4_IPV6"
+    // Including this gives the instance an 'external' IPv6.
+    ipv6_access_config {
+      // Keeps the traffic on the GCP backbone for as long as possible.
+      network_tier = "PREMIUM"
+    }
 
     # Uncomment below to give instances external IPs:
     # access_config {
@@ -186,7 +197,6 @@ resource "google_compute_health_check" "frontend" {
 # The backend service uses HTTP/2 (gRPC) with no TLS.
 ###############################################################
 
-
 resource "google_compute_instance_template" "backends" {
   for_each = var.subnets
 
@@ -200,7 +210,7 @@ resource "google_compute_instance_template" "backends" {
     auto_delete  = true
     boot         = true
     device_name  = "persistent-disk-0"
-    disk_type    = "pd-standard"
+    disk_type    = var.region_config[each.value.region].backend.use_intel_amx ? "pd-balanced" : "pd-standard"
     interface    = "NVME"
     mode         = "READ_WRITE"
     source_image = "projects/confidential-space-images/global/images/family/${var.use_confidential_space_debug_image ? "confidential-space-debug" : "confidential-space"}"
@@ -223,6 +233,9 @@ resource "google_compute_instance_template" "backends" {
     enable_vtpm                 = true
   }
   confidential_instance_config {
+    # You should use terraform-provider-google newer or equal to 5.36.0 for
+    # confidential_instance_type field.
+    confidential_instance_type  = var.region_config[each.value.region].backend.use_intel_amx ? "TDX" : "SEV"
     enable_confidential_compute = true
   }
 
@@ -232,6 +245,14 @@ resource "google_compute_instance_template" "backends" {
   network_interface {
     network    = var.vpc_id
     subnetwork = each.value.id
+
+    // Notes that this instance is a dual-stack resource.
+    stack_type = "IPV4_IPV6"
+    // Including this gives the instance an 'external' IPv6.
+    ipv6_access_config {
+      // Keeps the traffic on the GCP backbone for as long as possible.
+      network_tier = "PREMIUM"
+    }
 
     # Uncomment below to give instances external IPs:
     # access_config {
@@ -245,13 +266,16 @@ resource "google_compute_instance_template" "backends" {
     email  = var.service_account_email
     scopes = ["https://www.googleapis.com/auth/cloud-platform"]
   }
-  metadata = {
+  metadata = merge(var.backend_service_name == "bidding" ? {
+    tee-added-capabilities = "[\"CAP_SYS_ADMIN\",\"CAP_SYS_PTRACE\"]"
+    tee-cgroup-ns          = true
+    } : {}, {
     mesh-name                        = var.mesh_name
     tee-image-reference              = var.backend_tee_image
     tee-container-log-redirect       = var.enable_tee_container_log_redirect
     tee-impersonate-service-accounts = var.tee_impersonate_service_accounts
     operator                         = var.operator
-  }
+  })
 
   lifecycle {
     create_before_destroy = true

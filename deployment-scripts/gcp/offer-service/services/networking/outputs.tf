@@ -32,6 +32,10 @@ output "frontend_address" {
   value = google_compute_global_address.frontend.address
 }
 
+output "frontend_ipv6_address" {
+  value = google_compute_global_address.frontend_ipv6.address
+}
+
 output "mesh" {
   value = google_network_services_mesh.default
 }

@@ -1,4 +1,4 @@
-# Copyright 2023 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,22 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-terraform {
-  required_version = ">= 1.2.3"
+output "frontend_certificate_map_id" {
+  value = module.domain.frontend_certificate_map_id
+}
 
-  required_providers {
-    google-beta = {
-      source  = "hashicorp/google-beta"
-      version = "5.36.0"
-    }
-    google = {
-      source  = "hashicorp/google"
-      version = "5.36.0"
-    }
-  }
+output "domain" {
+  value = module.domain.domain
+}
 
-  backend "gcs" {
-    bucket = "depa-inferencing-ci-tfstate"
-    prefix = "buyer"
-  }
+output "bfe_dns_zone" {
+  value = module.domain.bfe_dns_zone
+}
+
+output "sfe_dns_zone" {
+  value = module.domain.sfe_dns_zone
+}
+
+
+output "zone_url" {
+  value = module.domain.zone_url
+}
+
+output "service_account_full_name" {
+  value = module.service_account.service_account_full_name
 }

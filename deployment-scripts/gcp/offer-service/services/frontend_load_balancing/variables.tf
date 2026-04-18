@@ -38,6 +38,12 @@ variable "frontend_ip_address" {
   description = "Frontend ip address"
   type        = string
 }
+
+variable "frontend_ipv6_address" {
+  description = "Frontend ipv6 address"
+  type        = string
+}
+
 variable "frontend_domain_ssl_certificate_id" {
   description = "A GCP ssl certificate id. Example: projects/test-project/global/sslCertificates/dev. Used to terminate client-to-external-LB connections. Unused if frontend_certificate_map_id is specified."
   type        = string
@@ -46,6 +52,12 @@ variable "frontend_domain_ssl_certificate_id" {
 
 variable "frontend_certificate_map_id" {
   description = "A certificate manager certificate map resource id. Example: projects/test-project/locations/global/certificateMaps/wildcard-cert-map. Takes precedence over frontend_domain_ssl_certificate_id."
+  type        = string
+  default     = ""
+}
+
+variable "frontend_ssl_policy_id" {
+  description = "A GCP ssl policy id. Example: projects/test-projects/global/sslPolicies/test-ssl-policy."
   type        = string
   default     = ""
 }
@@ -63,4 +75,21 @@ variable "google_compute_backend_service_ids" {
 variable "traffic_weights" {
   description = "a map with environment as key, the value is traffic_weight between 0~1000"
   type        = map(number)
+}
+
+variable "experiment_match_rules" {
+  description = "a map with environment as key, the value is a list header match_rules, which has OR semantics: the request matches when any of the header match_rules are satisfied. Only one of exactMatch, prefixMatch, or presentMatch must be specified. see more: https://cloud.google.com/compute/docs/reference/rest/v1/urlMaps"
+  type = map(list(object({
+    header_name   = string
+    exact_match   = string
+    prefix_match  = string
+    present_match = bool
+  })))
+  default = {}
+}
+
+variable "gcp_dns_zones_project_id" {
+  description = "The name of the Google Cloud project where DNS zones are managed."
+  type        = string
+  default     = null
 }

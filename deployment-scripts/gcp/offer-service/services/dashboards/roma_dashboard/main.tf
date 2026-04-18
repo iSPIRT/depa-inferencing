@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-terraform {
-  required_version = ">= 1.2.3"
-
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "6.2.0"
-    }
-  }
-
-  backend "gcs" {
-    bucket = ""
-    prefix = "terraform-state"
-  }
+resource "google_monitoring_dashboard" "environment_dashboard" {
+  dashboard_json = templatefile("${path.module}/dashboard.tftpl", { environment = var.environment })
 }

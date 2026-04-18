@@ -13,79 +13,35 @@
 # limitations under the License.
 
 locals {
-  gcp_project_id = "" # Example: "your-gcp-project-123"
-  environment    = "" # Must be <= 3 characters. Example: "abc"
-  image_repo     = "" # Example: "us-docker.pkg.dev/your-gcp-project-123/services"
-  buyer_operator = "" # Example: "buyer-1"
-  default_region_config = {
-    # Example config provided for us-central1 and you may add your own regions.
-    "us-central1" = {
-      collector = {
-        machine_type          = "e2-micro"
-        min_replicas          = 1
-        max_replicas          = 1
-        zones                 = null # Null signifies no zone preference.
-        max_rate_per_instance = null # Null signifies no max.
-      }
-      backend = {
-        machine_type          = "n2d-standard-64"
-        min_replicas          = 1
-        max_replicas          = 5
-        zones                 = null # Null signifies no zone preference.
-        max_rate_per_instance = null # Null signifies no max.
-      }
-      frontend = {
-        machine_type          = "n2d-standard-64"
-        min_replicas          = 1
-        max_replicas          = 2
-        zones                 = null # Null signifies no zone preference.
-        max_rate_per_instance = null # Null signifies no max.
-      }
+  buyer_traffic_splits = {
+    (var.environment) = {
+      image_tag             = var.image_tag
+      traffic_weight        = var.traffic_weight
+      region_config         = var.default_region_config
+      runtime_flag_override = var.buyer_runtime_flag_override
     }
   }
 
-  # Please create a Google Cloud domain name, dns zone, and SSL certificate.
-  # See demo/project_setup_utils/domain_setup/README.md for more details.
-  # If you specify a certificate_map_id, you do not need to specify an ssl_certificate_id.
-  frontend_domain_ssl_certificate_id = "" # Example: "projects/${local.gcp_project_id}/global/sslCertificates/bfe-${local.environment}"
-  frontend_certificate_map_id        = "" # Example: "//certificatemanager.googleapis.com/projects/test/locations/global/certificateMaps/wildcard-cert-map"
-  buyer_domain_name                  = "" # Example: bfe-gcp.com
-  frontend_dns_zone                  = "" # Example: "bfe-gcp-com"
-
-  buyer_traffic_splits = {
-    # default
-    "${local.environment}" = {
-      image_tag             = ""   # Image built and uploaded by production/packaging/build_and_test_all_in_docker
-      traffic_weight        = 1000 # traffic_weight for this arm, between 0~1000. default's weight must > 0.
-      region_config         = local.default_region_config
-      runtime_flag_override = {}
+  buyer_header_experiment = {
+    "${var.environment}-h1" = {
+      image_tag             = var.header_experiment_image_tag != "" ? var.header_experiment_image_tag : var.image_tag
+      region_config         = var.default_region_config
+      runtime_flag_override = var.buyer_runtime_flag_override
+      match_rules           = var.header_experiment_match_rules
     }
-
-    # optional: experiment arm 1
-    "${local.environment}-1" = {
-      image_tag      = ""                          # Image built and uploaded by production/packaging/build_and_test_all_in_docker
-      traffic_weight = 0                           # traffic_weight for this arm, between 0~1000. Arm with 0 weight will be skipped.
-      region_config  = local.default_region_config # region config can be different for each arm
-      runtime_flag_override = {
-        # Example: MAX_ALLOWED_SIZE_ALL_DEBUG_URLS_KB = "12345"
-      }
-    }
-
-    # optional: more experiment arm
-    # "${local.environment}-2" = ...
   }
 }
 
 provider "google" {
-  project = local.gcp_project_id
+  project = var.gcp_project_id
 }
 
 provider "google-beta" {
-  project = local.gcp_project_id
+  project = var.gcp_project_id
 }
 
 resource "google_compute_project_metadata" "default" {
-  project = local.gcp_project_id
+  project = var.gcp_project_id
   metadata = {
     enable-oslogin = "FALSE"
   }
@@ -97,13 +53,18 @@ module "secrets" {
 }
 
 module "buyer" {
-  for_each             = { for key, value in local.buyer_traffic_splits : key => value if value.traffic_weight > 0 }
+  for_each = merge(
+    { for key, value in local.buyer_traffic_splits :
+    key => value if value.traffic_weight > 0 },
+    { for key, value in local.buyer_header_experiment :
+    key => value if length(value.match_rules) > 0 }
+  )
+
   source               = "../../../modules/buyer"
   environment          = each.key
-  gcp_project_id       = local.gcp_project_id
-  bidding_image        = "${local.image_repo}/bidding_service:${each.value.image_tag}"
-  buyer_frontend_image = "${local.image_repo}/buyer_frontend_service:${each.value.image_tag}"
-  fakekv_service_port  = 1900 # Ignore this.
+  gcp_project_id       = var.gcp_project_id
+  bidding_image        = "${var.image_repo}/bidding_service:${each.value.image_tag}"
+  buyer_frontend_image = "${var.image_repo}/buyer_frontend_service:${each.value.image_tag}"
 
   runtime_flags = merge({
     BIDDING_PORT                      = "50051"          # Do not change unless you are modifying the default GCP architecture.
@@ -114,72 +75,50 @@ module "buyer" {
     BIDDING_EGRESS_TLS                = "false"          # Do not change unless you are modifying the default GCP architecture.
     AD_RETRIEVAL_KV_SERVER_EGRESS_TLS = "false"          # Do not change unless you are modifying the default GCP architecture.
     KV_SERVER_EGRESS_TLS              = "false"          # Do not change unless you are modifying the default GCP architecture.
-    TEST_MODE                         = "false"          # Do not change unless you are testing without key fetching.
+    TEST_MODE                         = var.test_mode    # Do not change unless you are testing without key fetching.
 
-    ENABLE_BIDDING_SERVICE_BENCHMARK   = ""            # Example: "false"
-    BUYER_KV_SERVER_ADDR               = ""            # Example: "https://kvserver.com/trusted-signals"
-    BUYER_TKV_V2_SERVER_ADDR           = "PLACEHOLDER" # Example: "dns:///kvserver:443"
-    ENABLE_TKV_V2_BROWSER              = ""            # Example: "false"
-    TKV_EGRESS_TLS                     = ""            # Example: "false"
-    TEE_AD_RETRIEVAL_KV_SERVER_ADDR    = ""            # Example: "xds:///ad-retrieval-host"
-    TEE_KV_SERVER_ADDR                 = ""            # Example: "xds:///kv-service-host"
-    AD_RETRIEVAL_TIMEOUT_MS            = ""            # Example: "60000"
-    GENERATE_BID_TIMEOUT_MS            = ""            # Example: "60000"
-    BIDDING_SIGNALS_LOAD_TIMEOUT_MS    = ""            # Example: "60000"
-    ENABLE_BUYER_FRONTEND_BENCHMARKING = ""            # Example: "false"
-    CREATE_NEW_EVENT_ENGINE            = ""            # Example: "false"
-    ENABLE_BIDDING_COMPRESSION         = ""            # Example: "true"
-    ENABLE_PROTECTED_AUDIENCE          = ""            # Example: "true"
-    PS_VERBOSITY                       = ""            # Example: "10"
-    # [BEGIN] PAS related params
-    ENABLE_PROTECTED_APP_SIGNALS                  = "" # Example: "false"
-    PROTECTED_APP_SIGNALS_GENERATE_BID_TIMEOUT_MS = "" # Example: "60000"
-    EGRESS_SCHEMA_FETCH_CONFIG                    = "" # Example:
-    # "{
-    #   "fetchMode": 0,
-    #   "egressSchemaUrl": "https://example.com/egressSchema.json",
-    #   "urlFetchPeriodMs": 130000,
-    #   "urlFetchTimeoutMs": 30000
-    # }"
-    # [END] PAS related params
-    BUYER_CODE_FETCH_CONFIG = "" # Example for V8:
-    # "{
-    #    "fetchMode": 0,
-    #    "biddingJsPath": "",
-    #    "biddingJsUrl": "https://example.com/generateBid.js",
-    #    "protectedAppSignalsBiddingJsUrl": "placeholder",
-    #    "biddingWasmHelperUrl": "",
-    #    "protectedAppSignalsBiddingWasmHelperUrl": "",
-    #    "urlFetchPeriodMs": 13000000,
-    #    "urlFetchTimeoutMs": 30000,
-    #    "enableBuyerDebugUrlGeneration": true,
-    #    "prepareDataForAdsRetrievalJsUrl": "",
-    #    "prepareDataForAdsRetrievalWasmHelperUrl": "",
-    #    "enablePrivateAggregateReporting": false,
-    #  }"
-    # Example for BYOB:
-    # "{
-    #    "fetchMode": 0,
-    #    "biddingExecutablePath": "",
-    #    "biddingExecutableUrl": "https://example.com/generateBid",
-    #    "urlFetchPeriodMs": 13000000,
-    #    "urlFetchTimeoutMs": 30000,
-    #    "enableBuyerDebugUrlGeneration": true,
-    #    "enablePrivateAggregateReporting": false,
-    #  }"
-    UDF_NUM_WORKERS           = "" # Example: "64" Must be <=vCPUs in bidding_machine_type.
-    JS_WORKER_QUEUE_LEN       = "" # Example: "200".
-    ROMA_TIMEOUT_MS           = "" # Example: "10000"
-    TELEMETRY_CONFIG          = "" # Example: "mode: EXPERIMENT"
-    COLLECTOR_ENDPOINT        = "" # Example: "collector-buyer-1-${each.key}.bfe-gcp.com:4317"
-    ENABLE_OTEL_BASED_LOGGING = "" # Example: "false"
-    CONSENTED_DEBUG_TOKEN     = "" # Example: "<unique_id>"
+    ENABLE_BIDDING_SERVICE_BENCHMARK = "true"
+    ENABLE_TKV_V2_BROWSER            = "false"
+    TKV_EGRESS_TLS                   = "false"
+    BUYER_TKV_V2_SERVER_ADDR         = "PLACEHOLDER"
+    AD_RETRIEVAL_TIMEOUT_MS          = "60000"
+
+    GENERATE_BID_TIMEOUT_MS                       = "60000"
+    BIDDING_SIGNALS_LOAD_TIMEOUT_MS               = "60000"
+    ENABLE_BUYER_FRONTEND_BENCHMARKING            = "true"
+    CREATE_NEW_EVENT_ENGINE                       = "false"
+    ENABLE_BIDDING_COMPRESSION                    = "true"
+    ENABLE_PROTECTED_AUDIENCE                     = "true"
+    PS_VERBOSITY                                  = "10"
+    ENABLE_PROTECTED_APP_SIGNALS                  = "false"
+    PROTECTED_APP_SIGNALS_GENERATE_BID_TIMEOUT_MS = "60000"
+    BUYER_CODE_FETCH_CONFIG = jsonencode({
+      fetchMode                                  = 1
+      biddingJsPath                              = ""
+      biddingJsUrl                               = ""
+      protectedAppSignalsBiddingJsUrl            = ""
+      biddingWasmHelperUrl                       = ""
+      protectedAppSignalsBiddingWasmHelperUrl    = ""
+      urlFetchPeriodMs                           = 13000000
+      urlFetchTimeoutMs                          = 30000
+      enableBuyerDebugUrlGeneration              = true
+      prepareDataForAdsRetrievalJsUrl            = ""
+      prepareDataForAdsRetrievalWasmHelperUrl    = ""
+      enablePrivateAggregateReporting            = false
+      protectedAuctionBiddingJsBucket            = var.buyer_code_bucket
+      protectedAuctionBiddingJsBucketDefaultBlob = var.buyer_code_blob
+    })
+    UDF_NUM_WORKERS           = "2"
+    JS_WORKER_QUEUE_LEN       = "100"
+    ROMA_TIMEOUT_MS           = "120000"
+    TELEMETRY_CONFIG          = "mode: EXPERIMENT"
+    COLLECTOR_ENDPOINT        = "localhost:4317"
+    ENABLE_OTEL_BASED_LOGGING = "false"
+    CONSENTED_DEBUG_TOKEN     = var.consented_debug_token
     DEBUG_SAMPLE_RATE_MICRO   = "0"
 
-    # Coordinator-based attestation flags.
-    # These flags are production-ready and you do not need to change them.
-    # Reach out to the Privacy Sandbox B&A team to enroll with Coordinators.
-    # More information on enrollment can be found here: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#enroll-with-coordinators
+    # Coordinator/KMS flags — If TEST_MODE=true then these are not actually used,
+    # but they must be present for the config client.
     PUBLIC_KEY_ENDPOINT                           = "https://publickeyservice.pa.gcp.privacysandboxservices.com/.well-known/protected-auction/v1/public-keys"
     PRIMARY_COORDINATOR_PRIVATE_KEY_ENDPOINT      = "https://privatekeyservice-a.pa-3.gcp.privacysandboxservices.com/v1alpha/encryptionKeys"
     SECONDARY_COORDINATOR_PRIVATE_KEY_ENDPOINT    = "https://privatekeyservice-b.pa-4.gcp.privacysandboxservices.com/v1alpha/encryptionKeys"
@@ -196,23 +135,23 @@ module "buyer" {
 
     BFE_TLS_KEY                        = module.secrets.tls_key  # You may remove the secrets module and instead either inline or use an auto.tfvars for this variable.
     BFE_TLS_CERT                       = module.secrets.tls_cert # You may remove the secrets module and instead either inline or use an auto.tfvars for this variable.
-    MAX_ALLOWED_SIZE_DEBUG_URL_BYTES   = ""                      # Example: "65536"
-    MAX_ALLOWED_SIZE_ALL_DEBUG_URLS_KB = ""                      # Example: "3000"
+    MAX_ALLOWED_SIZE_DEBUG_URL_BYTES   = "65536"
+    MAX_ALLOWED_SIZE_ALL_DEBUG_URLS_KB = "3000"
 
-    INFERENCE_SIDECAR_BINARY_PATH    = "" # Example: "/server/bin/inference_sidecar_<module_name>"
-    INFERENCE_MODEL_BUCKET_NAME      = "" # Example: "<bucket_name>"
-    INFERENCE_MODEL_CONFIG_PATH      = "" # Example: "model_config.json"
-    INFERENCE_MODEL_FETCH_PERIOD_MS  = "" # Example: "60000"
-    INFERENCE_SIDECAR_RUNTIME_CONFIG = "" # Example:
-    # "{
-    #    "num_interop_threads": 4,
-    #    "num_intraop_threads": 4,
-    #    "module_name": "tensorflow_v2_14_0",
-    #    "cpuset": [0, 1, 2, 3],
-    #    "tcmalloc_release_bytes_per_sec": 0,
-    #    "tcmalloc_max_total_thread_cache_bytes": 0,
-    #    "tcmalloc_max_per_cpu_cache_bytes": 0,
-    # }"
+    # Inference flags: I fnot using inference sidecar, omit INFERENCE_SIDECAR_BINARY_PATH
+    # entirely so the config client returns "" → enable_inference=false → no sandbox start.
+    # Other optional inference flags are also omitted to avoid space-as-value
+    # issues with Secret Manager (which rejects empty payloads).
+    #INFERENCE_SIDECAR_BINARY_PATH            = "" # Example: "/server/bin/inference_sidecar_<module_name>"
+    #INFERENCE_MODEL_BUCKET_NAME              = "" # Example: "<bucket_name>"
+    #INFERENCE_MODEL_CONFIG_PATH              = "" # Example: "model_config.json"
+    #INFERENCE_MODEL_FETCH_PERIOD_MS          = "" # Example: "300000"
+    #INFERENCE_SIDECAR_RUNTIME_CONFIG         = "" # Example:
+    INFERENCE_MODEL_REGISTRATION_TIMEOUT_MS  = "60000"
+    INFERENCE_MODEL_EXECUTION_TIMEOUT_MS     = "60000"
+    INFERENCE_MODEL_PATHS_REQUEST_TIMEOUT_MS = "60000"
+    INFERENCE_ENABLE_PROTO_PARSING           = "false"
+    INFERENCE_ENABLE_CANCELLATION_AT_BIDDING = "false"
 
     # TCMalloc related config parameters.
     # See: https://github.com/google/tcmalloc/blob/master/docs/tuning.md
@@ -220,16 +159,61 @@ module "buyer" {
     BIDDING_TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES             = "10737418240" # Example: 10737418240
     BFE_TCMALLOC_BACKGROUND_RELEASE_RATE_BYTES_PER_SECOND     = "4096"
     BFE_TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES                 = "10737418240"
+    BIDDING_SIGNALS_FETCH_MODE                                = "NOT_FETCHED"
+
+    ###### [BEGIN] Libcurl parameters.
+    #
+    # Libcurl is used in frontend servers to fetch real time signals for BYOS
+    # KVs in the request path, as well as to fetch UDF blobs off the request
+    # path in the backend servers. The following params should be tuned based
+    # on the expected load to support, the capacity of the servers and expected
+    # size of data/signals/blob to be transfered.
+    #
+    # Number of curl workers to use in BFE/bidding to run transfers using curl
+    # handles. This number should be scaled based on number of vCPUs available
+    # to the instance. Note: 1. Each worker uses one thread. 2. Performance
+    # degradation has been observed when using more than 4 workers.
+    CURL_BFE_NUM_WORKERS     = 4
+    CURL_BIDDING_NUM_WORKERS = 1 # Recommended to keep it 1.
+    #
+    # Maximum wait time for a curl request to be allowed in the queue. After
+    # this time expires, the request is removed from the queue and the original
+    # request to the service will fail. Setting this value too low can lead to
+    # degraded performance in B&A stack under load since lower values increase
+    # lock contention.
+    CURL_BFE_QUEUE_MAX_WAIT_MS     = 1000
+    CURL_BIDDING_QUEUE_MAX_WAIT_MS = 2000
+    #
+    # Number of pending curl requests that have not yet been scheduled to run.
+    # This should be scaled depending on the stack capacity, intended QPS,
+    # max wait time limit imposed on the requests in the queue etc.
+    CURL_BFE_WORK_QUEUE_LENGTH     = 1000
+    CURL_BIDDING_WORK_QUEUE_LENGTH = 10 # Recommended to keep it 10.
+    #
+    # Constrains the size of the libcurl connection cache.
+    # 0 is default, means unlimited.
+    # See https://curl.se/libcurl/c/CURLMOPT_MAXCONNECTS.html.
+    CURLMOPT_MAXCONNECTS = 0
+    # Sets the maximum number of simultaneously open connections.
+    # 0 is default, means unlimited.
+    # See https://curl.se/libcurl/c/CURLMOPT_MAX_TOTAL_CONNECTIONS.html.
+    CURLMOPT_MAX_TOTAL_CONNECTIONS = 0
+    # Sets the maximum number of connections to a single host.
+    # 0 is default, means unlimited.
+    # See: https://curl.se/libcurl/c/CURLMOPT_MAX_HOST_CONNECTIONS.html.
+    CURLMOPT_MAX_HOST_CONNECTIONS = 0
+    #
+    ###### [END] Libcurl parameters.
   }, each.value.runtime_flag_override)
 
-  frontend_domain_name               = local.buyer_domain_name
-  frontend_dns_zone                  = local.frontend_dns_zone
-  operator                           = local.buyer_operator
-  service_account_email              = ""    # Example: "terraform-sa@{local.gcp_project_id}.iam.gserviceaccount.com"
-  vm_startup_delay_seconds           = 200   # Example: 200
-  cpu_utilization_percent            = 0.6   # Example: 0.6
-  use_confidential_space_debug_image = false # Example: false
-  tee_impersonate_service_accounts   = "a-opallowedusr@ps-pa-coord-prd-g3p-svcacc.iam.gserviceaccount.com,b-opallowedusr@ps-prod-pa-type2-fe82.iam.gserviceaccount.com"
+  frontend_domain_name               = var.buyer_domain_name
+  frontend_dns_zone                  = var.frontend_dns_zone
+  operator                           = var.buyer_operator
+  service_account_email              = var.service_account_email
+  vm_startup_delay_seconds           = var.vm_startup_delay_seconds
+  cpu_utilization_percent            = var.cpu_utilization_percent
+  use_confidential_space_debug_image = var.use_confidential_space_debug_image
+  tee_impersonate_service_accounts   = var.tee_impersonate_service_accounts
   collector_service_port             = 4317
   collector_startup_script = templatefile("../../../services/autoscaling/collector_startup.tftpl", {
     collector_port           = 4317
@@ -238,41 +222,67 @@ module "buyer" {
     gcs_hmac_secret          = module.secrets.gcs_hmac_secret
     gcs_bucket               = "" # Example: ${name of a gcs bucket}
     gcs_bucket_prefix        = "" # Example: "consented-eventmessage-${each.key}"
-    file_prefix              = "" # Example: local.buyer_operator
+    file_prefix              = "" # Example: var.buyer_operator
   })
   region_config                     = each.value.region_config
-  enable_tee_container_log_redirect = false
+  enable_tee_container_log_redirect = true
 }
 
 module "buyer_frontend_load_balancing" {
-  source               = "../../services/frontend_load_balancing"
-  environment          = local.environment
-  operator             = local.buyer_operator
-  frontend_ip_address  = module.buyer[local.environment].frontend_address
-  frontend_domain_name = local.buyer_domain_name
-  frontend_dns_zone    = local.frontend_dns_zone
+  source                = "../../../services/frontend_load_balancing"
+  environment           = var.environment
+  operator              = var.buyer_operator
+  frontend_ip_address   = module.buyer[var.environment].frontend_address
+  frontend_ipv6_address = module.buyer[var.environment].frontend_ipv6_address
+  frontend_domain_name  = var.buyer_domain_name
+  frontend_dns_zone     = var.frontend_dns_zone
 
-  frontend_domain_ssl_certificate_id = local.frontend_domain_ssl_certificate_id
-  frontend_certificate_map_id        = local.frontend_certificate_map_id
+  frontend_domain_ssl_certificate_id = var.frontend_domain_ssl_certificate_id
+  frontend_certificate_map_id        = var.frontend_certificate_map_id
+  frontend_ssl_policy_id             = var.frontend_ssl_policy_id
   frontend_service_name              = "bfe"
   google_compute_backend_service_ids = {
     for buyer_key, buyer in module.buyer :
     buyer_key => buyer.google_compute_backend_service_id
   }
-  traffic_weights = { for key, value in local.buyer_traffic_splits : key => value.traffic_weight }
+  traffic_weights        = { for key, value in local.buyer_traffic_splits : key => value.traffic_weight if value.traffic_weight > 0 }
+  experiment_match_rules = { for key, value in local.buyer_header_experiment : key => value.match_rules if length(value.match_rules) > 0 }
 }
 
 module "buyer_dashboard" {
-  source      = "../../services/dashboards/buyer_dashboard"
-  environment = join("|", [for k, v in local.buyer_traffic_splits : k if v.traffic_weight > 0])
+  source = "../../../services/dashboards/buyer_dashboard"
+  environment = join("|", concat(
+    [for k, v in local.buyer_traffic_splits : k if v.traffic_weight > 0],
+  [for k, v in local.buyer_header_experiment : k if length(v.match_rules) > 0]))
 }
 
 module "inference_dashboard" {
-  source      = "../../services/dashboards/inference_dashboard"
-  environment = join("|", [for k, v in local.buyer_traffic_splits : k if v.traffic_weight > 0])
+  source = "../../../services/dashboards/inference_dashboard"
+  environment = join("|", concat(
+    [for k, v in local.buyer_traffic_splits : k if v.traffic_weight > 0],
+  [for k, v in local.buyer_header_experiment : k if length(v.match_rules) > 0]))
 }
 
-# use below to perform an in-place upgrade from pre 4.2 to 4.2 and after, replace $ENV with $local.environment value
+module "roma_dashboard" {
+  source = "../../../services/dashboards/roma_dashboard"
+  environment = join("|", concat(
+    [for k, v in local.buyer_traffic_splits : k if v.traffic_weight > 0],
+  [for k, v in local.buyer_header_experiment : k if length(v.match_rules) > 0]))
+}
+
+module "k_anon_dashboard" {
+  source = "../../../services/dashboards/k_anon_dashboard"
+  environment = join("|", concat(
+    [for k, v in local.buyer_traffic_splits : k if v.traffic_weight > 0],
+  [for k, v in local.buyer_header_experiment : k if length(v.match_rules) > 0]))
+}
+
+module "log_based_metric" {
+  source      = "../../../services/log_based_metric"
+  environment = var.environment
+}
+
+# use below to perform an in-place upgrade from pre 4.2 to 4.2 and after, replace $ENV with var.environment value
 # moved {
 #   from = module.buyer
 #   to   = module.buyer["$ENV"]

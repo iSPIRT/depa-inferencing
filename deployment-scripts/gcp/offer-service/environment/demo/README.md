@@ -74,6 +74,9 @@ sources to check in order to gain a full understanding of each flag:
    flag should be set to >= 3 to view them. Note that the standard logs from the UDF
    [are not exported for now](https://github.com/privacysandbox/data-plane-shared-libraries/blob/main/docs/roma/byob/sdk/docs/udf/Communication%20Interface.md#standard-output-stdout)
    (this will be added later on in 2025).
+1. Specify the `BYOB_BATCHING_CONFIG` flag to enable the batching functionality. Batch provides more
+   control over the executions in a single request and enables a queue mechanism to handle traffic
+   bursts in the bidding service.
 
 ### GCP Architecture Flags
 

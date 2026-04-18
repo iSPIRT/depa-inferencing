@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Google LLC
+ * Copyright 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-# Variables related to environment configuration.
 variable "environment" {
   description = "Assigned environment name to group related resources."
   type        = string
@@ -67,13 +66,13 @@ variable "service_account_email" {
   type        = string
 }
 
-variable "bidding_image" {
-  description = "URL to bidding service TEE Docker image"
+variable "auction_image" {
+  description = "URL to auction service TEE Docker image"
   type        = string
 }
 
-variable "buyer_frontend_image" {
-  description = "URL to bfe service TEE Docker image"
+variable "seller_frontend_image" {
+  description = "URL to sfe service TEE Docker image"
   type        = string
 }
 
@@ -97,6 +96,12 @@ variable "cpu_utilization_percent" {
   type        = number
 }
 
+variable "envoy_port" {
+  description = "External load balancer will send traffic to this port. Envoy will forward traffic to runtime_flag_sfe_port. Must match envoy.yaml."
+  type        = number
+  default     = 51052
+}
+
 variable "use_confidential_space_debug_image" {
   description = "If true, use the Confidential space debug image. Else use the prod image, which does not allow SSH. The images containing the service logic will run on top of this image and have their own prod and debug builds."
   type        = bool
@@ -105,7 +110,7 @@ variable "use_confidential_space_debug_image" {
 
 variable "runtime_flags" {
   type        = map(string)
-  description = "Buyer runtime flags. Must exactly match flags specified in <project root>/services/(bidding_service|buyer_frontend_service)/runtime_flags.h"
+  description = "Seller runtime flags. Must exactly match flags specified in <project root>/services/(auction_service|seller_frontend_service)/runtime_flags.h"
 }
 
 variable "tee_impersonate_service_accounts" {
@@ -126,7 +131,7 @@ variable "instance_template_waits_for_instances" {
 }
 
 variable "collector_startup_script" {
-  description = "Script to configure and start the otel collector."
+  description = "Script to configure and start the collector server."
   type        = string
 }
 
@@ -141,6 +146,7 @@ variable "enable_tee_container_log_redirect" {
   type        = bool
   default     = true
 }
+
 
 variable "gcp_dns_zones_project_id" {
   description = "The name of the Google Cloud project where DNS zones are managed."
