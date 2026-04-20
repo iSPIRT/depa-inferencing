@@ -1,0 +1,213 @@
+name: GCP Offer Services — deploy
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_call:
+    inputs:
+      apply_project_setup:
+        type: boolean
+        required: true
+      image_repo:
+        type: string
+        required: true
+      image_tag:
+        type: string
+        required: true
+      test_mode:
+        type: boolean
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 150
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      TF_STATE_BUCKET: ${{ secrets.GCP_TF_STATE_BUCKET }}
+      BUYER_DIR: deployment-scripts/gcp/offer-service/environment/demo/buyer
+      SETUP_DIR: deployment-scripts/gcp/offer-service/environment/demo/project_setup_utils
+      GCP_REGION: us-central1
+      OPERATOR: ispirt
+      ENV: ci
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check configuration
+        run: |
+          test -n "${{ secrets.GCP_WIF_PROVIDER }}" || (echo "Missing secret GCP_WIF_PROVIDER" && exit 1)
+          test -n "${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}" || (echo "Missing secret GCP_WIF_SERVICE_ACCOUNT" && exit 1)
+          test -n "${{ secrets.GCP_TF_STATE_BUCKET }}" || (echo "Missing secret GCP_TF_STATE_BUCKET" && exit 1)
+          test -n "${{ secrets.GCP_BUYER_TFVARS }}" || (echo "Missing secret GCP_BUYER_TFVARS (full buyer terraform.tfvars body)" && exit 1)
+          test -n "${{ vars.GCP_PROJECT_ID }}" || (echo "Missing variable GCP_PROJECT_ID" && exit 1)
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.11.0
+          terraform_wrapper: false
+
+      - name: Ensure Terraform state bucket exists
+        run: |
+          set -euo pipefail
+          if ! gcloud storage buckets describe "gs://${TF_STATE_BUCKET}" --project="${GCP_PROJECT_ID}" >/dev/null 2>&1; then
+            gcloud storage buckets create "gs://${TF_STATE_BUCKET}" \
+              --project="${GCP_PROJECT_ID}" \
+              --location="${GCP_REGION}" \
+              --uniform-bucket-level-access
+          fi
+
+      - name: One-time project setup (optional)
+        if: inputs.apply_project_setup == true
+        env:
+          TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
+          TF_VAR_domain: ${{ vars.GCP_DOMAIN }}
+          TF_VAR_service_account_name: ${{ vars.GCP_SERVICE_ACCOUNT_SHORT }}
+        run: |
+          set -euo pipefail
+          test -n "${TF_VAR_domain}" || (echo "Set variable GCP_DOMAIN (apex, e.g. example.com)" && exit 1)
+          test -n "${TF_VAR_service_account_name}" || (echo "Set variable GCP_SERVICE_ACCOUNT_SHORT" && exit 1)
+          cd "${GITHUB_WORKSPACE}/${SETUP_DIR}"
+          sed -i.bak "s|bucket = \"\"|bucket = \"${TF_STATE_BUCKET}\"|" main.tf
+          terraform init -input=false
+          terraform apply -input=false -auto-approve
+
+      - name: Upload Buyer code
+        env:
+          SA_EMAIL: ${{ vars.GCP_SERVICE_ACCOUNT_SHORT }}@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+        run: |
+          set -euo pipefail
+          test -n "${{ vars.GCP_SERVICE_ACCOUNT_SHORT }}" || (echo "Set variable GCP_SERVICE_ACCOUNT_SHORT for bucket IAM" && exit 1)
+          BUCKET="${GCP_PROJECT_ID}-buyer-code"
+          if ! gcloud storage buckets describe "gs://${BUCKET}" --project="${GCP_PROJECT_ID}" >/dev/null 2>&1; then
+            gcloud storage buckets create "gs://${BUCKET}" \
+              --project="${GCP_PROJECT_ID}" \
+              --location="${GCP_REGION}"
+          fi
+          gcloud storage cp "${GITHUB_WORKSPACE}/tools/generateBid.js" "gs://${BUCKET}/generateBid.js" --project="${GCP_PROJECT_ID}"
+          gcloud storage buckets add-iam-policy-binding "gs://${BUCKET}" \
+            --project="${GCP_PROJECT_ID}" \
+            --member="serviceAccount:${SA_EMAIL}" \
+            --role="roles/storage.objectViewer" || true
+
+      - name: Configure buyer Terraform
+        env:
+          GCP_BUYER_TFVARS: ${{ secrets.GCP_BUYER_TFVARS }}
+          IMAGE_REPO: ${{ inputs.image_repo }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          TEST_MODE_INPUT: ${{ inputs.test_mode }}
+        run: |
+          set -euo pipefail
+          TFVARS_FILE="${GITHUB_WORKSPACE}/${BUYER_DIR}/terraform.tfvars"
+          printf '%s\n' "$GCP_BUYER_TFVARS" > "$TFVARS_FILE"
+          TM="false"
+          case "${TEST_MODE_INPUT}" in true|True) TM="true" ;; esac
+          sed -i '/^[[:space:]]*image_repo[[:space:]]*=/d' "$TFVARS_FILE" || true
+          sed -i '/^[[:space:]]*image_tag[[:space:]]*=/d' "$TFVARS_FILE" || true
+          sed -i '/^[[:space:]]*test_mode[[:space:]]*=/d' "$TFVARS_FILE" || true
+          sed -i '/^[[:space:]]*environment[[:space:]]*=/d' "$TFVARS_FILE" || true
+          sed -i '/^[[:space:]]*buyer_operator[[:space:]]*=/d' "$TFVARS_FILE" || true
+          {
+            echo "image_repo = \"${IMAGE_REPO}\""
+            echo "image_tag = \"${IMAGE_TAG}\""
+            echo "test_mode = \"${TM}\""
+            echo "environment = \"ci\""
+            echo "buyer_operator = \"ispirt\""
+          } >> "$TFVARS_FILE"
+
+      - name: Deploy buyer stack
+        working-directory: ${{ env.BUYER_DIR }}
+        run: |
+          set -euo pipefail
+          sed -i.bak -E "s|bucket[[:space:]]*=[[:space:]]*\"[^\"]*\"|bucket = \"${TF_STATE_BUCKET}\"|" terraform.tf
+          terraform init -input=false
+          terraform apply -input=false -auto-approve
+
+      - name: Verify global backend health
+        run: |
+          set -euo pipefail
+          echo "5 minute waiting period for VMs to boot"
+          sleep 300
+          echo "## Backend service health" >> "$GITHUB_STEP_SUMMARY"
+          for SVC in xlb mesh; do
+            NAME="${OPERATOR}-${ENV}-${SVC}-backend-service"
+            echo "### ${NAME}" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            gcloud compute backend-services get-health "${NAME}" \
+              --project="${GCP_PROJECT_ID}" --global 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Wait for backends
+        run: |
+          set -euo pipefail
+          MAX_SEC=1500
+          INTERVAL=45
+          ELAPSED=0
+          echo "Polling backend health every ${INTERVAL}s (max ${MAX_SEC}s)..."
+          while [ "${ELAPSED}" -lt "${MAX_SEC}" ]; do
+            OK=true
+            for SVC in xlb mesh; do
+              NAME="${OPERATOR}-${ENV}-${SVC}-backend-service"
+              if ! gcloud compute backend-services get-health "${NAME}" \
+                --project="${GCP_PROJECT_ID}" --global 2>&1 | grep -q HEALTHY; then
+                OK=false
+                break
+              fi
+            done
+            if [ "${OK}" = true ]; then
+              echo "Backends report HEALTHY after ${ELAPSED}s"
+              echo "## Backends ready" >> "$GITHUB_STEP_SUMMARY"
+              echo "HEALTHY after **${ELAPSED}s** (poll every ${INTERVAL}s)." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "... ${ELAPSED}s elapsed, still waiting"
+            sleep "${INTERVAL}"
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          echo "::error::Backends did not become HEALTHY within ${MAX_SEC}s"
+          exit 1
+
+      - name: Verify MIG instances
+        run: |
+          set -euo pipefail
+          for ROLE in bfe bidding collector; do
+            MIG="${OPERATOR}-${ENV}-${ROLE}-${GCP_REGION}-mig"
+            echo "## ${MIG}" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            gcloud compute instance-groups managed list-instances "${MIG}" \
+              --region="${GCP_REGION}" --project="${GCP_PROJECT_ID}" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" \
+              || echo "(MIG not found)" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Verify labeled compute instances
+        run: |
+          set -euo pipefail
+          echo "## Instances (operator=${OPERATOR}, environment=${ENV})" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          gcloud compute instances list --project="${GCP_PROJECT_ID}" \
+            --filter="labels.environment=${ENV} AND labels.operator=${OPERATOR}" \
+            --format="table(name,zone,status,labels.service)" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Summary
+        run: |
+          echo "## GCP buyer deploy finished" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Operator (fixed):** \`ispirt\` · **Environment (fixed):** \`ci\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Images:** \`${{ inputs.image_repo }}:${{ inputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **BFE host:** from \`buyer_domain_name\` in base tfvars: \`https://ispirt-ci.<buyer_domain_name>:443\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Backend health:** \`gcloud compute backend-services get-health ispirt-ci-xlb-backend-service --project=${{ vars.GCP_PROJECT_ID }} --global\`" >> "$GITHUB_STEP_SUMMARY"

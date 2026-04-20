@@ -1,0 +1,60 @@
+name: GCP Pipeline
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_project_setup:
+        description: "Run first time project setup"
+        type: boolean
+        default: false
+      run_cleanup:
+        description: "Run Terraform destroy at the end"
+        type: boolean
+        default: true
+      image_repo:
+        description: "Container image path prefix"
+        type: string
+        default: ispirt.azurecr.io/depainferencing/gcp
+      image_tag:
+        description: "Image tag"
+        type: string
+        default: nonprod-4.10.0
+      test_mode:
+        description: "Run in Test mode? hardcoded keys, no KMS"
+        type: boolean
+        default: true
+  # pull_request:
+  #   branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy (GCP)
+    uses: ./.github/workflows/gcp_deploy.yml
+    secrets: inherit
+    with:
+      # github.event.inputs is only set for workflow_dispatch; PR runs use the same defaults as the dispatch inputs above.
+      apply_project_setup: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.apply_project_setup == 'true' }}
+      image_repo: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.image_repo || 'ispirt.azurecr.io/depainferencing/gcp' }}
+      image_tag: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.image_tag || 'nonprod-4.10.0' }}
+      test_mode: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.test_mode == 'true' }}
+
+  test:
+    name: Test (GCP)
+    needs: deploy
+    uses: ./.github/workflows/gcp_test.yml
+    secrets: inherit
+
+  cleanup:
+    name: Cleanup (GCP)
+    needs: [deploy, test]
+    if: always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_cleanup == 'true') && needs.deploy.result == 'success'
+    uses: ./.github/workflows/gcp_cleanup.yml
+    secrets: inherit
+    with:
+      image_repo: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.image_repo || 'ispirt.azurecr.io/depainferencing/gcp' }}
+      image_tag: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.image_tag || 'nonprod-4.10.0' }}
+      test_mode: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.test_mode == 'true' }}

@@ -1,4 +1,4 @@
-# Copyright 2023 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,18 +16,43 @@ terraform {
   required_version = ">= 1.2.3"
 
   required_providers {
-    google-beta = {
-      source  = "hashicorp/google-beta"
-      version = "5.36.0"
-    }
     google = {
       source  = "hashicorp/google"
-      version = "5.36.0"
+      version = "6.2.0"
     }
   }
 
   backend "gcs" {
-    bucket = "depa-inferencing-ci-tfstate"
-    prefix = "buyer"
+    bucket = ""
+    prefix = "terraform-state"
   }
+}
+
+# Modules
+module "api" {
+  source     = "./api"
+  project_id = var.project_id
+}
+
+module "domain" {
+  source     = "./domain"
+  project_id = var.project_id
+  domain     = var.domain
+}
+
+module "internal_tls" {
+  source     = "./internal_tls"
+  project_id = var.project_id
+
+  # Make internal_dns depend on the api module
+  depends_on = [module.api]
+}
+
+module "service_account" {
+  source               = "./service_account"
+  project_id           = var.project_id
+  service_account_name = var.service_account_name
+
+  # Make internal_dns depend on the api module
+  depends_on = [module.api]
 }
