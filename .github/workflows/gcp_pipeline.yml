@@ -24,11 +24,11 @@ on:
         type: string
         default: nonprod-4.10.0
       test_mode:
-        description: "Run in Test mode? hardcoded keys instead of a KMS"
+        description: "Run in Test mode? hardcoded keys, no KMS"
         type: boolean
         default: true
-  pull_request:
-    branches: [main]
+  # pull_request:
+  #   branches: [main]
 
 jobs:
   deploy:
