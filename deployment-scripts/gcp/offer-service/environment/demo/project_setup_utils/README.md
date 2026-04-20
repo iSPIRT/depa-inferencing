@@ -327,7 +327,7 @@ Once these files have been updated the following modules will be ready for deplo
     Using the terraform-provided default service account name is recommended, but not required.
 
     Additionally, the provided configs create a
-    [GCS HMAC Key](https://github.com/privacysandbox/bidding-auction-servers/blob/722e1542c262dddc3aaf41be7b6c159a38cefd0a/production/deploy/gcp/terraform/modules/secrets/secrets.tf#L49)
+    [GCS HMAC Key](../../../modules/secrets/secrets.tf)
     for usage with
     [consented debugging](https://github.com/privacysandbox/protected-auction-services-docs/blob/main/debugging_protected_audience_api_services.md#adtech-consented-debugging).
     This key is tied to the service account.

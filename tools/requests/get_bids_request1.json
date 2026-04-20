@@ -1,0 +1,32 @@
+{
+    "client_type": "CLIENT_TYPE_BROWSER",
+    "buyer_input": {
+        "interest_groups": [
+            {
+                "name": "test-interest-group",
+                "bidding_signals_keys": ["test-key"],
+                "ad_render_ids": [
+                    "https://example.com/ad/1"
+                ],
+                "user_bidding_signals": "[]",
+                "browser_signals": {
+                    "join_count": "1",
+                    "bid_count": "2",
+                    "prev_wins": "[]"
+                }
+            }
+        ]
+    },
+    "auction_signals": "{}",
+    "buyer_signals": "{}",
+    "seller": "https://seller.example.com",
+    "publisher_name": "example.com",
+    "log_context": {
+        "generation_id": "test-uuid-1234",
+        "adtech_debug_id": "ispirt-smoke-test"
+    },
+    "consented_debug_config": {
+        "is_consented": true,
+        "token": "test_token"
+    }
+}
