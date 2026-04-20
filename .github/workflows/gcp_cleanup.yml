@@ -1,0 +1,78 @@
+name: GCP Offer Services — cleanup
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_call:
+    inputs:
+      image_repo:
+        type: string
+        required: true
+      image_tag:
+        type: string
+        required: true
+      test_mode:
+        type: boolean
+        required: true
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      TF_STATE_BUCKET: ${{ secrets.GCP_TF_STATE_BUCKET }}
+      BUYER_DIR: deployment-scripts/gcp/offer-service/environment/demo/buyer
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.11.0
+          terraform_wrapper: false
+
+      - name: Configure buyer Terraform
+        env:
+          GCP_BUYER_TFVARS: ${{ secrets.GCP_BUYER_TFVARS }}
+          IMAGE_REPO: ${{ inputs.image_repo }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          TEST_MODE_INPUT: ${{ inputs.test_mode }}
+        run: |
+          set -euo pipefail
+          TFVARS_FILE="${GITHUB_WORKSPACE}/${BUYER_DIR}/terraform.tfvars"
+          printf '%s\n' "$GCP_BUYER_TFVARS" > "$TFVARS_FILE"
+          TM="false"
+          case "${TEST_MODE_INPUT}" in true|True) TM="true" ;; esac
+          sed -i '/^[[:space:]]*image_repo[[:space:]]*=/d' "$TFVARS_FILE" || true
+          sed -i '/^[[:space:]]*image_tag[[:space:]]*=/d' "$TFVARS_FILE" || true
+          sed -i '/^[[:space:]]*test_mode[[:space:]]*=/d' "$TFVARS_FILE" || true
+          sed -i '/^[[:space:]]*environment[[:space:]]*=/d' "$TFVARS_FILE" || true
+          sed -i '/^[[:space:]]*buyer_operator[[:space:]]*=/d' "$TFVARS_FILE" || true
+          {
+            echo "image_repo = \"${IMAGE_REPO}\""
+            echo "image_tag = \"${IMAGE_TAG}\""
+            echo "test_mode = \"${TM}\""
+            echo "environment = \"ci\""
+            echo "buyer_operator = \"ispirt\""
+          } >> "$TFVARS_FILE"
+
+      - name: Terraform destroy
+        working-directory: ${{ env.BUYER_DIR }}
+        run: |
+          set -euo pipefail
+          sed -i.bak -E "s|bucket[[:space:]]*=[[:space:]]*\"[^\"]*\"|bucket = \"${TF_STATE_BUCKET}\"|" terraform.tf
+          terraform init -input=false
+          terraform destroy -input=false -auto-approve
