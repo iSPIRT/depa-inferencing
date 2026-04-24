@@ -80,6 +80,12 @@ variable "zones" {
   default     = ["1", "2", "3"]
 }
 
+variable "enable_http2" {
+  type        = bool
+  description = "Enable HTTP/2 on the Application Gateway frontend."
+  default     = true
+}
+
 variable "ssl_certificate_name" {
   type        = string
   description = "Name of the SSL certificate in Key Vault for HTTPS listener."
