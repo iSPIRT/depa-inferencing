@@ -18,15 +18,17 @@ name: Refresh KMS frontend certificate
 #   3. We then update the App Gateway with a no-op write to force an immediate
 #      refresh from Key Vault.
 #
-# Required secrets:
-#   AZURE_AKS_CLIENT_ID, AZURE_AKS_TENANT_ID, AZURE_AKS_SUBSCRIPTION_ID
-#     - Existing OIDC secrets used by the other KMS workflows.
-#   LETSENCRYPT_EMAIL
-#     - Email address used to register the ACME account.
+# Required secrets (in GitHub Environments azure-prod / azure-uat, matching the
+# matrix row):
+#   AZURE_AKS_SUBSCRIPTION_ID - Azure subscription for az CLI.
+#   AZURE_AKS_CLIENT_ID     - Optional; user-assigned managed identity client id
+#                             on the runner VM. Omit/blank to use the VM’s
+#                             system-assigned identity (same pattern as other
+#                             self-hosted KMS workflows).
+#   LETSENCRYPT_EMAIL       - ACME account email.
 
 permissions:
   contents: read
-  id-token: write
 
 on:
   workflow_dispatch:
@@ -55,7 +57,10 @@ on:
 
 jobs:
   renew:
-    runs-on: self-hosted
+    # Match labels on your UAT/Prod self-hosted runner pools (must sit in a VNet
+    # that can reach the ACME storage account and Key Vault; see also kms_policy_update.yml).
+    environment: ${{ matrix.environment == 'uat' && 'azure-uat' || 'azure-prod' }}
+    runs-on: ${{ fromJSON(matrix.environment == 'uat' && '["self-hosted", "Linux", "X64", "uat"]' || '["self-hosted", "Linux", "X64", "prod"]') }}
     strategy:
       fail-fast: false
       matrix:
@@ -75,12 +80,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
+      - name: Azure Login (managed identity)
+        run: |
+          set -e
+          if [ -n "$AZURE_CLIENT_ID" ]; then
+            az login --identity -u "$AZURE_CLIENT_ID"
+          else
+            az login --identity
+          fi
+          az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
 
       - name: Install certbot
         run: |
