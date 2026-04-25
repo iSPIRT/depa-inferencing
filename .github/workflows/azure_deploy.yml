@@ -2,7 +2,6 @@ name: Deploy on Azure
 
 permissions:
   contents: read
-  id-token: write
 
 on:
   workflow_dispatch:
@@ -23,7 +22,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(inputs.deploy_env == 'azure-uat' && '["self-hosted", "Linux", "X64", "uat"]' || '["self-hosted", "Linux", "X64", "prod"]') }}
     environment: ${{ inputs.deploy_env }}
     steps:
       - name: Checkout repository
@@ -33,12 +32,14 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
-                      
+        run: |
+          set -e
+          az login --identity -u "$AZURE_CLIENT_ID"
+          az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
+
       - name: Update demo environment
         env: 
           AZURE_AKS_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
@@ -83,11 +84,10 @@ jobs:
 
       - name: Terraform apply
         working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
-        env: 
+        env:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
-          ARM_CLIENT_ID: ${{ secrets.AZURE_AKS_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_AKS_TENANT_ID }}
-          ARM_USE_OIDC: true
+          # Use the same Azure CLI session as `az login --identity` (self-hosted runner MI).
+          ARM_USE_CLI: true
         run: terraform apply -auto-approve
 
       # Optional: print Application Insights portal URL to the job summary (requires app_insights_portal_url Terraform output).
