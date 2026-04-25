@@ -112,6 +112,11 @@ resource "azurerm_application_gateway" "this" {
     port = 443
   }
 
+  frontend_port {
+    name = "depa-inferencing-http-port"
+    port = 80
+  }
+
   frontend_ip_configuration {
     name                 = "frontend-ip"
     public_ip_address_id = local.public_ip_id
@@ -120,6 +125,14 @@ resource "azurerm_application_gateway" "this" {
   backend_address_pool {
     name  = "depa-inferencing-backend-pool"
     fqdns = [var.backend_address]
+  }
+
+  # Backend pool for ACME HTTP-01 challenges (Let's Encrypt frontend cert renewal).
+  # Points at the static website endpoint of a private storage account; reachable
+  # from the gateway via privatelink.web.core.windows.net.
+  backend_address_pool {
+    name  = "letsencrypt-acme-backend"
+    fqdns = [var.acme_challenge_backend_fqdn]
   }
 
   trusted_root_certificate {
@@ -144,6 +157,17 @@ resource "azurerm_application_gateway" "this" {
     host_name                           = var.backend_hostname != "" ? var.backend_hostname : null
   }
 
+  # HTTP settings for the ACME challenge backend (Azure Storage static website).
+  # Storage's web endpoint is HTTPS-only and requires SNI matching the account FQDN.
+  backend_http_settings {
+    name                                = "letsencrypt-acme-http-settings"
+    cookie_based_affinity               = "Disabled"
+    port                                = 443
+    protocol                            = "Https"
+    request_timeout                     = 30
+    pick_host_name_from_backend_address = true
+  }
+
   http_listener {
     name                           = "depa-inferencing-https-listener"
     frontend_ip_configuration_name = "frontend-ip"
@@ -151,6 +175,37 @@ resource "azurerm_application_gateway" "this" {
     protocol                       = "Https"
     ssl_certificate_name           = var.ssl_certificate_name
     host_name                      = var.allowed_hostname
+  }
+
+  # HTTP listener used only for ACME HTTP-01 challenges and HTTPS redirects.
+  http_listener {
+    name                           = "depa-inferencing-http-listener"
+    frontend_ip_configuration_name = "frontend-ip"
+    frontend_port_name             = "depa-inferencing-http-port"
+    protocol                       = "Http"
+    host_name                      = var.allowed_hostname
+  }
+
+  # Redirect everything on port 80 to HTTPS, except /.well-known/acme-challenge/*
+  # which is path-routed to the storage backend below.
+  redirect_configuration {
+    name                 = "http-to-https-redirect"
+    redirect_type        = "Permanent"
+    target_listener_name = "depa-inferencing-https-listener"
+    include_path         = true
+    include_query_string = true
+  }
+
+  url_path_map {
+    name                                = "http-path-map"
+    default_redirect_configuration_name = "http-to-https-redirect"
+
+    path_rule {
+      name                       = "acme-challenge"
+      paths                      = ["/.well-known/acme-challenge/*"]
+      backend_address_pool_name  = "letsencrypt-acme-backend"
+      backend_http_settings_name = "letsencrypt-acme-http-settings"
+    }
   }
 
   probe {
@@ -195,6 +250,14 @@ resource "azurerm_application_gateway" "this" {
     backend_http_settings_name = "depa-inferencing-backend-http-settings"
     rewrite_rule_set_name      = "depa-inferencing-rewrite-rule-set"
     priority                   = 100
+  }
+
+  request_routing_rule {
+    name               = "depa-inferencing-http-rule"
+    rule_type          = "PathBasedRouting"
+    http_listener_name = "depa-inferencing-http-listener"
+    url_path_map_name  = "http-path-map"
+    priority           = 90
   }
 
 }

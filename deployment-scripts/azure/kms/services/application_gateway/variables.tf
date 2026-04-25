@@ -142,3 +142,8 @@ variable "allowed_hostname" {
   description = "Allowed hostname for Host header validation. Requests with Host headers not matching this hostname will be blocked."
 }
 
+variable "acme_challenge_backend_fqdn" {
+  type        = string
+  description = "FQDN of the backend that serves ACME HTTP-01 challenges under /.well-known/acme-challenge/* (typically the static website host of a private storage account, e.g. <account>.z29.web.core.windows.net)."
+}
+

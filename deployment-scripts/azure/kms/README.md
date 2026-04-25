@@ -124,6 +124,8 @@ terraform apply
 - Private DNS zone `confidential-ledger.azure.com` with an A record that overrides the ledger's public FQDN so it resolves to the private endpoint IP inside the VNet
 - VNet link for the DNS zone
 - Application Gateway (WAF_v2) with the **same** ledger FQDN as the backend pool address (now resolved privately), SSL termination from Key Vault, and the ledger TLS certificate as trusted root
+- A second HTTP listener on port 80 that path-routes `/.well-known/acme-challenge/*` to the ACME challenge storage backend and redirects everything else to HTTPS
+- Private storage account (`acme_challenge_storage_account_name` in `locals.tf`) that hosts Let's Encrypt HTTP-01 challenge tokens, exposed only through a private endpoint in the `private-endpoint` subnet via the `privatelink.web.core.windows.net` zone
 - Optionally reuses an existing public IP if `public_ip_id` is set in `locals.tf`
 
 ## Configuration
@@ -149,6 +151,18 @@ Each phase's `locals.tf` carries its own environment values. Replace placeholder
 - Log Analytics workspace for gateway diagnostics
 - `allowed_hostname` for Host header validation
 - Optional `public_ip_id` to reuse an existing public IP (preserves DNS-configured addresses)
+
+The ACME challenge storage account name is derived automatically as `depainfkmsacme${environment}${region_short}` (e.g. `depainfkmsacmeprodcin`) — no separate local is needed. The renewal workflow's identity must already have **Storage Blob Data Contributor** on this account and **Key Vault Certificates Officer** on the Key Vault; grant these out-of-band before the first run.
+
+## Refreshing the frontend TLS certificate
+
+The Application Gateway's frontend TLS certificate is issued by Let's Encrypt and stored in Key Vault as `depa-inferencing-kms-{env}-cin-frontend-cert`. Renewal is automated by [`refresh_kms_frontend_certificate.yml`](../../../.github/workflows/refresh_kms_frontend_certificate.yml), which runs on the 1st of every month for both `prod` and `uat`, and can also be triggered manually via `workflow_dispatch`.
+
+The workflow uses the **HTTP-01** challenge: certbot's auth hook (under [`tools/letsencrypt/`](../../../tools/letsencrypt/)) uploads each challenge token as a blob into the `$web` container of the per-environment ACME storage account. Phase 3's HTTP listener forwards `/.well-known/acme-challenge/*` to that storage account's static website endpoint over a private endpoint, so the public ACME server can fetch the token. After validation the workflow imports the new certificate version into Key Vault and triggers an immediate App Gateway refresh.
+
+Required GitHub secret (in addition to the existing `AZURE_AKS_*` OIDC secrets):
+
+- `LETSENCRYPT_EMAIL` — email used to register the ACME account.
 
 ## State Migration and Recovery
 
