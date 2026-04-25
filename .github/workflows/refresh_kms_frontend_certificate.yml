@@ -1,0 +1,168 @@
+name: Refresh KMS frontend certificate
+
+# Renews the KMS frontend TLS certificate from Let's Encrypt using the HTTP-01
+# challenge and imports the new certificate version into Azure Key Vault.
+#
+# How it works:
+#   1. certbot is run in --manual mode with the auth/cleanup hooks under
+#      tools/letsencrypt/. The auth hook uploads the challenge token as a blob
+#      under $web/.well-known/acme-challenge/<token> in a private storage
+#      account. The Application Gateway routes /.well-known/acme-challenge/*
+#      to that storage account's static website endpoint over a private
+#      endpoint, so the public ACME server can fetch the token via
+#      http://<frontend-host>/.
+#   2. The issued cert+key are bundled into a PFX and imported into Key Vault
+#      under the existing certificate name. The Application Gateway references
+#      the certificate by versionless secret ID, so the new version is picked
+#      up automatically (Key Vault polling interval is up to ~4h).
+#   3. We then update the App Gateway with a no-op write to force an immediate
+#      refresh from Key Vault.
+#
+# Required secrets:
+#   AZURE_AKS_CLIENT_ID, AZURE_AKS_TENANT_ID, AZURE_AKS_SUBSCRIPTION_ID
+#     - Existing OIDC secrets used by the other KMS workflows.
+#   LETSENCRYPT_EMAIL
+#     - Email address used to register the ACME account.
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - prod
+          - uat
+        default: prod
+      acme-server:
+        description: 'Let''s Encrypt endpoint (use staging while validating the workflow to avoid prod rate limits)'
+        required: true
+        type: choice
+        options:
+          - production
+          - staging
+        default: production
+  schedule:
+    # 03:00 UTC on the 1st of every month. Let's Encrypt certs are 90 days, so
+    # monthly attempts give two retries before expiry. Scheduled runs renew
+    # both prod and uat in parallel via the matrix below.
+    - cron: '0 3 1 * *'
+
+jobs:
+  renew:
+    runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: ${{ fromJSON(inputs.environment != null && format('["{0}"]', inputs.environment) || '["prod","uat"]') }}
+    env:
+      DOMAIN: ${{ matrix.environment == 'prod' && 'depa-inferencing-kms-azure.ispirt.in' || 'depa-inferencing-kms-uat-azure.ispirt.in' }}
+      VAULT: ${{ matrix.environment == 'prod' && 'depa-inferencing-cin-kv' || 'depa-inferencing-uat-kv' }}
+      CERT_NAME: depa-inferencing-kms-${{ matrix.environment }}-cin-frontend-cert
+      STORAGE_ACCOUNT: ${{ matrix.environment == 'prod' && 'depainfkmsacmeprodcin' || 'depainfkmsacmeuatcin' }}
+      RG: depa-inferencing-kms-${{ matrix.environment }}-cin-rg
+      AGW_NAME: depa-inferencing-kms-${{ matrix.environment }}-cin-agw
+      # Default acme-server to "production" on scheduled runs (when inputs is empty).
+      ACME_SERVER: ${{ inputs.acme-server || 'production' }}
+      LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
+      WORK_DIR: ${{ github.workspace }}/letsencrypt
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
+
+      - name: Install certbot
+        run: |
+          if ! command -v certbot >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y certbot
+          fi
+          certbot --version
+
+      - name: Make hook scripts executable
+        run: chmod +x tools/letsencrypt/auth-hook.sh tools/letsencrypt/cleanup-hook.sh
+
+      - name: Resolve ACME server URL
+        id: acme
+        run: |
+          if [ "$ACME_SERVER" = "staging" ]; then
+            echo "url=https://acme-staging-v02.api.letsencrypt.org/directory" >> "$GITHUB_OUTPUT"
+          else
+            echo "url=https://acme-v02.api.letsencrypt.org/directory" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Request certificate from Let's Encrypt (HTTP-01)
+        env:
+          ACME_DIRECTORY_URL: ${{ steps.acme.outputs.url }}
+        run: |
+          mkdir -p "$WORK_DIR/config" "$WORK_DIR/work" "$WORK_DIR/logs"
+          certbot certonly \
+            --manual \
+            --preferred-challenges http \
+            --non-interactive \
+            --agree-tos \
+            --email "$LETSENCRYPT_EMAIL" \
+            --server "$ACME_DIRECTORY_URL" \
+            -d "$DOMAIN" \
+            --manual-auth-hook    "$GITHUB_WORKSPACE/tools/letsencrypt/auth-hook.sh" \
+            --manual-cleanup-hook "$GITHUB_WORKSPACE/tools/letsencrypt/cleanup-hook.sh" \
+            --config-dir "$WORK_DIR/config" \
+            --work-dir   "$WORK_DIR/work" \
+            --logs-dir   "$WORK_DIR/logs"
+
+      - name: Bundle certificate as PFX
+        run: |
+          openssl pkcs12 -export \
+            -inkey "$WORK_DIR/config/live/$DOMAIN/privkey.pem" \
+            -in    "$WORK_DIR/config/live/$DOMAIN/fullchain.pem" \
+            -out   "$WORK_DIR/cert.pfx" \
+            -passout pass:
+
+      - name: Skip Key Vault import on staging
+        if: env.ACME_SERVER == 'staging'
+        run: |
+          echo "ACME_SERVER=staging - skipping Key Vault import (staging certs are not trusted)."
+          openssl x509 -in "$WORK_DIR/config/live/$DOMAIN/fullchain.pem" -noout -issuer -dates -subject
+
+      - name: Import certificate into Key Vault
+        if: env.ACME_SERVER == 'production'
+        run: |
+          az keyvault certificate import \
+            --vault-name "$VAULT" \
+            --name "$CERT_NAME" \
+            --file "$WORK_DIR/cert.pfx" \
+            --password ""
+
+      - name: Force Application Gateway to refresh the cert from Key Vault
+        if: env.ACME_SERVER == 'production'
+        run: |
+          # A no-op `update` triggers the gateway to re-fetch its Key Vault
+          # secrets immediately instead of waiting for the ~4h polling window.
+          az network application-gateway update \
+            --resource-group "$RG" \
+            --name "$AGW_NAME" \
+            --output none
+
+      - name: Show new certificate metadata
+        if: env.ACME_SERVER == 'production'
+        run: |
+          az keyvault certificate show \
+            --vault-name "$VAULT" \
+            --name "$CERT_NAME" \
+            --query "{thumbprint:x509ThumbprintHex, notBefore:attributes.notBefore, notAfter:attributes.expires, version:id}" \
+            -o table
+
+      - name: Clean up working directory
+        if: always()
+        run: rm -rf "$WORK_DIR"

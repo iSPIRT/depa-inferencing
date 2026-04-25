@@ -34,6 +34,21 @@ module "ledger_networking" {
   tags                       = merge(local.base_tags, local.extra_tags)
 }
 
+# Private storage account that holds Let's Encrypt HTTP-01 challenge tokens
+# served back to the ACME server through the Application Gateway's HTTP listener.
+module "letsencrypt_storage" {
+  source = "../../../services/letsencrypt_storage"
+
+  # Globally unique, all-lowercase, <=24 chars. Derived from environment+region
+  # so each env's account is named deterministically without a separate local.
+  name                       = "depainfkmsacme${local.environment}${local.region_short}"
+  resource_group_name        = data.azurerm_resource_group.kms.name
+  location                   = data.azurerm_resource_group.kms.location
+  private_endpoint_subnet_id = data.azurerm_subnet.private_endpoint.id
+  virtual_network_id         = data.azurerm_virtual_network.kms.id
+  tags                       = merge(local.base_tags, local.extra_tags)
+}
+
 # Application Gateway with the Ledger private endpoint FQDN as backend.
 # The backend address is the same FQDN as the public ledger endpoint, but within the VNet
 # it resolves to the private endpoint IP via the private DNS zone created above.
@@ -56,8 +71,10 @@ module "application_gateway" {
   tags                                                    = merge(local.base_tags, local.extra_tags)
   health_probe_path                                       = "/node/metrics"
   allowed_hostname                                        = local.allowed_hostname
+  acme_challenge_backend_fqdn                             = module.letsencrypt_storage.web_endpoint_host
 
   depends_on = [
     module.ledger_networking,
+    module.letsencrypt_storage,
   ]
 }
