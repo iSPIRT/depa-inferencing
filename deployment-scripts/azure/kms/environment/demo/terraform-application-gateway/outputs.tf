@@ -30,3 +30,13 @@ output "ledger_private_fqdn" {
   description = "Private FQDN for the Confidential Ledger."
   value       = module.ledger_networking.ledger_private_fqdn
 }
+
+output "acme_challenge_storage_account_name" {
+  description = "Storage account that hosts ACME HTTP-01 challenge tokens for the frontend cert renewal workflow."
+  value       = module.letsencrypt_storage.storage_account_name
+}
+
+output "acme_challenge_backend_fqdn" {
+  description = "Static website FQDN used as the App Gateway backend for /.well-known/acme-challenge/*."
+  value       = module.letsencrypt_storage.web_endpoint_host
+}
