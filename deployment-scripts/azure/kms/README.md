@@ -172,6 +172,14 @@ The repository includes [environment/demo/import-state.sh](environment/demo/impo
 - Auto-discovers role assignment IDs for the create-only role assignments
 - Imports resources into the correct state for each phase (Phase 1, Phase 2, Phase 3)
 
+## State Migration and Recovery
+
+The repository includes [environment/demo/import-state.sh](environment/demo/import-state.sh) for rebuilding Terraform state from an existing Azure deployment. The script:
+
+- Auto-discovers the managed identity principal ID and the caller's principal ID
+- Auto-discovers role assignment IDs for the create-only role assignments
+- Imports resources into the correct state for each phase (Phase 1, Phase 2, Phase 3)
+
 Run it from a directory where `az account show` resolves to the target subscription. After running, `terraform plan` in each phase should report no drift (or only expected changes).
 
 ## Key Components

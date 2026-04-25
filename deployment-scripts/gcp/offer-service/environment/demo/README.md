@@ -13,6 +13,9 @@ expected to communicate only with seller front ends.
 
 ## Local Setup
 
+For an end-to-end **buyer-only** quickstart (build, project setup, deploy, smoke test), see
+[QUICKSTART.md](../../QUICKSTART.md) in the `offer-service` directory.
+
 Review the public
 [GCP cloud support and deployment guide](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_gcp_guide.md).
 This document will be continually updated with all GCP concerns.
@@ -22,11 +25,25 @@ This document will be continually updated with all GCP concerns.
 1. Follow the steps in the [project setup README](./project_setup_utils/README.md) for setting up
    your GCP project.
 
-2. Follow the steps in `production/packaging/README.md` to generate and upload docker
-   (cryptographically attestable) docker images. The tag of the images that you provide should match
-   your environment name (see `tee-image-reference` in
-   `production/deploy/gcp/terraform/services/autoscaling/main.tf` to understand how the image path
-   is derived).
+2. Follow the steps in the upstream
+   [production/packaging README](https://github.com/privacysandbox/bidding-auction-servers/blob/main/production/packaging/README.md)
+   to generate and upload cryptographically attestable docker images. The tag of the images that you
+   provide should match your environment name (see `tee-image-reference` in
+   [`../../services/autoscaling/main.tf`](../../services/autoscaling/main.tf) to understand how the
+   image path is derived).
+
+#### Paths in this repository (`depa-inferencing`)
+
+In the
+[bidding-auction-servers](https://github.com/iSPIRT/bidding-auction-servers/tree/gcp_cicd/production/deploy/gcp/terraform)
+tree, sample `generateBid.js` and `get_bids_request.json` lived at the repository root. In this
+repo they live under **`tools/`**:
+
+- Sample buyer bidding script (upload the contents to your `buyer_code` GCS bucket as configured in
+  `buyer_code_blob`): [`tools/generateBid.js`](../../../../../tools/generateBid.js)
+- Sample secure-invoke / inference request JSON (for local demos with
+  [`tools/demo.py`](../../../../../tools/demo.py) and
+  [`tools/secure-invoke`](../../../../../tools/secure-invoke)): [`tools/requests/get_bids_request.json`](../../../../../tools/requests/get_bids_request.json)
 
 ## Configuration
 
@@ -74,6 +91,9 @@ sources to check in order to gain a full understanding of each flag:
    flag should be set to >= 3 to view them. Note that the standard logs from the UDF
    [are not exported for now](https://github.com/privacysandbox/data-plane-shared-libraries/blob/main/docs/roma/byob/sdk/docs/udf/Communication%20Interface.md#standard-output-stdout)
    (this will be added later on in 2025).
+1. Specify the `BYOB_BATCHING_CONFIG` flag to enable the batching functionality. Batch provides more
+   control over the executions in a single request and enables a queue mechanism to handle traffic
+   bursts in the bidding service.
 
 ### GCP Architecture Flags
 

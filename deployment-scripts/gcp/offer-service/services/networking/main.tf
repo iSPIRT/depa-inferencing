@@ -27,6 +27,11 @@ resource "google_compute_subnetwork" "backends" {
   purpose       = "PRIVATE"
   region        = each.value
   ip_cidr_range = "10.${each.key}.2.0/24"
+
+  // Enable dual-stack network.
+  stack_type = "IPV4_IPV6"
+  // We need IPv6 addresses to be external, since we need to route to IPv6 resources outside of our own network.
+  ipv6_access_type = "EXTERNAL"
 }
 
 resource "google_compute_subnetwork" "proxy_subnets" {
@@ -47,6 +52,12 @@ resource "google_compute_subnetwork" "proxy_subnets" {
 resource "google_compute_global_address" "frontend" {
   name       = "${var.operator}-${var.environment}-${var.frontend_service}-lb"
   ip_version = "IPV4"
+}
+
+# Frontend IPv6 address, used for frontend service LB only
+resource "google_compute_global_address" "frontend_ipv6" {
+  name       = "${var.operator}-${var.environment}-${var.frontend_service}-lb-ipv6"
+  ip_version = "IPV6"
 }
 
 resource "google_network_services_mesh" "default" {

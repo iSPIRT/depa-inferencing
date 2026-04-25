@@ -13,6 +13,14 @@ on:
       - main
   workflow_dispatch:
     inputs:
+      deploy_env:
+        description: 'Deployment environment'
+        required: false
+        default: azure-prod
+        type: choice
+        options:
+          - azure-prod
+          - azure-uat
       run_cleanup:
         description: 'Cleanup after deployment'
         required: false
@@ -20,20 +28,20 @@ on:
         type: boolean
 
 jobs:
-  azure_deploy:
-    name: Deploy on Azure
-    uses: ./.github/workflows/azure_deploy.yml
+  stack_prod:
+    name: Azure stack (prod)
+    if: github.event_name != 'workflow_dispatch' || inputs.deploy_env == 'azure-prod'
+    uses: ./.github/workflows/azure_stack.yml
     secrets: inherit
+    with:
+      deploy_env: azure-prod
+      run_cleanup: ${{ github.event_name != 'workflow_dispatch' || inputs.run_cleanup }}
 
-  azure_test:
-    name: Test Azure Deployment
-    needs: azure_deploy
-    uses: ./.github/workflows/azure_test.yml
+  stack_uat:
+    name: Azure stack (uat)
+    if: github.event_name != 'workflow_dispatch' || inputs.deploy_env == 'azure-uat'
+    uses: ./.github/workflows/azure_stack.yml
     secrets: inherit
-
-  azure_cleanup:
-    name: Cleanup Azure Deployments
-    needs: [azure_deploy, azure_test]
-    if: always() && (github.event_name != 'workflow_dispatch' || inputs.run_cleanup != 'false')
-    uses: ./.github/workflows/azure_cleanup.yml
-    secrets: inherit
+    with:
+      deploy_env: azure-uat
+      run_cleanup: ${{ github.event_name != 'workflow_dispatch' || inputs.run_cleanup }}

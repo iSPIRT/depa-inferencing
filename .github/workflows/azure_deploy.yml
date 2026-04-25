@@ -6,11 +6,25 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      deploy_env:
+        description: 'Deployment environment'
+        type: choice
+        options:
+          - azure-prod
+          - azure-uat
+        default: azure-prod
   workflow_call:
+    inputs:
+      deploy_env:
+        description: 'Deployment environment'
+        type: string
+        required: true
 
 jobs:
   deploy:
     runs-on: ubuntu-22.04
+    environment: ${{ inputs.deploy_env }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -36,6 +50,32 @@ jobs:
           sed -i 's|<your_tenant_id>|'"$AZURE_AKS_TENANT_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
           sed -i 's|<your_virtual_node_identity_resource_id>|'"$AZURE_VIRTUAL_NODE_IDENTITY_RESOURCE_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
           sed -i 's|<your_virtual_node_identity_principal_id>|'"$AZURE_VIRTUAL_NODE_IDENTITY_PRINCIPAL_ID"'|g' ./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf
+
+      - name: Apply UAT overrides (nonprod image tags + UAT KMS)
+        if: inputs.deploy_env == 'azure-uat'
+        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
+        run: |
+          sed -i 's/^\(  image_tag      = "\)prod-/\1nonprod-/' offer.tf
+          sed -i 's/^\(  kv_image_tag   = "\)prod-/\1nonprod-/' offer.tf
+          sed -i 's|^\(  kms_url        = "\)https://depa-inferencing-kms-azure.ispirt.in"|\1https://depa-inferencing-kms-uat-azure.ispirt.in"|' offer.tf
+
+      # Allow-all policies for nonprod images.
+      - name: UAT CCE allow-all policy (nonprod)
+        if: inputs.deploy_env == 'azure-uat'
+        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
+        run: |
+          sed -i \
+            -e 's|../cce-policies/offer.base64|../cce-policies/allow_all.base64|' \
+            -e 's|../cce-policies/ofe.base64|../cce-policies/allow_all.base64|' \
+            -e 's|../cce-policies/kv.base64|../cce-policies/allow_all.base64|' \
+            offer.tf
+
+      # Storage account names are globally unique; prod keeps the Terraform default.
+      - name: UAT distinct storage account name
+        if: inputs.deploy_env == 'azure-uat'
+        run: |
+          SA_TF="${GITHUB_WORKSPACE}/deployment-scripts/azure/offer-service/services/storage_account/main.tf"
+          sed -i 's|^  name[[:space:]]*=[[:space:]]*"${var.operator}${var.environment}${substr(var.frontend_service_name, 0, 3)}${var.region_short}storage"|  name                     = "tfdemouatoffincstorage"|' "$SA_TF"
 
       - name: Terraform init
         working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
@@ -69,14 +109,16 @@ jobs:
           ./udf_delta_file_generator.sh ${PWD}/tmp ${PWD}/udf.js
 
       - name: Upload data and UDF
+        env:
+          STORAGE_ACCOUNT_NAME: ${{ inputs.deploy_env == 'azure-uat' && 'tfdemouatoffincstorage' || 'tfdemooffincstorage' }}
         working-directory: ./tools/key-value-service
         run: |
           ACCOUNT_KEY=$(az storage account keys list \
-            --account-name tfdemooffincstorage \
+            --account-name "$STORAGE_ACCOUNT_NAME" \
             --query "[0].value" -o tsv)
   
           az storage file upload-batch \
-            --account-name tfdemooffincstorage \
+            --account-name "$STORAGE_ACCOUNT_NAME" \
             --destination fslogix \
             --destination-path deltas \
             --source ${PWD}/tmp \

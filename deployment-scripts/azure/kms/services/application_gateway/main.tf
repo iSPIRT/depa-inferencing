@@ -88,6 +88,7 @@ resource "azurerm_application_gateway" "this" {
   location            = var.location
   zones               = var.zones
   tags                = var.tags
+  enable_http2        = var.enable_http2
 
   identity {
     type         = "UserAssigned"

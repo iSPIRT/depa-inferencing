@@ -12,22 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-terraform {
-  required_version = ">= 1.2.3"
-
-  required_providers {
-    google-beta = {
-      source  = "hashicorp/google-beta"
-      version = "5.36.0"
-    }
-    google = {
-      source  = "hashicorp/google"
-      version = "5.36.0"
-    }
-  }
-
-  backend "gcs" {
-    bucket = "depa-inferencing-ci-tfstate"
-    prefix = "buyer"
-  }
+output "seller_frontend_url" {
+  value       = module.seller_frontend_load_balancing.frontend_url
+  description = "This is the globally load-balanced entrypoint to the seller frontend service, to be used by seller ad services."
 }

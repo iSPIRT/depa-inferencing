@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-terraform {
-  required_version = ">= 1.2.3"
+# Variables
+variable "project_id" {
+  type        = string
+  description = "The Google Cloud project ID"
+  default     = ""
+}
 
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "6.2.0"
-    }
-  }
+variable "domain" {
+  type        = string
+  description = "The primary domain name"
+  default     = ""
+}
 
-  backend "gcs" {
-    bucket = ""
-    prefix = "terraform-state"
-  }
+variable "service_account_name" {
+  type        = string
+  description = "The name of the service account to create."
+  default     = "bidding-auction-services"
 }

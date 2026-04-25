@@ -1,4 +1,4 @@
-# Copyright 2023 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,22 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-terraform {
-  required_version = ">= 1.2.3"
-
-  required_providers {
-    google-beta = {
-      source  = "hashicorp/google-beta"
-      version = "5.36.0"
-    }
-    google = {
-      source  = "hashicorp/google"
-      version = "5.36.0"
-    }
-  }
-
-  backend "gcs" {
-    bucket = "depa-inferencing-ci-tfstate"
-    prefix = "buyer"
-  }
+variable "environment" {
+  description = "Assigned environment name to group related resources."
+  type        = string
 }

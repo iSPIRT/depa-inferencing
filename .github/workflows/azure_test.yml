@@ -6,11 +6,24 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      deploy_env:
+        description: 'Deployment environment (must match deployed stack)'
+        type: choice
+        options:
+          - azure-prod
+          - azure-uat
+        default: azure-prod
   workflow_call:
+    inputs:
+      deploy_env:
+        type: string
+        required: true
 
 jobs:
   test-azure:
     runs-on: ubuntu-22.04
+    environment: ${{ inputs.deploy_env }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,7 +43,7 @@ jobs:
 
       - name: Run secure invoke
         env:
-          KMS_URL: "https://depa-inferencing-kms-azure.ispirt.in"
+          KMS_URL: ${{ inputs.deploy_env == 'azure-uat' && 'https://depa-inferencing-kms-uat-azure.ispirt.in' || 'https://depa-inferencing-kms-azure.ispirt.in' }}
         working-directory: ./tools/secure-invoke
         run: |
           REQUESTS_DIR=${GITHUB_WORKSPACE}/tools/requests
