@@ -55,11 +55,12 @@ on:
 
 jobs:
   renew:
-    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
         environment: ${{ fromJSON(inputs.environment != null && format('["{0}"]', inputs.environment) || '["prod","uat"]') }}
+    runs-on: ${{ fromJSON(matrix.environment == 'uat' && '["self-hosted","uat"]' || '["self-hosted","prod"]') }}
+    environment: ${{ format('azure-{0}', matrix.environment) }}
     env:
       DOMAIN: ${{ matrix.environment == 'prod' && 'depa-inferencing-kms-azure.ispirt.in' || 'depa-inferencing-kms-uat-azure.ispirt.in' }}
       VAULT: ${{ matrix.environment == 'prod' && 'depa-inferencing-cin-kv' || 'depa-inferencing-uat-kv' }}
