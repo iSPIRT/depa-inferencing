@@ -21,7 +21,7 @@ on:
 
 jobs:
   test-azure:
-    runs-on: ${{ fromJSON(inputs.deploy_env == 'azure-uat' && '["self-hosted", "Linux", "X64", "uat"]' || '["self-hosted", "Linux", "X64", "prod"]') }}
+    runs-on: ${{ fromJSON(inputs.deploy_env == 'azure-uat' && '["self-hosted", "uat"]' || '["self-hosted", "prod"]') }}
     environment: ${{ inputs.deploy_env }}
     steps:
       - name: Checkout repository
@@ -30,7 +30,7 @@ jobs:
       - name: Azure Login
         run: |
           set -e
-          az login --identity -u "$AZURE_CLIENT_ID"
+          az login --identity --client-id "$AZURE_CLIENT_ID"
           az account set --subscription "$AZURE_SUBSCRIPTION_ID"
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_AKS_CLIENT_ID }}

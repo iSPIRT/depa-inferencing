@@ -29,7 +29,8 @@ on:
 jobs:
   stack_prod:
     name: Azure stack (prod)
-    if: github.event_name != 'workflow_dispatch' || inputs.deploy_env == 'azure-prod'
+    # Use !cancelled() so GitHub does not imply success() && … ; prod and uat then run
+    if: ${{ !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.deploy_env == 'azure-prod') }}
     uses: ./.github/workflows/azure_stack.yml
     secrets: inherit
     with:
@@ -38,7 +39,7 @@ jobs:
 
   stack_uat:
     name: Azure stack (uat)
-    if: github.event_name != 'workflow_dispatch' || inputs.deploy_env == 'azure-uat'
+    if: ${{ !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.deploy_env == 'azure-uat') }}
     uses: ./.github/workflows/azure_stack.yml
     secrets: inherit
     with:
