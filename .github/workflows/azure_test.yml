@@ -36,6 +36,14 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_AKS_CLIENT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
 
+      - name: kubectl setup
+        run: |
+          set -euo pipefail
+          if ! command -v kubectl &>/dev/null; then
+            if [ "$(id -u)" -eq 0 ]; then az aks install-cli; else sudo az aks install-cli; fi
+          fi
+          command -v kubectl &>/dev/null || { echo "kubectl missing after install"; exit 1; }
+
       - name: Find IP address of offer frontend load balancer
         run: |
           az aks get-credentials --resource-group tf-demo-offer-inc-rg --name tf-demo-offer-inc-aks --overwrite-existing
