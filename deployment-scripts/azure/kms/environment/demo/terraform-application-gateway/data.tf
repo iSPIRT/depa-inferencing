@@ -41,3 +41,15 @@ data "azurerm_user_assigned_identity" "kms" {
 data "http" "ledger_identity" {
   url = "https://identity.confidential-ledger.core.azure.com/ledgerIdentity/${local.ledger_name}"
 }
+
+# Runner VNet + subnet for the secondary ACME storage private endpoint.
+data "azurerm_virtual_network" "vm" {
+  name                = local.vm_vnet_name
+  resource_group_name = local.vm_vnet_resource_group_name
+}
+
+data "azurerm_subnet" "vm_private_endpoint" {
+  name                 = local.vm_subnet_name
+  virtual_network_name = data.azurerm_virtual_network.vm.name
+  resource_group_name  = local.vm_vnet_resource_group_name
+}

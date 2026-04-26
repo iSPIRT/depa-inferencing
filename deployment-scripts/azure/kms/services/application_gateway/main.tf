@@ -88,7 +88,7 @@ resource "azurerm_application_gateway" "this" {
   location            = var.location
   zones               = var.zones
   tags                = var.tags
-  enable_http2        = var.enable_http2
+  http2_enabled       = var.http2_enabled
 
   identity {
     type         = "UserAssigned"
@@ -167,6 +167,7 @@ resource "azurerm_application_gateway" "this" {
     protocol                            = "Https"
     request_timeout                     = 30
     pick_host_name_from_backend_address = true
+    probe_name                          = "letsencrypt-acme-probe"
   }
 
   http_listener {
@@ -221,6 +222,24 @@ resource "azurerm_application_gateway" "this" {
 
     match {
       status_code = ["200-399"]
+    }
+  }
+
+  # Probe for the ACME challenge backend. We accept 4xx because the storage
+  # static website returns 404 for "/" (we never publish an index page); the
+  # only path we care about is /.well-known/acme-challenge/* which is short-lived.
+  probe {
+    name                                      = "letsencrypt-acme-probe"
+    protocol                                  = "Https"
+    path                                      = "/"
+    pick_host_name_from_backend_http_settings = true
+    interval                                  = 60
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    minimum_servers                           = 0
+
+    match {
+      status_code = ["200-499"]
     }
   }
 

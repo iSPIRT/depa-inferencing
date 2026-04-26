@@ -80,7 +80,7 @@ variable "zones" {
   default     = ["1", "2", "3"]
 }
 
-variable "enable_http2" {
+variable "http2_enabled" {
   type        = bool
   description = "Enable HTTP/2 on the Application Gateway frontend."
   default     = true
