@@ -76,6 +76,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Ensure azure-cli is recent enough
+        run: |
+          # The auth hook uses `az storage blob upload --data`, added in 2.49.
+          # The official Microsoft repo provides current azure-cli for Debian/Ubuntu.
+          required="2.49.0"
+          current=$(az version --query '"azure-cli"' -o tsv 2>/dev/null || echo "0.0.0")
+          if [ "$(printf '%s\n%s\n' "$required" "$current" | sort -V | head -n1)" = "$required" ] && [ "$current" != "0.0.0" ]; then
+            echo "azure-cli $current already satisfies >= $required"
+          else
+            echo "Upgrading azure-cli (current: $current, required >= $required)"
+            curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+            az version
+          fi
+
       - name: Azure Login
         uses: azure/login@v2
         with:
