@@ -24,21 +24,19 @@ jobs:
   deploy:
     runs-on: ${{ fromJSON(inputs.deploy_env == 'azure-uat' && '["self-hosted", "uat"]' || '["self-hosted", "prod"]') }}
     environment: ${{ inputs.deploy_env }}
-    # Self-hosted runners often run as a user that cannot write under another user's $HOME
-    # (e.g. mkdir /home/azureuser/.cache/helm: permission denied). Helm + Terraform provider need a
-    # writable cache or chart downloads fail and ba_services / virtual_node / external_dns error out.
-    env:
-      HELM_CACHE_HOME: ${{ runner.temp }}/helm
-      HELM_CONFIG_HOME: ${{ runner.temp }}/helm-config
-      XDG_CACHE_HOME: ${{ runner.temp }}/xdg-cache
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # On a healthy runner, every "need" test passes and this step does not install anything.
-      - name: Runner dependencies
+      # Writable Helm cache (avoids $HOME/.cache/helm) and runner dependencies
+      - name: Self-hosted runner setup
         run: |
           set -euo pipefail
+          echo "HELM_CACHE_HOME=${RUNNER_TEMP}/helm" >> "$GITHUB_ENV"
+          echo "HELM_CONFIG_HOME=${RUNNER_TEMP}/helm-config" >> "$GITHUB_ENV"
+          echo "XDG_CACHE_HOME=${RUNNER_TEMP}/xdg-cache" >> "$GITHUB_ENV"
+          mkdir -p "${RUNNER_TEMP}/helm" "${RUNNER_TEMP}/helm-config" "${RUNNER_TEMP}/xdg-cache"
+
           _r() { [ "$(id -u)" -eq 0 ] && "$@" || sudo "$@"; }
           need() { command -v "$1" &>/dev/null; }
 
@@ -60,10 +58,6 @@ jobs:
           else
             for c in az helm node unzip; do need "$c" || { echo "missing: $c"; exit 1; }; done
           fi
-
-      - name: Prepare Helm cache dirs
-        run: |
-          mkdir -p "$HELM_CACHE_HOME" "$HELM_CONFIG_HOME" "$XDG_CACHE_HOME"
 
       - name: Set Up Terraform
         uses: hashicorp/setup-terraform@v3
