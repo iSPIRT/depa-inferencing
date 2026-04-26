@@ -19,6 +19,11 @@ set -euo pipefail
 : "${CERTBOT_TOKEN:?CERTBOT_TOKEN must be set by certbot}"
 : "${CERTBOT_VALIDATION:?CERTBOT_VALIDATION must be set by certbot}"
 
+# Diagnostic: log how the storage FQDN resolves from this runner so we can tell
+# whether the request would hit the private endpoint or the (blocked) public one.
+echo "[auth-hook] Resolving ${STORAGE_ACCOUNT}.blob.core.windows.net:" >&2
+getent hosts "${STORAGE_ACCOUNT}.blob.core.windows.net" >&2 || true
+
 az storage blob upload \
   --account-name "$STORAGE_ACCOUNT" \
   --container '$web' \
