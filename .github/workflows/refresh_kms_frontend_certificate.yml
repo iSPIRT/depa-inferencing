@@ -38,7 +38,7 @@ on:
         options:
           - prod
           - uat
-        default: prod
+        default: uat
       acme-server:
         description: 'Let''s Encrypt endpoint (use staging while validating the workflow to avoid prod rate limits)'
         required: true
