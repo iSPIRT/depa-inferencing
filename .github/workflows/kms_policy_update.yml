@@ -51,7 +51,8 @@ jobs:
           sudo apt-get autoremove -y
           sudo apt-get install -y \
             apt-transport-https ca-certificates curl gnupg lsb-release \
-            libssl-dev libcurl4-openssl-dev libprotobuf-dev protobuf-compiler pkg-config
+            libssl-dev libcurl4-openssl-dev libprotobuf-dev protobuf-compiler pkg-config \
+            python3-venv
           
           sudo apt-get clean && sudo apt-get autoclean
           sudo rm -rf /var/lib/apt/lists/*

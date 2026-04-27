@@ -542,6 +542,11 @@ jobs:
 
     - name: Setup Python virtual environment
       run: |
+        # if no python3-venv, install it
+        if ! command -v python3-venv &> /dev/null; then
+          sudo apt-get update
+          sudo apt-get install -y python3-venv
+        fi
         python3 -m venv ccf_env
         source ccf_env/bin/activate
         pip install --upgrade pip
@@ -855,3 +860,5 @@ jobs:
         echo "🧹 Removing staging directory ${{ env.STAGING_DIR }}..."
         sudo rm -rf ${{ env.STAGING_DIR }} || true
         echo "✅ Staging cleanup complete"
+        source ccf_env/bin/deactivate || true
+        rm -rf ccf_env || true
