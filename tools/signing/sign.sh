@@ -11,7 +11,9 @@ KMS_DEPLOYMENT_NAME="${KMS_DEPLOYMENT_NAME:-depa-inferencing-kms}"
 PROPOSAL="${PROPOSAL:-key_release_policy.json}"
 
 AZURE_KEY_NAME="${KMS_DEPLOYMENT_NAME}-member-cert"
-KMS_URL="https://${KMS_DEPLOYMENT_NAME}.confidential-ledger.azure.com"
+# Governance origin for /app/proposals (override if not the default ledger URL). Optional: KMS_GOVERNANCE_CACERT for TLS.
+KMS_URL="${KMS_GOVERNANCE_BASE_URL:-https://${KMS_DEPLOYMENT_NAME}.confidential-ledger.azure.com}"
+KMS_URL="${KMS_URL%/}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -147,11 +149,11 @@ sign_and_submit_proposal() {
         --signing-cert ${KMS_MEMBER_CERT_PATH} \
         --signature $signature \
         $extra_args \
-        | curl $KMS_URL/app/proposals \
+        | curl "$KMS_URL/app/proposals" \
             -H "Content-Type: application/cose" \
             -H "Authorization: Bearer $bearer_token" \
             --data-binary @- \
-            --cacert $KMS_SERVICE_CERT_PATH \
+            --cacert "${KMS_GOVERNANCE_CACERT:-$KMS_SERVICE_CERT_PATH}" \
             -w '\n%{http_code}\n'
 
     rm -rf $signature
