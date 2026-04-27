@@ -110,53 +110,81 @@ sign_and_submit_proposal() {
     # Get current time in ISO format
     creation_time=$(date -u +"%Y-%m-%dT%H:%M:%S")
     
-    # Get bearer token for Azure Key Vault
-    bearer_token=$( \
-        az account get-access-token \
+    # Key Vault data plane (sign) — must use https://vault.azure.net
+    vault_token=$(az account get-access-token \
         --resource https://vault.azure.net \
-        --query accessToken --output tsv \
-    )
-    
-    if [ -z "$bearer_token" ]; then
-        print_error "Failed to get Azure access token"
+        --query accessToken --output tsv)
+
+    if [ -z "$vault_token" ]; then
+        print_error "Failed to get Key Vault access token"
         exit 1
     fi
-    
+
+    # Governance /app/proposals — must use Confidential Ledger resource (not the vault token)
+    ledger_token=$(az account get-access-token \
+        --resource https://confidential-ledger.azure.com \
+        --query accessToken --output tsv)
+
+    if [ -z "$ledger_token" ]; then
+        print_error "Failed to get Confidential Ledger access token"
+        exit 1
+    fi
+
     export AKV_URL=$( \
         az keyvault key show \
-        --vault-name $AZURE_VAULT_NAME \
-        --name $AZURE_KEY_NAME \
+        --vault-name "$AZURE_VAULT_NAME" \
+        --name "$AZURE_KEY_NAME" \
         --query key.kid \
         --output tsv)
 
+    local prepare_payload
+    prepare_payload=$(mktemp)
     signature=$(mktemp)
+
     ccf_cose_sign1_prepare \
         --ccf-gov-msg-type $msg_type \
         --ccf-gov-msg-created_at $creation_time \
-        --content $content \
-        --signing-cert ${KMS_MEMBER_CERT_PATH} \
+        --content "$content" \
+        --signing-cert "${KMS_MEMBER_CERT_PATH}" \
         $extra_args \
-        | curl -X POST -s \
-            -H "Authorization: Bearer $bearer_token" \
-            -H "Content-Type: application/json" \
-            "${AKV_URL}/sign?api-version=7.2" \
-            -d @- > $signature
+        > "$prepare_payload"
+
+    local sign_http_code
+    sign_http_code=$(curl -X POST -sS -o "$signature" -w "%{http_code}" \
+        -H "Authorization: Bearer $vault_token" \
+        -H "Content-Type: application/json" \
+        "${AKV_URL}/sign?api-version=7.2" \
+        -d @"$prepare_payload")
+    rm -f "$prepare_payload"
+
+    if [ "$sign_http_code" != "200" ]; then
+        print_error "Key Vault sign failed (HTTP $sign_http_code). Grant this identity 'Key Vault Crypto User' (or sign) on the key '${AZURE_KEY_NAME}'. Response body:"
+        cat "$signature" 2>/dev/null || true
+        rm -f "$signature"
+        exit 1
+    fi
+    if ! jq -e 'has("value")' "$signature" >/dev/null 2>&1; then
+        print_error "Key Vault /sign did not return JSON with a 'value' field (see https://learn.microsoft.com/rest/api/keyvault/key/sign). Body was:"
+        cat "$signature"
+        rm -f "$signature"
+        exit 1
+    fi
 
     ccf_cose_sign1_finish \
         --ccf-gov-msg-type $msg_type \
         --ccf-gov-msg-created_at $creation_time \
-        --content $content \
-        --signing-cert ${KMS_MEMBER_CERT_PATH} \
-        --signature $signature \
+        --content "$content" \
+        --signing-cert "${KMS_MEMBER_CERT_PATH}" \
+        --signature "$signature" \
         $extra_args \
-        | curl "$KMS_URL/app/proposals" \
+        | curl -sS --max-time 120 "$KMS_URL/app/proposals" \
             -H "Content-Type: application/cose" \
-            -H "Authorization: Bearer $bearer_token" \
+            -H "Authorization: Bearer $ledger_token" \
             --data-binary @- \
             --cacert "${KMS_GOVERNANCE_CACERT:-$KMS_SERVICE_CERT_PATH}" \
             -w '\n%{http_code}\n'
 
-    rm -rf $signature
+    rm -f "$signature"
 }
 
 # Main execution
