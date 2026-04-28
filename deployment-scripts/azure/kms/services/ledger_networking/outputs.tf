@@ -6,6 +6,11 @@ output "private_endpoint_id" {
   value       = azurerm_private_endpoint.ledger.id
 }
 
+output "vm_private_endpoint_id" {
+  description = "Resource ID of the runner-side private endpoint for the Confidential Ledger (empty if not configured)."
+  value       = var.vm_private_endpoint_subnet_id != "" ? azurerm_private_endpoint.ledger_vm[0].id : ""
+}
+
 output "private_dns_zone_id" {
   description = "Resource ID of the private DNS zone for the Confidential Ledger."
   value       = azurerm_private_dns_zone.ledger.id
