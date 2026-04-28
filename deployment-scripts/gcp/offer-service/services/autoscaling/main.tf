@@ -67,9 +67,8 @@ resource "google_compute_instance_template" "frontends" {
     enable_vtpm                 = true
   }
   confidential_instance_config {
-    # You should use terraform-provider-google newer or equal to 5.36.0 for
-    # confidential_instance_type field.
-    confidential_instance_type  = "SEV"
+    # SEV-SNP (N2D + AMD Milan). Requires min_cpu_platform — see GCP Confidential VM docs.
+    confidential_instance_type  = "SEV_SNP"
     enable_confidential_compute = true
   }
 
@@ -95,6 +94,7 @@ resource "google_compute_instance_template" "frontends" {
   }
 
   machine_type = var.region_config[each.value.region].frontend.machine_type
+  min_cpu_platform = "AMD Milan"
 
   service_account {
     email  = var.service_account_email
@@ -233,9 +233,7 @@ resource "google_compute_instance_template" "backends" {
     enable_vtpm                 = true
   }
   confidential_instance_config {
-    # You should use terraform-provider-google newer or equal to 5.36.0 for
-    # confidential_instance_type field.
-    confidential_instance_type  = var.region_config[each.value.region].backend.use_intel_amx ? "TDX" : "SEV"
+    confidential_instance_type  = var.region_config[each.value.region].backend.use_intel_amx ? "TDX" : "SEV_SNP"
     enable_confidential_compute = true
   }
 
@@ -261,6 +259,7 @@ resource "google_compute_instance_template" "backends" {
   }
 
   machine_type = var.region_config[each.value.region].backend.machine_type
+  min_cpu_platform = var.region_config[each.value.region].backend.use_intel_amx ? null : "AMD Milan"
 
   service_account {
     email  = var.service_account_email
