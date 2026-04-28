@@ -19,6 +19,8 @@ set -euo pipefail
 : "${CERTBOT_TOKEN:?CERTBOT_TOKEN must be set by certbot}"
 : "${CERTBOT_VALIDATION:?CERTBOT_VALIDATION must be set by certbot}"
 
+# Requires azure-cli >= 2.49 for --data support; the workflow upgrades the CLI
+# before invoking certbot.
 az storage blob upload \
   --account-name "$STORAGE_ACCOUNT" \
   --container '$web' \

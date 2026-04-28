@@ -41,12 +41,25 @@ module "letsencrypt_storage" {
 
   # Globally unique, all-lowercase, <=24 chars. Derived from environment+region
   # so each env's account is named deterministically without a separate local.
-  name                       = "depainfkmsacme${local.environment}${local.region_short}"
-  resource_group_name        = data.azurerm_resource_group.kms.name
-  location                   = data.azurerm_resource_group.kms.location
-  private_endpoint_subnet_id = data.azurerm_subnet.private_endpoint.id
-  virtual_network_id         = data.azurerm_virtual_network.kms.id
-  tags                       = merge(local.base_tags, local.extra_tags)
+  name                          = "depainfkmsacme${local.environment}${local.region_short}"
+  resource_group_name           = data.azurerm_resource_group.kms.name
+  location                      = data.azurerm_resource_group.kms.location
+  private_endpoint_subnet_id    = data.azurerm_subnet.private_endpoint.id
+  virtual_network_id            = data.azurerm_virtual_network.kms.id
+  vm_private_endpoint_subnet_id = data.azurerm_subnet.vm_private_endpoint.id
+  vm_virtual_network_id         = data.azurerm_virtual_network.vm.id
+  ci_principal_id               = local.ci_principal_id
+  tags                          = merge(local.base_tags, local.extra_tags)
+}
+
+# Grant the CI principal data-plane access to import new certificate versions
+# into Key Vault. Phase 1's `crypto_principal_ids` controls Phase-1-managed
+# role grants; this assignment is co-located with the renewal workflow's other
+# infra so the cert-refresh setup is self-contained in Phase 3.
+resource "azurerm_role_assignment" "ci_kv_certificates_officer" {
+  scope                = data.azurerm_key_vault.kms.id
+  role_definition_name = "Key Vault Certificates Officer"
+  principal_id         = local.ci_principal_id
 }
 
 # Application Gateway with the Ledger private endpoint FQDN as backend.
