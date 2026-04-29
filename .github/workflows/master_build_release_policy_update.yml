@@ -427,6 +427,7 @@ jobs:
     - name: Install Azure CLI & Confcom extension
       run: |
         curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        sudo apt-get update && sudo apt-get install -y jq
         az version
         az extension add --name confcom
         az extension update --name confcom
@@ -469,21 +470,30 @@ jobs:
       env:
         KMS_TARGET: ${{ github.event.inputs.kms_target_environment }}
       run: |
-        KV_POLICY=$(az confcom acipolicygen -y -i policies/kv-policy.json \
-          --image kv-service:${IMAGE_FLAVOR}-${KV_TAG} \
-          --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
+        # confcom rejects using -i (policy JSON) together with --image — only one source allowed.
+        # Point the policy JSON at the locally tagged images (already loaded above), then use -i only.
+        set -euo pipefail
+        KV_IMG="kv-service:${IMAGE_FLAVOR}-${KV_TAG}"
+        OFE_IMG="ofe-service:${IMAGE_FLAVOR}-${BA_TAG}"
+        OFFER_IMG="offer-service:${IMAGE_FLAVOR}-${BA_TAG}"
+
+        jq --arg img "$KV_IMG" '.containers[0].properties.image = $img' policies/kv-policy.json > /tmp/kv-policy-run.json
+        KV_POLICY=$(az confcom acipolicygen -y -i /tmp/kv-policy-run.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
+
+        jq --arg img "$OFE_IMG" '.containers[0].properties.image = $img' policies/ofe-policy.json > /tmp/ofe-policy-run.json
+        OFE_POLICY=$(az confcom acipolicygen -y -i /tmp/ofe-policy-run.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
+
+        jq --arg img "$OFFER_IMG" '.containers[0].properties.image = $img' policies/offer-policy.json > /tmp/offer-policy-run.json
+        OFFER_POLICY=$(az confcom acipolicygen -y -i /tmp/offer-policy-run.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
+
+        rm -f /tmp/kv-policy-run.json /tmp/ofe-policy-run.json /tmp/offer-policy-run.json
+
         echo "KV_POLICY=$KV_POLICY" >> $GITHUB_ENV
         echo "✅ KV policy:      $KV_POLICY"
 
-        OFE_POLICY=$(az confcom acipolicygen -y -i policies/ofe-policy.json \
-          --image ofe-service:${IMAGE_FLAVOR}-${BA_TAG} \
-          --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
         echo "OFE_POLICY=$OFE_POLICY" >> $GITHUB_ENV
         echo "✅ OFE policy:     $OFE_POLICY"
 
-        OFFER_POLICY=$(az confcom acipolicygen -y -i policies/offer-policy.json \
-          --image offer-service:${IMAGE_FLAVOR}-${BA_TAG} \
-          --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
         echo "OFFER_POLICY=$OFFER_POLICY" >> $GITHUB_ENV
         echo "✅ Offer policy: $OFFER_POLICY"
 
