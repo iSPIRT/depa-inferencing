@@ -2,6 +2,7 @@ name: Master Release Build
 
 permissions:
   contents: read
+  id-token: write
 
 on:
   workflow_dispatch:
@@ -67,16 +68,14 @@ on:
         required: true
         default: false
         type: boolean
-      azure_vault_name:
-        description: 'KMS: Azure Key Vault name'
-        required: false
-        default: 'depa-inferencing-cin-kv'
-        type: string
-      deployment_name:
-        description: 'KMS: Azure Confidential Ledger name'
-        required: false
-        default: 'depa-inferencing-kms-prod-cin'
-        type: string
+      kms_target_environment:
+        description: 'KMS: UAT or Prod deployment environment'
+        required: true
+        default: uat
+        type: choice
+        options:
+          - uat
+          - prod
 
       # ── ACR & SBOMs ───────────────────────────────────────────────────────
       push_to_acr:
@@ -105,7 +104,8 @@ jobs:
   # ============================================================
 
   build-kv:
-    runs-on: self-hosted
+    # When KMS policy update runs, stage tars on the same host as update-kms-policy (see STAGING_DIR).
+    runs-on: ${{ github.event.inputs.update_kms_policy == 'true' && fromJSON(github.event.inputs.kms_target_environment == 'uat' && '["self-hosted", "uat"]' || '["self-hosted", "prod"]') || 'self-hosted' }}
     timeout-minutes: 1440
     steps:
     - name: Display KV Build Parameters
@@ -280,7 +280,7 @@ jobs:
         df -h
 
   build-ba:
-    runs-on: self-hosted
+    runs-on: ${{ github.event.inputs.update_kms_policy == 'true' && fromJSON(github.event.inputs.kms_target_environment == 'uat' && '["self-hosted", "uat"]' || '["self-hosted", "prod"]') || 'self-hosted' }}
     timeout-minutes: 1440
     steps:
     - name: Display BA Build Parameters
@@ -514,8 +514,9 @@ jobs:
 
   update-kms-policy:
     needs: [build-kv, build-ba]
-    runs-on: self-hosted
+    runs-on: ${{ fromJSON(github.event.inputs.kms_target_environment == 'uat' && '["self-hosted", "uat"]' || '["self-hosted", "prod"]') }}
     if: ${{ github.event.inputs.update_kms_policy == 'true' }}
+    environment: ${{ github.event.inputs.kms_target_environment == 'uat' && 'azure-uat' || 'azure-prod' }}
     env:
       KV_TAG: ${{ github.event.inputs.kv_release_tag }}
       BA_TAG: ${{ github.event.inputs.ba_release_tag }}
@@ -531,14 +532,21 @@ jobs:
         tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
 
-    - name: Install Azure CLI Confcom extension
+    - name: Install Azure CLI & Confcom extension
       run: |
+        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        az version
         az extension add --name confcom
         az extension update --name confcom
         az version
 
     - name: Setup Python virtual environment
       run: |
+        # if no python3-venv, install it
+        if ! command -v python3-venv &> /dev/null; then
+          sudo apt-get update
+          sudo apt-get install -y python3-venv
+        fi
         python3 -m venv ccf_env
         source ccf_env/bin/activate
         pip install --upgrade pip
@@ -566,6 +574,8 @@ jobs:
         echo "✅ ofe-service:prod-${BA_TAG} ready"
 
     - name: Generate CCE policies from local images
+      env:
+        KMS_TARGET: ${{ github.event.inputs.kms_target_environment }}
       run: |
         KV_POLICY=$(az confcom acipolicygen -y -i policies/kv-policy.json \
           --image kv-service:prod-${KV_TAG} \
@@ -585,9 +595,25 @@ jobs:
         echo "OFFER_POLICY=$OFFER_POLICY" >> $GITHUB_ENV
         echo "✅ Offer policy: $OFFER_POLICY"
 
+        if [ "$KMS_TARGET" = "uat" ]; then
+          ALLOWALL_PATH="${GITHUB_WORKSPACE}/deployment-scripts/azure/offer-service/environment/demo/cce-policies/allow_all.base64"
+          ALLOWALL_POLICY=$(base64 --decode < "$ALLOWALL_PATH" | sha256sum | cut -d' ' -f1)
+          echo "ALLOWALL_POLICY=$ALLOWALL_POLICY" >> $GITHUB_ENV
+          echo "✅ Allow-all (UAT) hostdata: $ALLOWALL_POLICY"
+        else
+          echo "ALLOWALL_POLICY=" >> $GITHUB_ENV
+        fi
+
     - name: Generate key release policy JSON
+      env:
+        KMS_TARGET: ${{ github.event.inputs.kms_target_environment }}
+        KV_POLICY: ${{ env.KV_POLICY }}
+        OFE_POLICY: ${{ env.OFE_POLICY }}
+        OFFER_POLICY: ${{ env.OFFER_POLICY }}
+        ALLOWALL_POLICY: ${{ env.ALLOWALL_POLICY }}
       run: |
-        cat > $GITHUB_WORKSPACE/key_release_policy.json << EOF
+        if [ "$KMS_TARGET" = "uat" ]; then
+          cat > $GITHUB_WORKSPACE/key_release_policy.json << EOF
         {
           "actions": [
             {
@@ -597,9 +623,10 @@ jobs:
                 "type": "add",
                 "claims": {
                   "x-ms-sevsnpvm-hostdata": [
-                    "${{ env.KV_POLICY }}",
-                    "${{ env.OFE_POLICY }}",
-                    "${{ env.OFFER_POLICY }}"
+                    "$KV_POLICY",
+                    "$OFE_POLICY",
+                    "$OFFER_POLICY",
+                    "$ALLOWALL_POLICY"
                   ]
                 }
               }
@@ -607,14 +634,36 @@ jobs:
           ]
         }
         EOF
+        else
+          cat > $GITHUB_WORKSPACE/key_release_policy.json << EOF
+        {
+          "actions": [
+            {
+              "name": "set_key_release_policy",
+              "args": {
+                "service": "offer-services",
+                "type": "add",
+                "claims": {
+                  "x-ms-sevsnpvm-hostdata": [
+                    "$KV_POLICY",
+                    "$OFE_POLICY",
+                    "$OFFER_POLICY"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+        EOF
+        fi
 
         echo "Key release policy JSON generated:"
         cat $GITHUB_WORKSPACE/key_release_policy.json
 
     - name: Sign and submit key release policy proposal
       env:
-        AZURE_VAULT_NAME: ${{ github.event.inputs.azure_vault_name }}
-        KMS_DEPLOYMENT_NAME: ${{ github.event.inputs.deployment_name }}
+        AZURE_VAULT_NAME: ${{ vars.KMS_SIGNING_KV }}
+        KMS_DEPLOYMENT_NAME: ${{ vars.KMS_CONFIDENTIAL_LEDGER }}
         PROPOSAL: ${{ github.workspace }}/key_release_policy.json
       run: |
         source ccf_env/bin/activate
@@ -622,13 +671,12 @@ jobs:
 
     - name: Display current key release policy
       env:
-        KMS_DEPLOYMENT_NAME: ${{ github.event.inputs.deployment_name }}
+        KMS_DEPLOYMENT_NAME: ${{ vars.KMS_CONFIDENTIAL_LEDGER }}
       run: |
-        KMS_URL="https://${KMS_DEPLOYMENT_NAME}.confidential-ledger.azure.com"
+        GOV_BASE="https://${KMS_DEPLOYMENT_NAME}.confidential-ledger.azure.com"
+        GOV_BASE="${GOV_BASE%/}"
         TOKEN=$(az account get-access-token --resource https://confidential-ledger.azure.com | jq -r '.accessToken')
-        curl $KMS_URL/app/keyReleasePolicy -k \
-          -H "Content-Type: application/json" \
-          -H "Authorization: Bearer $TOKEN" | jq
+        curl -sS -k "$GOV_BASE/app/keyReleasePolicy" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" | jq
 
     - name: Cleanup KMS job artifacts
       if: always()
@@ -812,3 +860,5 @@ jobs:
         echo "🧹 Removing staging directory ${{ env.STAGING_DIR }}..."
         sudo rm -rf ${{ env.STAGING_DIR }} || true
         echo "✅ Staging cleanup complete"
+        source ccf_env/bin/deactivate || true
+        rm -rf ccf_env || true

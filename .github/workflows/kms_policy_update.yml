@@ -2,7 +2,6 @@ name: Update KMS policy
 
 permissions:
   contents: read
-  pages: write
   id-token: write
 
 on:
@@ -12,26 +11,26 @@ on:
         description: 'DEPA Inferencing Release Version for Bidding and Auction Services'
         required: true
         type: string
-        default: 'prod-4.8.0.4'
+        default: 'prod-4.8.1.1'
       kv-services-version:
         description: 'DEPA Inferencing Release Version for Key-Value Services'
         required: true
         type: string
-        default: 'prod-1.2.0.5'
-      azure-vault-name:
-        description: 'KMS: Azure Key Vault name'
+        default: 'prod-1.2.1.0'
+      kms_target_environment:
+        description: 'KMS: UAT or Prod deployment environment'
         required: true
-        type: string
-        default: 'depa-inferencing-cin-kv'
-      deployment-name:
-        description: 'KMS: Azure Confidential Ledger name'
-        required: true
-        type: string
-        default: 'depa-inferencing-kms-prod-cin'
+        type: choice
+        default: uat
+        options:
+          - uat
+          - prod
 
 jobs:
-  azure-login:
-    runs-on: self-hosted
+  update-kms-policy:
+    environment: ${{ github.event.inputs.kms_target_environment == 'uat' && 'azure-uat' || 'azure-prod' }}
+    # Runner labels: self-hosted + uat | prod (must reach private KV + confidential ledger)
+    runs-on: ${{ fromJSON(github.event.inputs.kms_target_environment == 'uat' && '["self-hosted", "uat"]' || '["self-hosted", "prod"]') }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -42,12 +41,36 @@ jobs:
           client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
-
-      - name: Install Azure CLI Confcom extension
+      
+      - name: Setup Build Environment
         run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake git
+
+          sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
+          sudo apt-get autoremove -y
+          sudo apt-get install -y \
+            apt-transport-https ca-certificates curl gnupg lsb-release \
+            libssl-dev libcurl4-openssl-dev libprotobuf-dev protobuf-compiler pkg-config \
+            python3-venv
+          
+          sudo apt-get clean && sudo apt-get autoclean
+          sudo rm -rf /var/lib/apt/lists/*
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          sudo sh get-docker.sh && rm get-docker.sh
+          sudo usermod -aG docker $USER
+          docker --version
+
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          sudo usermod -aG docker $USER
+
+      - name: Install Azure CLI & Confcom extension
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          az version
           az extension add --name confcom
           az extension update --name confcom
-          az version
 
       - name: Setup Python virtual environment
         run: |
@@ -84,15 +107,47 @@ jobs:
 
           echo "CCE policies generated for all services"
 
+          KMS_TARGET="${{ github.event.inputs.kms_target_environment }}"
+          if [ "$KMS_TARGET" = "uat" ]; then
+            ALLOWALL_PATH="${GITHUB_WORKSPACE}/deployment-scripts/azure/offer-service/environment/demo/cce-policies/allow_all.base64"
+            ALLOWALL_POLICY=$(base64 --decode < "$ALLOWALL_PATH" | sha256sum | cut -d' ' -f1)
+            echo "ALLOWALL_POLICY=$ALLOWALL_POLICY" >> $GITHUB_ENV
+          else
+            echo "ALLOWALL_POLICY=" >> $GITHUB_ENV
+          fi
+
       - name: Generate key release policy JSON
         env: 
+          KMS_TARGET: ${{ github.event.inputs.kms_target_environment }}
           KV_POLICY: ${{ env.KV_POLICY }}
           OFE_POLICY: ${{ env.OFE_POLICY }}
           OFFER_POLICY: ${{ env.OFFER_POLICY }}
+          ALLOWALL_POLICY: ${{ env.ALLOWALL_POLICY }}
         run: |
-          
-          # Generate the JSON structure
-          cat > $GITHUB_WORKSPACE/key_release_policy.json << EOF
+          if [ "$KMS_TARGET" = "uat" ]; then
+            cat > $GITHUB_WORKSPACE/key_release_policy.json << EOF
+          {
+            "actions": [
+              {
+                "name": "set_key_release_policy",
+                "args": {
+                  "service": "offer-services",
+                  "type": "add",
+                  "claims": {
+                    "x-ms-sevsnpvm-hostdata": [
+                      "$KV_POLICY",
+                      "$OFE_POLICY",
+                      "$OFFER_POLICY",
+                      "$ALLOWALL_POLICY"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+          EOF
+          else
+            cat > $GITHUB_WORKSPACE/key_release_policy.json << EOF
           {
             "actions": [
               {
@@ -112,14 +167,15 @@ jobs:
             ]
           }
           EOF
+          fi
           
           echo "Key release policy JSON generated: key_release_policy.json"
           cat $GITHUB_WORKSPACE/key_release_policy.json
     
       - name: Sign and submit key release policy proposal
         env:
-          AZURE_VAULT_NAME: ${{ inputs.azure-vault-name }}
-          KMS_DEPLOYMENT_NAME: ${{ inputs.deployment-name }}
+          AZURE_VAULT_NAME: ${{ vars.KMS_SIGNING_KV }}
+          KMS_DEPLOYMENT_NAME: ${{ vars.KMS_CONFIDENTIAL_LEDGER }}
           PROPOSAL: ${{ github.workspace }}/key_release_policy.json
         run: |
           # Activate the virtual environment
@@ -129,10 +185,11 @@ jobs:
           ./tools/signing/sign.sh
 
       - name: Display current key release policy
-        env: 
-          KMS_DEPLOYMENT_NAME: ${{ inputs.deployment-name }}
-        run: | 
-          # Display the key release policy
-          KMS_URL="https://${KMS_DEPLOYMENT_NAME}.confidential-ledger.azure.com"
+        env:
+          KMS_DEPLOYMENT_NAME: ${{ vars.KMS_CONFIDENTIAL_LEDGER }}
+        run: |
+          GOV_BASE="https://${KMS_DEPLOYMENT_NAME}.confidential-ledger.azure.com"
+          GOV_BASE="${GOV_BASE%/}"
           TOKEN=$(az account get-access-token --resource https://confidential-ledger.azure.com | jq -r '.accessToken')
-          curl $KMS_URL/app/keyReleasePolicy -k -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" | jq
+          # -k: quick post-submit display; sign.sh does full TLS verify to governance
+          curl -sS -k "$GOV_BASE/app/keyReleasePolicy" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" | jq
