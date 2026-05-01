@@ -15,6 +15,11 @@ locals {
   # Trim any trailing slash from URI to avoid double slashes
   key_vault_uri_trimmed               = trimsuffix(var.key_vault_uri, "/")
   ssl_certificate_key_vault_secret_id = "${local.key_vault_uri_trimmed}/secrets/${var.ssl_certificate_name}"
+
+  # Public URI allowlist (Lowercase+UrlDecode via WAF rule). Empty waf_allowed_public_uri_regex → regex below. Extend for e.g. /.well-known if HTTP+ACME shares this policy.
+  # listpubkeys: optional / and ?query. key/unwrapkey: query must include fmt=tink.
+  default_kms_public_uri_allow_regex = "^(/app/listpubkeys/?(?:\\?[^#]*)?$|/app/key\\?(?:[^#]*&)*fmt=tink(?:&[^#]*)?$|/app/unwrapkey\\?(?:[^#]*&)*fmt=tink(?:&[^#]*)?)$"
+  kms_public_uri_allow_regex         = var.waf_allowed_public_uri_regex != "" ? var.waf_allowed_public_uri_regex : local.default_kms_public_uri_allow_regex
 }
 
 resource "azurerm_public_ip" "gateway" {
@@ -58,6 +63,26 @@ resource "azurerm_web_application_firewall_policy" "this" {
     managed_rule_set {
       type    = var.waf_rule_set_type
       version = var.waf_rule_set_version
+
+      # CRS 942340/430/440 false-positive KMS JSON bodies; TF exclusions cannot scope by RequestUri. KMS-only policy — do not reuse blindly.
+      dynamic "rule_group_override" {
+        for_each = var.waf_sqli_rule_overrides_enabled && var.waf_rule_set_type == "OWASP" ? [1] : []
+        content {
+          rule_group_name = "REQUEST-942-APPLICATION-ATTACK-SQLI"
+          rule {
+            id      = "942340"
+            enabled = false
+          }
+          rule {
+            id      = "942430"
+            enabled = false
+          }
+          rule {
+            id      = "942440"
+            enabled = false
+          }
+        }
+      }
     }
   }
 
@@ -67,8 +92,7 @@ resource "azurerm_web_application_firewall_policy" "this" {
     rule_type = "MatchRule"
     action    = "Block"
 
-    # Block requests where Host header does not match the allowed hostname
-    # Uses "Equal" operator with negation: block if Host does NOT equal the allowed hostname
+    # Block unless Host equals allowed_hostname exactly.
     match_conditions {
       match_variables {
         variable_name = "RequestHeaders"
@@ -80,21 +104,24 @@ resource "azurerm_web_application_firewall_policy" "this" {
     }
   }
 
-  custom_rules {
-    name      = "BlockAdminEndpoints"
-    priority  = 2
-    rule_type = "MatchRule"
-    action    = "Block"
+  dynamic "custom_rules" {
+    for_each = var.waf_public_allowlist_enabled ? [1] : []
+    content {
+      name      = "BlockOutsideKmsPublicApi"
+      priority  = 2
+      rule_type = "MatchRule"
+      action    = "Block"
 
-    # Block admin / control-plane KMS paths from the public AGW. Workflows reach
-    # these via the ledger's private endpoint inside the VNet, bypassing the AGW.
-    match_conditions {
-      match_variables {
-        variable_name = "RequestUri"
+      # Block if RequestUri does not match allowlist (Regex + negation_condition).
+      match_conditions {
+        match_variables {
+          variable_name = "RequestUri"
+        }
+        operator           = "Regex"
+        match_values       = [local.kms_public_uri_allow_regex]
+        negation_condition = true
+        transforms         = ["Lowercase", "UrlDecode"]
       }
-      operator     = "Regex"
-      match_values = ["^/app/(heartbeat|auth|refresh|keyReleasePolicy|settingsPolicy|jwtValidationPolicy|proposals)(/|\\?|$)"]
-      transforms   = ["Lowercase", "UrlDecode"]
     }
   }
 

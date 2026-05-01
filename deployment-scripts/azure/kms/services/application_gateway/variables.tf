@@ -68,6 +68,24 @@ variable "waf_rule_set_version" {
   default     = "3.2"
 }
 
+variable "waf_sqli_rule_overrides_enabled" {
+  type        = bool
+  description = "OWASP CRS: disable rules 942340/942430/942440 on this policy only (KMS JSON false positives). Required before Prevention if key/unwrap POSTs must succeed."
+  default     = true
+}
+
+variable "waf_public_allowlist_enabled" {
+  type        = bool
+  description = "If true: block RequestUri outside default allow regex (or waf_allowed_public_uri_regex when set)."
+  default     = true
+}
+
+variable "waf_allowed_public_uri_regex" {
+  type        = string
+  description = "Non-empty → full permitted RequestUri regex (after WAF transforms). Empty → built-in: listpubkeys (+ optional /, ?query); key & unwrapkey require fmt=tink in query."
+  default     = ""
+}
+
 variable "capacity" {
   type        = number
   description = "Capacity (instance count) for the Application Gateway."
