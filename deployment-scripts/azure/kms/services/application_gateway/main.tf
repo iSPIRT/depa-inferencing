@@ -16,9 +16,9 @@ locals {
   key_vault_uri_trimmed               = trimsuffix(var.key_vault_uri, "/")
   ssl_certificate_key_vault_secret_id = "${local.key_vault_uri_trimmed}/secrets/${var.ssl_certificate_name}"
 
-  # Public URI allowlist (Lowercase+UrlDecode via WAF rule). Empty waf_allowed_public_uri_regex → regex below. Extend for e.g. /.well-known if HTTP+ACME shares this policy.
-  # listpubkeys: optional / and ?query. key/unwrapkey: query must include fmt=tink.
-  default_kms_public_uri_allow_regex = "^(/app/listpubkeys/?(?:\\?[^#]*)?$|/app/key\\?(?:[^#]*&)*fmt=tink(?:&[^#]*)?$|/app/unwrapkey\\?(?:[^#]*&)*fmt=tink(?:&[^#]*)?)$"
+  # Public URI allowlist (Lowercase+UrlDecode via WAF rule). Empty waf_allowed_public_uri_regex → regex below.
+  # Optional trailing slash + optional query per path. Override for e.g. /.well-known if HTTP+ACME shares this policy.
+  default_kms_public_uri_allow_regex = "^(/app/listpubkeys/?(?:\\?[^#]*)?$|/app/key/?(?:\\?[^#]*)?$|/app/unwrapkey/?(?:\\?[^#]*)?)$"
   kms_public_uri_allow_regex         = var.waf_allowed_public_uri_regex != "" ? var.waf_allowed_public_uri_regex : local.default_kms_public_uri_allow_regex
 }
 

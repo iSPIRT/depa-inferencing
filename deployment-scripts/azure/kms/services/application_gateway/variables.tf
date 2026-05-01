@@ -82,7 +82,7 @@ variable "waf_public_allowlist_enabled" {
 
 variable "waf_allowed_public_uri_regex" {
   type        = string
-  description = "Non-empty → full permitted RequestUri regex (after WAF transforms). Empty → built-in: listpubkeys (+ optional /, ?query); key & unwrapkey require fmt=tink in query."
+  description = "Non-empty → full permitted RequestUri regex (after WAF transforms). Empty → built-in: listpubkeys, key, unwrapkey (+ optional slash, optional query)."
   default     = ""
 }
 
