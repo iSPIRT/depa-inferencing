@@ -16,7 +16,7 @@ locals {
   environment = "demo"
   operator    = "tf"
   # Please refer to https://github.com/claranet/terraform-azurerm-regions/blob/master/REGIONS.md for region codes. Check the "Region Deployments" section in https://github.com/microsoft/virtualnodesOnAzureContainerInstances for regions that support confidential pods.
-  region = "centralindia"
+  region       = "centralindia"
   region_short = "cin"
 
   subscription_id = "<your_subscription_id>"
@@ -33,12 +33,12 @@ locals {
 }
 
 module "offer" {
-  source          = "../../../modules/offer"
-  environment     = local.environment
-  operator        = local.operator
-  region          = local.region
-  subscription_id = local.subscription_id
-  tenant_id       = local.tenant_id
+  source                             = "../../../modules/offer"
+  environment                        = local.environment
+  operator                           = local.operator
+  region                             = local.region
+  subscription_id                    = local.subscription_id
+  tenant_id                          = local.tenant_id
   virtual_node_identity_id           = local.virtual_node_identity_id
   virtual_node_identity_principal_id = local.virtual_node_identity_principal_id
 
@@ -74,32 +74,32 @@ module "offer" {
         BIDDING_TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES             = "10737418240" # Example: "10737418240"
 
         BUYER_CODE_FETCH_CONFIG = " ${replace(jsonencode(
-        {
-          fetchMode                               = 0,
-          biddingJsPath                           = "",
-          biddingJsUrl                            = "https://raw.githubusercontent.com/KenGordon/bidding-auction-servers/refs/heads/kapilv/generate-bid/fetchAdditionalSignals.js",
-          protectedAppSignalsBiddingJsUrl         = "https://raw.githubusercontent.com/KenGordon/bidding-auction-servers/refs/heads/kapilv/generate-bid/fetchAdditionalSignals.js",
-          biddingWasmHelperUrl                    = "",
-          protectedAppSignalsBiddingWasmHelperUrl = "",
-          urlFetchPeriodMs                        = 13000000,
-          urlFetchTimeoutMs                       = 120000,
-          enableBuyerDebugUrlGeneration           = true,
-          enableAdtechCodeLogging                 = true,
-          prepareDataForAdsRetrievalJsUrl         = "",
-          prepareDataForAdsRetrievalWasmHelperUrl = ""
+          {
+            fetchMode                               = 0,
+            biddingJsPath                           = "",
+            biddingJsUrl                            = "https://raw.githubusercontent.com/KenGordon/bidding-auction-servers/refs/heads/kapilv/generate-bid/fetchAdditionalSignals.js",
+            protectedAppSignalsBiddingJsUrl         = "https://raw.githubusercontent.com/KenGordon/bidding-auction-servers/refs/heads/kapilv/generate-bid/fetchAdditionalSignals.js",
+            biddingWasmHelperUrl                    = "",
+            protectedAppSignalsBiddingWasmHelperUrl = "",
+            urlFetchPeriodMs                        = 13000000,
+            urlFetchTimeoutMs                       = 120000,
+            enableBuyerDebugUrlGeneration           = true,
+            enableAdtechCodeLogging                 = true,
+            prepareDataForAdsRetrievalJsUrl         = "",
+            prepareDataForAdsRetrievalWasmHelperUrl = ""
         }), ",", "\\,")}" # Escape commas in JSON. A known limitation in the Helm --set flag. https://github.com/hashicorp/terraform-provider-helm/issues/618
         EGRESS_SCHEMA_FETCH_CONFIG = " ${replace(jsonencode(
-        {
-          fetchMode         = 0,
-          egressSchemaUrl   = "https://example.com/egressSchema.json",
-          urlFetchPeriodMs  = 130000,
-          urlFetchTimeoutMs = 30000
+          {
+            fetchMode         = 0,
+            egressSchemaUrl   = "https://example.com/egressSchema.json",
+            urlFetchPeriodMs  = 130000,
+            urlFetchTimeoutMs = 30000
         }), ",", "\\,")}" # Escape commas in JSON. A known limitation in the Helm --set flag. https://github.com/hashicorp/terraform-provider-helm/issues/618
         ENABLE_BIDDING_SERVICE_BENCHMARK = "false"
         INFERENCE_SIDECAR_RUNTIME_CONFIG = "${jsonencode({
-           "num_interop_threads": 4,
-           "num_intraop_threads": 4,
-           "module_name": "tensorflow_v2_14_0",
+          "num_interop_threads" : 4,
+          "num_intraop_threads" : 4,
+          "module_name" : "tensorflow_v2_14_0",
         })}"
         UDF_NUM_WORKERS                                       = "4"   # Example: "64" Must be <= resources.limit.cpu container
         JS_WORKER_QUEUE_LEN                                   = "100" # Example: "200"
@@ -139,8 +139,8 @@ module "offer" {
         BIDDING_EGRESS_TLS                            = ""
         BIDDING_SERVER_ADDR                           = "offer-service.ad_selection.microsoft:50057" # Do not change this unless you are modifying the bidding service
         BIDDING_SIGNALS_LOAD_TIMEOUT_MS               = "60000"
-        BUYER_FRONTEND_HEALTHCHECK_PORT               = "50552"                                        # Do not change unless you are modifying the default Azure architecture.
-        BUYER_FRONTEND_PORT                           = "50051"                                        # Do not change unless you are modifying the default Azure architecture.
+        BUYER_FRONTEND_HEALTHCHECK_PORT               = "50552" # Do not change unless you are modifying the default Azure architecture.
+        BUYER_FRONTEND_PORT                           = "50051" # Do not change unless you are modifying the default Azure architecture.
         ENABLE_TKV_V2                                 = "true"
         TKV_EGRESS_TLS                                = "false"
         BYOS_AD_RETRIEVAL_SERVER                      = "false"
@@ -155,8 +155,8 @@ module "offer" {
       }
     },
     {
-      name      = "kv"
-      image     = "${local.image_registry}/${local.registry_path}/key-value-service:${local.kv_image_tag}"
+      name  = "kv"
+      image = "${local.image_registry}/${local.registry_path}/key-value-service:${local.kv_image_tag}"
 
       ccepolicy = "${file("../cce-policies/kv.base64")}"
       replicas  = 1
@@ -189,7 +189,7 @@ module "offer" {
     ENABLE_AUCTION_COMPRESSION         = "false"      # Example: "false"
     ENABLE_BUYER_COMPRESSION           = "false"      # Example: "false"
     ENABLE_CHAFFING                    = "false"      # Example: "false"
-    ENABLE_OTEL_BASED_LOGGING          = "true"      # Example: "false"
+    ENABLE_OTEL_BASED_LOGGING          = "true"       # Example: "false"
     ENABLE_PROTECTED_APP_SIGNALS       = "false"      # Example: "true"
     INFERENCE_MODEL_BUCKET_NAME        = ""
     INFERENCE_MODEL_BUCKET_PATHS       = ""
@@ -221,10 +221,20 @@ module "offer" {
     PRIMARY_COORDINATOR_REGION               = ""
     PRIVATE_KEY_CACHE_TTL_SECONDS            = "3888000"
     PUBLIC_KEY_ENDPOINT                      = "${local.kms_url}/app/listpubkeys"
-    TEST_MODE = "false"
-    
+    TEST_MODE                                = "false"
+
   }
 
+}
+
+output "aks_cluster_name" {
+  description = "AKS cluster name (for kubectl / az aks get-credentials)"
+  value       = module.offer.aks_cluster_name
+}
+
+output "aks_resource_group_name" {
+  description = "Resource group containing the AKS cluster"
+  value       = module.offer.aks_resource_group_name
 }
 
 # output "app_insights_portal_url" {

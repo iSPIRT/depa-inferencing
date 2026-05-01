@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+output "aks_cluster_name" {
+  value = module.aks.name
+}
+
+output "aks_resource_group_name" {
+  value = module.resource_group.name
+}
+
 output "user_assigned_identity_principal_id" {
   value = module.aks.user_assigned_identity_principal_id
 }

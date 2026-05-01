@@ -125,3 +125,38 @@ jobs:
             --auth-mode login \
             --enable-file-backup-request-intent \
             --account-key $ACCOUNT_KEY
+
+      # Uses kubectl from the GitHub ubuntu-22.04 image (no extra install).
+      - name: AKS diagnostics
+        env:
+          AZURE_AKS_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
+        working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
+        run: |
+          set -euo pipefail
+          AKS_RG=$(terraform output -raw aks_resource_group_name)
+          AKS_NAME=$(terraform output -raw aks_cluster_name)
+          az aks get-credentials \
+            --resource-group "$AKS_RG" \
+            --name "$AKS_NAME" \
+            --subscription "$AZURE_AKS_SUBSCRIPTION_ID" \
+            --overwrite
+
+          echo "================ kubectl get pods -n default ================"
+          kubectl get pods -n default
+
+          echo "================ Recent events (last 30, sorted by time) ================"
+          kubectl get events -n default --sort-by='.lastTimestamp' | tail -30
+
+          for app_label in offer-service-app ofe-app kv-app; do
+            echo "================ app=$app_label ================"
+            pod=$(kubectl get pods -n default -l "app=${app_label}" \
+              -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+            if [ -z "${pod:-}" ]; then
+              echo "No pod found for app=${app_label}"
+              continue
+            fi
+            echo "---- kubectl logs -n default \"$pod\" (tail 200, all containers) ----"
+            kubectl logs -n default "$pod" --all-containers=true --tail=200
+            echo "---- kubectl describe pod \"$pod\" -n default ----"
+            kubectl describe pod "$pod" -n default
+          done
