@@ -31,6 +31,18 @@ variable "virtual_network_id" {
   description = "Virtual Network ID for linking the private DNS zone."
 }
 
+variable "vm_private_endpoint_subnet_id" {
+  type        = string
+  description = "Optional subnet ID in another VNet (e.g. the CI runner VNet) where a second private endpoint for the Confidential Ledger PLS should be created. Required if the runner VM needs private connectivity to the ledger."
+  default     = ""
+}
+
+variable "vm_virtual_network_id" {
+  type        = string
+  description = "Virtual network ID where the runner / VM resides. Required if vm_private_endpoint_subnet_id is set; the confidential-ledger.azure.com private DNS zone is linked to this VNet so the runner resolves the ledger FQDN to a private IP."
+  default     = ""
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags applied to the networking resources."

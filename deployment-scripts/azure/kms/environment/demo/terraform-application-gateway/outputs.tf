@@ -21,6 +21,11 @@ output "ledger_private_endpoint_id" {
   value       = module.ledger_networking.private_endpoint_id
 }
 
+output "ledger_vm_private_endpoint_id" {
+  description = "Resource ID of the runner-side Ledger private endpoint (empty if not configured)."
+  value       = module.ledger_networking.vm_private_endpoint_id
+}
+
 output "ledger_private_dns_zone_id" {
   description = "Resource ID of the private DNS zone for the Confidential Ledger."
   value       = module.ledger_networking.private_dns_zone_id

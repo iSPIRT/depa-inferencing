@@ -102,6 +102,8 @@ depa-inferencing-kms-demo-cin-pls.{guid}.centralindia.azure.privatelinkservice
 
 Record the alias; Phase 3 will not plan without it.
 
+After `terraform apply` for Phase 3, **two** private endpoints will be requesting connection to the PLS (one in the KMS VNet, one in the runner VNet). Both use `is_manual_connection = true`, so each must be approved on the PLS *Private endpoint connections* blade before the gateway and runner can reach the ledger privately.
+
 ### Phase 3: Application Gateway
 
 Set the PLS alias in `environment/demo/terraform-application-gateway/locals.tf`:
@@ -120,9 +122,10 @@ terraform apply
 ```
 
 **What gets created:**
-- Private endpoint to the ledger PLS (manual connection, auto-approved on the PLS side)
-- Private DNS zone `confidential-ledger.azure.com` with an A record that overrides the ledger's public FQDN so it resolves to the private endpoint IP inside the VNet
-- VNet link for the DNS zone
+- Private endpoint to the ledger PLS in the KMS VNet (manual connection)
+- Second private endpoint to the same ledger PLS in the runner VNet (manual connection) so the CI runner can call the ledger privately — uses `vm_vnet_*` from `locals.tf`
+- Private DNS zone `confidential-ledger.azure.com` with an A record that overrides the ledger's public FQDN so it resolves to the private endpoint IP inside the VNet (both endpoint IPs are listed when the runner-side PE is configured)
+- VNet link for the DNS zone in both the KMS VNet and the runner VNet
 - Application Gateway (WAF_v2) with the **same** ledger FQDN as the backend pool address (now resolved privately), SSL termination from Key Vault, and the ledger TLS certificate as trusted root
 - A second HTTP listener on port 80 that path-routes `/.well-known/acme-challenge/*` to the ACME challenge storage backend and redirects everything else to HTTPS
 - Private storage account (`acme_challenge_storage_account_name` in `locals.tf`) that hosts Let's Encrypt HTTP-01 challenge tokens, exposed only through a private endpoint in the `private-endpoint` subnet via the `privatelink.web.core.windows.net` zone

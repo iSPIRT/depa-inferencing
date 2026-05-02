@@ -25,13 +25,15 @@ locals {
 module "ledger_networking" {
   source = "../../../services/ledger_networking"
 
-  name                       = local.ledger_name
-  resource_group_name        = data.azurerm_resource_group.kms.name
-  location                   = data.azurerm_resource_group.kms.location
-  private_link_service_alias = local.ledger_private_link_service_alias
-  private_endpoint_subnet_id = data.azurerm_subnet.private_endpoint.id
-  virtual_network_id         = data.azurerm_virtual_network.kms.id
-  tags                       = merge(local.base_tags, local.extra_tags)
+  name                          = local.ledger_name
+  resource_group_name           = data.azurerm_resource_group.kms.name
+  location                      = data.azurerm_resource_group.kms.location
+  private_link_service_alias    = local.ledger_private_link_service_alias
+  private_endpoint_subnet_id    = data.azurerm_subnet.private_endpoint.id
+  virtual_network_id            = data.azurerm_virtual_network.kms.id
+  vm_private_endpoint_subnet_id = data.azurerm_subnet.vm_private_endpoint.id
+  vm_virtual_network_id         = data.azurerm_virtual_network.vm.id
+  tags                          = merge(local.base_tags, local.extra_tags)
 }
 
 # Private storage account that holds Let's Encrypt HTTP-01 challenge tokens
