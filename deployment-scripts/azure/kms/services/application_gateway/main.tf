@@ -80,6 +80,24 @@ resource "azurerm_web_application_firewall_policy" "this" {
     }
   }
 
+  custom_rules {
+    name      = "BlockAdminEndpoints"
+    priority  = 2
+    rule_type = "MatchRule"
+    action    = "Block"
+
+    # Block admin / control-plane KMS paths from the public AGW. Workflows reach
+    # these via the ledger's private endpoint inside the VNet, bypassing the AGW.
+    match_conditions {
+      match_variables {
+        variable_name = "RequestUri"
+      }
+      operator     = "Regex"
+      match_values = ["^/app/(heartbeat|auth|refresh|keyReleasePolicy|settingsPolicy|jwtValidationPolicy|proposals)(/|\\?|$)"]
+      transforms   = ["Lowercase", "UrlDecode"]
+    }
+  }
+
 }
 
 resource "azurerm_application_gateway" "this" {
