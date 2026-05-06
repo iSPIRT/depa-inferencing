@@ -34,3 +34,28 @@ output "endpoint" {
   )
 }
 
+output "gateway_monitor_action_group_id" {
+  description = "Azure Monitor Action Group ID when gateway_monitor_alert_email_addresses is non-empty."
+  value       = length(azurerm_monitor_action_group.gateway) > 0 ? azurerm_monitor_action_group.gateway[0].id : null
+}
+
+output "gateway_ledger_backend_unhealthy_alert_id" {
+  description = "Metric alert rule ID when gateway_monitor_unhealthy_alert_enabled creates the ledger-backend-unhealthy alert."
+  value       = length(azurerm_monitor_metric_alert.gateway_ledger_backend_unhealthy) > 0 ? azurerm_monitor_metric_alert.gateway_ledger_backend_unhealthy[0].id : null
+}
+
+output "gateway_monitor_resolved_action_group_name" {
+  description = "Effective Azure name for the monitor Action Group (after gateway_monitor_action_group_name override)."
+  value       = local.gateway_monitor_action_group_azure_name
+}
+
+output "gateway_monitor_resolved_metric_alert_name" {
+  description = "Effective Azure name for the backend-unhealthy metric alert (after gateway_monitor_metric_alert_name override)."
+  value       = local.gateway_monitor_metric_alert_azure_name
+}
+
+output "gateway_monitor_resolved_action_group_short_name" {
+  description = "Effective action group short name (≤12 chars) used in Azure."
+  value       = local.gateway_monitor_action_group_short_name_effective
+}
+

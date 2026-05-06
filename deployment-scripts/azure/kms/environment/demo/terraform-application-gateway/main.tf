@@ -88,6 +88,18 @@ module "application_gateway" {
   allowed_hostname                                        = local.allowed_hostname
   acme_challenge_backend_fqdn                             = module.letsencrypt_storage.web_endpoint_host
 
+  gateway_monitor_unhealthy_alert_enabled     = local.gateway_monitor_unhealthy_alert_enabled
+  gateway_monitor_alert_email_addresses       = local.gateway_monitor_alert_email_addresses
+  gateway_monitor_action_group_name           = local.gateway_monitor_action_group_name
+  gateway_monitor_metric_alert_name           = local.gateway_monitor_metric_alert_name
+  gateway_monitor_action_group_short_name     = local.gateway_monitor_action_group_short_name
+  gateway_monitor_unhealthy_alert_description = local.gateway_monitor_unhealthy_alert_description
+  gateway_monitor_additional_action_group_ids = local.gateway_monitor_additional_action_group_ids
+  gateway_ledger_backend_http_settings_name   = local.gateway_ledger_backend_http_settings_name
+  gateway_monitor_unhealthy_alert_severity    = local.gateway_monitor_unhealthy_alert_severity
+  gateway_monitor_alert_frequency             = local.gateway_monitor_alert_frequency
+  gateway_monitor_alert_window_size           = local.gateway_monitor_alert_window_size
+
   depends_on = [
     module.ledger_networking,
     module.letsencrypt_storage,

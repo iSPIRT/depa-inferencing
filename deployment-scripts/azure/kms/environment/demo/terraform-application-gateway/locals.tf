@@ -10,7 +10,8 @@ locals {
   subscription_id = "<your_subscription_id>"
   tenant_id       = "<your_tenant_id>"
 
-  resource_group_name      = "depa-inferencing-kms-${local.environment}-${local.region_short}-rg"
+  resource_group_name = "depa-inferencing-kms-${local.environment}-${local.region_short}-rg"
+  # Key Vault: prod uses depa-inferencing-<region_short>-kv (e.g. cin-kv). UAT uses depa-inferencing-<environment>-kv (e.g. uat-kv); set key_vault_name to match Phase 1 for that environment if different.
   key_vault_name           = "depa-inferencing-${local.region_short}-kv"
   virtual_network_name     = "depa-inferencing-kms-${local.environment}-${local.region_short}-vnet"
   application_gateway_name = "depa-inferencing-kms-${local.environment}-${local.region_short}-agw"
@@ -42,4 +43,17 @@ locals {
   extra_tags = {
     Owner = "ispirt"
   }
+
+  # --- Optional: Application Gateway ledger-backend unhealthy (Azure Monitor) ---
+  gateway_monitor_unhealthy_alert_enabled     = false
+  gateway_monitor_alert_email_addresses       = {}
+  gateway_monitor_action_group_name           = ""
+  gateway_monitor_metric_alert_name           = ""
+  gateway_monitor_action_group_short_name     = ""
+  gateway_monitor_unhealthy_alert_description = ""
+  gateway_monitor_additional_action_group_ids = []
+  gateway_ledger_backend_http_settings_name   = ""
+  gateway_monitor_unhealthy_alert_severity    = 2
+  gateway_monitor_alert_frequency             = "PT1M"
+  gateway_monitor_alert_window_size           = "PT5M"
 }
