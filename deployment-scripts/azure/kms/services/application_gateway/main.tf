@@ -15,6 +15,12 @@ locals {
   # Trim any trailing slash from URI to avoid double slashes
   key_vault_uri_trimmed               = trimsuffix(var.key_vault_uri, "/")
   ssl_certificate_key_vault_secret_id = "${local.key_vault_uri_trimmed}/secrets/${var.ssl_certificate_name}"
+
+  # Public URI allowlist (Lowercase+UrlDecode via WAF rule). Empty waf_allowed_public_uri_regex → regex below.
+  # Optional trailing slash + optional query per path. Override for e.g. /.well-known if HTTP+ACME shares this policy.
+  # Public KMS paths (sans pubkey): pubkey uses a separate BeginsWith rule — Azure Regex alternation skipped it wrongly.
+  default_kms_public_uri_allow_regex = "^(/app/listpubkeys/?(?:\\?[^#]*)?$|/app/key/?(?:\\?[^#]*)?$|/app/unwrapkey/?(?:\\?[^#]*)?)$"
+  kms_public_uri_allow_regex         = var.waf_allowed_public_uri_regex != "" ? var.waf_allowed_public_uri_regex : local.default_kms_public_uri_allow_regex
 }
 
 resource "azurerm_public_ip" "gateway" {
@@ -58,6 +64,26 @@ resource "azurerm_web_application_firewall_policy" "this" {
     managed_rule_set {
       type    = var.waf_rule_set_type
       version = var.waf_rule_set_version
+
+      # CRS 942340/430/440 false-positive KMS JSON bodies; TF exclusions cannot scope by RequestUri. KMS-only policy — do not reuse blindly.
+      dynamic "rule_group_override" {
+        for_each = var.waf_sqli_rule_overrides_enabled && var.waf_rule_set_type == "OWASP" ? [1] : []
+        content {
+          rule_group_name = "REQUEST-942-APPLICATION-ATTACK-SQLI"
+          rule {
+            id      = "942340"
+            enabled = false
+          }
+          rule {
+            id      = "942430"
+            enabled = false
+          }
+          rule {
+            id      = "942440"
+            enabled = false
+          }
+        }
+      }
     }
   }
 
@@ -67,8 +93,7 @@ resource "azurerm_web_application_firewall_policy" "this" {
     rule_type = "MatchRule"
     action    = "Block"
 
-    # Block requests where Host header does not match the allowed hostname
-    # Uses "Equal" operator with negation: block if Host does NOT equal the allowed hostname
+    # Block unless Host equals allowed_hostname exactly.
     match_conditions {
       match_variables {
         variable_name = "RequestHeaders"
@@ -77,6 +102,107 @@ resource "azurerm_web_application_firewall_policy" "this" {
       operator           = "Equal"
       match_values       = [var.allowed_hostname]
       negation_condition = true
+    }
+  }
+
+  # Order: pubkey Allow → composite Allow → Block remaining /app/* → block CCF routes (regex must wholly match URIs).
+  dynamic "custom_rules" {
+    for_each = var.waf_public_allowlist_enabled ? [1] : []
+    content {
+      name      = "AllowKmsPubkeyPath"
+      priority  = 2
+      rule_type = "MatchRule"
+      action    = "Allow"
+
+      match_conditions {
+        match_variables {
+          variable_name = "RequestUri"
+        }
+        operator           = "BeginsWith"
+        match_values       = ["/app/pubkey"]
+        negation_condition = false
+        transforms         = ["Lowercase", "UrlDecode"]
+      }
+    }
+  }
+
+  dynamic "custom_rules" {
+    for_each = var.waf_public_allowlist_enabled ? [1] : []
+    content {
+      name      = "AllowKmsPublicApiPaths"
+      priority  = 3
+      rule_type = "MatchRule"
+      action    = "Allow"
+
+      match_conditions {
+        match_variables {
+          variable_name = "RequestUri"
+        }
+        operator           = "Regex"
+        match_values       = [local.kms_public_uri_allow_regex]
+        negation_condition = false
+        transforms         = ["Lowercase", "UrlDecode"]
+      }
+    }
+  }
+
+  dynamic "custom_rules" {
+    for_each = var.waf_public_allowlist_enabled ? [1] : []
+    content {
+      name      = "BlockUnlistedAppPaths"
+      priority  = 4
+      rule_type = "MatchRule"
+      action    = "Block"
+
+      match_conditions {
+        match_variables {
+          variable_name = "RequestUri"
+        }
+        operator           = "Regex"
+        match_values       = ["^/app/"]
+        negation_condition = false
+        transforms         = ["Lowercase", "UrlDecode"]
+      }
+    }
+  }
+
+  dynamic "custom_rules" {
+    for_each = var.waf_public_allowlist_enabled ? [1] : []
+    content {
+      name      = "BlockNodeAndGovPrefixes"
+      priority  = 5
+      rule_type = "MatchRule"
+      action    = "Block"
+
+      match_conditions {
+        match_variables {
+          variable_name = "RequestUri"
+        }
+        operator           = "Regex"
+        match_values       = ["^/(node|gov)(/.*)?$"]
+        negation_condition = false
+        transforms         = ["Lowercase", "UrlDecode"]
+      }
+    }
+  }
+
+  dynamic "custom_rules" {
+    for_each = var.waf_public_allowlist_enabled ? [1] : []
+    content {
+      name      = "BlockReceiptPrefixes"
+      priority  = 6
+      rule_type = "MatchRule"
+      action    = "Block"
+
+      match_conditions {
+        match_variables {
+          variable_name = "RequestUri"
+        }
+        operator           = "BeginsWith"
+        match_values       = ["/receipt"]
+        negation_condition = false
+        transforms         = ["Lowercase", "UrlDecode"]
+      }
     }
   }
 
@@ -101,7 +227,8 @@ resource "azurerm_application_gateway" "this" {
     capacity = var.capacity
   }
 
-  firewall_policy_id = azurerm_web_application_firewall_policy.this.id
+  firewall_policy_id                = azurerm_web_application_firewall_policy.this.id
+  force_firewall_policy_association = true
 
   gateway_ip_configuration {
     name      = "depa-inferencing-gateway-ip-config"
