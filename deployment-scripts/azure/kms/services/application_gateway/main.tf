@@ -18,6 +18,7 @@ locals {
 
   # Public URI allowlist (Lowercase+UrlDecode via WAF rule). Empty waf_allowed_public_uri_regex → regex below.
   # Optional trailing slash + optional query per path. Override for e.g. /.well-known if HTTP+ACME shares this policy.
+  # Public KMS paths (sans pubkey): pubkey uses a separate BeginsWith rule — Azure Regex alternation skipped it wrongly.
   default_kms_public_uri_allow_regex = "^(/app/listpubkeys/?(?:\\?[^#]*)?$|/app/key/?(?:\\?[^#]*)?$|/app/unwrapkey/?(?:\\?[^#]*)?)$"
   kms_public_uri_allow_regex         = var.waf_allowed_public_uri_regex != "" ? var.waf_allowed_public_uri_regex : local.default_kms_public_uri_allow_regex
 }
@@ -104,22 +105,102 @@ resource "azurerm_web_application_firewall_policy" "this" {
     }
   }
 
+  # Order: pubkey Allow → composite Allow → Block remaining /app/* → block CCF routes (regex must wholly match URIs).
   dynamic "custom_rules" {
     for_each = var.waf_public_allowlist_enabled ? [1] : []
     content {
-      name      = "BlockOutsideKmsPublicApi"
+      name      = "AllowKmsPubkeyPath"
       priority  = 2
       rule_type = "MatchRule"
-      action    = "Block"
+      action    = "Allow"
 
-      # Block if RequestUri does not match allowlist (Regex + negation_condition).
+      match_conditions {
+        match_variables {
+          variable_name = "RequestUri"
+        }
+        operator           = "BeginsWith"
+        match_values       = ["/app/pubkey"]
+        negation_condition = false
+        transforms         = ["Lowercase", "UrlDecode"]
+      }
+    }
+  }
+
+  dynamic "custom_rules" {
+    for_each = var.waf_public_allowlist_enabled ? [1] : []
+    content {
+      name      = "AllowKmsPublicApiPaths"
+      priority  = 3
+      rule_type = "MatchRule"
+      action    = "Allow"
+
       match_conditions {
         match_variables {
           variable_name = "RequestUri"
         }
         operator           = "Regex"
         match_values       = [local.kms_public_uri_allow_regex]
-        negation_condition = true
+        negation_condition = false
+        transforms         = ["Lowercase", "UrlDecode"]
+      }
+    }
+  }
+
+  dynamic "custom_rules" {
+    for_each = var.waf_public_allowlist_enabled ? [1] : []
+    content {
+      name      = "BlockUnlistedAppPaths"
+      priority  = 4
+      rule_type = "MatchRule"
+      action    = "Block"
+
+      match_conditions {
+        match_variables {
+          variable_name = "RequestUri"
+        }
+        operator           = "Regex"
+        match_values       = ["^/app/"]
+        negation_condition = false
+        transforms         = ["Lowercase", "UrlDecode"]
+      }
+    }
+  }
+
+  dynamic "custom_rules" {
+    for_each = var.waf_public_allowlist_enabled ? [1] : []
+    content {
+      name      = "BlockNodeAndGovPrefixes"
+      priority  = 5
+      rule_type = "MatchRule"
+      action    = "Block"
+
+      match_conditions {
+        match_variables {
+          variable_name = "RequestUri"
+        }
+        operator           = "Regex"
+        match_values       = ["^/(node|gov)(/.*)?$"]
+        negation_condition = false
+        transforms         = ["Lowercase", "UrlDecode"]
+      }
+    }
+  }
+
+  dynamic "custom_rules" {
+    for_each = var.waf_public_allowlist_enabled ? [1] : []
+    content {
+      name      = "BlockReceiptPrefixes"
+      priority  = 6
+      rule_type = "MatchRule"
+      action    = "Block"
+
+      match_conditions {
+        match_variables {
+          variable_name = "RequestUri"
+        }
+        operator           = "BeginsWith"
+        match_values       = ["/receipt"]
+        negation_condition = false
         transforms         = ["Lowercase", "UrlDecode"]
       }
     }
@@ -146,7 +227,8 @@ resource "azurerm_application_gateway" "this" {
     capacity = var.capacity
   }
 
-  firewall_policy_id = azurerm_web_application_firewall_policy.this.id
+  firewall_policy_id                = azurerm_web_application_firewall_policy.this.id
+  force_firewall_policy_association = true
 
   gateway_ip_configuration {
     name      = "depa-inferencing-gateway-ip-config"

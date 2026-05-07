@@ -60,4 +60,7 @@ locals {
   gateway_monitor_unhealthy_alert_severity    = 2
   gateway_monitor_alert_frequency             = "PT1M"
   gateway_monitor_alert_window_size           = "PT5M"
+
+  # Custom allowlist blocks only take effect when mode is Prevention; Detection logs only.
+  waf_firewall_mode = "Prevention"
 }
