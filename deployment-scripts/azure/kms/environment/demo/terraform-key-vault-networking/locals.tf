@@ -11,6 +11,7 @@ locals {
   tenant_id       = "<your_tenant_id>"
 
   resource_group_name      = "depa-inferencing-kms-${local.environment}-${local.region_short}-rg"
+  # NOTE: prod uses depa-inferencing-<region_short>-kv, uat uses depa-inferencing-<environment>-kv
   key_vault_name           = "depa-inferencing-${local.region_short}-kv"
   virtual_network_name     = "depa-inferencing-kms-${local.environment}-${local.region_short}-vnet"
   extra_tags = {

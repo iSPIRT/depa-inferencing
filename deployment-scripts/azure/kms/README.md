@@ -154,6 +154,7 @@ Each phase's `locals.tf` carries its own environment values. Replace placeholder
 - Log Analytics workspace for gateway diagnostics
 - `allowed_hostname` for Host header validation
 - Optional `public_ip_id` to reuse an existing public IP (preserves DNS-configured addresses)
+- Optional **Azure Monitor** alerts for unhealthy ledger backends on the gateway: **`gateway_monitor_*`** in **`locals.tf`** (`UnhealthyHostCount` on ledger `BackendSettingsPool`). Set `gateway_monitor_unhealthy_alert_enabled = true` and `gateway_monitor_alert_email_addresses` and/or `gateway_monitor_additional_action_group_ids`; semantics match **`services/application_gateway/variables.tf`**.
 
 The ACME challenge storage account name is derived automatically as `depainfkmsacme${environment}${region_short}` (e.g. `depainfkmsacmeprodcin`) — no separate local is needed. The renewal workflow's identity must already have **Storage Blob Data Contributor** on this account and **Key Vault Certificates Officer** on the Key Vault; grant these out-of-band before the first run.
 

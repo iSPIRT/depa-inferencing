@@ -11,6 +11,7 @@ locals {
   tenant_id       = "<your_tenant_id>"
 
   resource_group_name      = "depa-inferencing-kms-${local.environment}-${local.region_short}-rg"
+  # Key Vault name must match Phase 1 for this environment (see README: prod uses depa-inferencing-<region_short>-kv).
   key_vault_name           = "depa-inferencing-${local.region_short}-kv"
   virtual_network_name     = "depa-inferencing-kms-${local.environment}-${local.region_short}-vnet"
   application_gateway_name = "depa-inferencing-kms-${local.environment}-${local.region_short}-agw"
@@ -42,4 +43,21 @@ locals {
   extra_tags = {
     Owner = "ispirt"
   }
+
+  # Default 2 instances; set 1 for cost savings in non-prod
+  application_gateway_capacity     = 2
+  # Leave empty to use default ${application_gateway_name}-pip; else set to an existing PIP resource ID.
+  application_gateway_public_ip_id = ""
+
+  gateway_monitor_unhealthy_alert_enabled     = false
+  gateway_monitor_alert_email_addresses       = {}
+  gateway_monitor_action_group_name           = ""
+  gateway_monitor_metric_alert_name           = ""
+  gateway_monitor_action_group_short_name     = ""
+  gateway_monitor_unhealthy_alert_description = ""
+  gateway_monitor_additional_action_group_ids = []
+  gateway_ledger_backend_http_settings_name   = ""
+  gateway_monitor_unhealthy_alert_severity    = 2
+  gateway_monitor_alert_frequency             = "PT1M"
+  gateway_monitor_alert_window_size           = "PT5M"
 }

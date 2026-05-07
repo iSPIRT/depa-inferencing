@@ -153,3 +153,70 @@ variable "acme_challenge_backend_fqdn" {
   description = "FQDN of the backend that serves ACME HTTP-01 challenges under /.well-known/acme-challenge/* (typically the static website host of a private storage account, e.g. <account>.z29.web.core.windows.net)."
 }
 
+# --- Azure Monitor: backend health alerts (Terraform; independent of WAF rules) ---
+variable "gateway_monitor_unhealthy_alert_enabled" {
+  type        = bool
+  description = "If true, create a metric alert when Unhealthy Host Count is greater than zero for the ledger backend HTTP settings. Requires action groups via gateway_monitor_alert_email_addresses and/or gateway_monitor_additional_action_group_ids."
+  default     = false
+}
+
+variable "gateway_monitor_alert_email_addresses" {
+  type        = map(string)
+  description = "Creates an Azure Monitor Action Group with email receivers: map keys = receiver names, values = email addresses. Omit or empty to skip; use gateway_monitor_additional_action_group_ids alone instead."
+  default     = {}
+}
+
+variable "gateway_monitor_additional_action_group_ids" {
+  type        = list(string)
+  description = "Extra Action Group resource IDs to attach to the backend-unhealthy alert (e.g. central ops group)."
+  default     = []
+}
+
+variable "gateway_ledger_backend_http_settings_name" {
+  type        = string
+  description = "Backend HTTP settings name for Confidential Ledger routing (metric dimension BackendSettingsPool). Leave empty for default depa-inferencing-backend-http-settings."
+  default     = ""
+}
+
+variable "gateway_monitor_unhealthy_alert_severity" {
+  type        = number
+  description = "Alert severity 0–4."
+  default     = 2
+}
+
+variable "gateway_monitor_alert_frequency" {
+  type        = string
+  description = "How often the alert rule checks the metric (Azure Monitor supported period, e.g. PT1M)."
+  default     = "PT1M"
+}
+
+variable "gateway_monitor_alert_window_size" {
+  type        = string
+  description = "Rolling window for aggregation (must be ≥ frequency; typical PT5M)."
+  default     = "PT5M"
+}
+
+variable "gateway_monitor_action_group_name" {
+  type        = string
+  description = "Azure resource name for the monitor Action Group. Leave empty for \"<application_gateway_name>-monitor-ag\"."
+  default     = ""
+}
+
+variable "gateway_monitor_metric_alert_name" {
+  type        = string
+  description = "Azure resource name for the UnhealthyHostCount metric alert. Leave empty for \"<application_gateway_name>-ledger-backend-unhealthy\"."
+  default     = ""
+}
+
+variable "gateway_monitor_action_group_short_name" {
+  type        = string
+  description = "Action group short name (≤12 chars for Azure SMS slot). Leave empty to derive from application gateway name."
+  default     = ""
+}
+
+variable "gateway_monitor_unhealthy_alert_description" {
+  type        = string
+  description = "Metric alert description text in Azure Portal. Leave empty for a built-in message naming the ledger HTTP settings and gateway."
+  default     = ""
+}
+
