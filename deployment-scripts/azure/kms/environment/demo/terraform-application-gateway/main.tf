@@ -87,6 +87,8 @@ module "application_gateway" {
   health_probe_path                                       = "/node/metrics"
   allowed_hostname                                        = local.allowed_hostname
   acme_challenge_backend_fqdn                             = module.letsencrypt_storage.web_endpoint_host
+  capacity                                                = local.application_gateway_capacity
+  public_ip_id                                            = local.application_gateway_public_ip_id
 
   gateway_monitor_unhealthy_alert_enabled     = local.gateway_monitor_unhealthy_alert_enabled
   gateway_monitor_alert_email_addresses       = local.gateway_monitor_alert_email_addresses

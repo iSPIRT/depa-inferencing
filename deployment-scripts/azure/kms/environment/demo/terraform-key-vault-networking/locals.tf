@@ -10,9 +10,9 @@ locals {
   subscription_id = "<your_subscription_id>"
   tenant_id       = "<your_tenant_id>"
 
-  resource_group_name      = "depa-inferencing-kms-${local.environment}-${local.region_short}-rg"
-  key_vault_name           = "depa-inferencing-${local.region_short}-kv"
-  virtual_network_name     = "depa-inferencing-kms-${local.environment}-${local.region_short}-vnet"
+  resource_group_name  = "depa-inferencing-kms-${local.environment}-${local.region_short}-rg"
+  key_vault_name       = "depa-inferencing-${local.region_short}-kv"
+  virtual_network_name = "depa-inferencing-kms-${local.environment}-${local.region_short}-vnet"
   extra_tags = {
     Owner = "ispirt"
   }
