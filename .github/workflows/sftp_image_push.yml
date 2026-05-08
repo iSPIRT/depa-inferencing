@@ -128,11 +128,12 @@ jobs:
 
           KEYFILE="${RUNNER_TEMP}/client_export_sftp_key"
           install -m 600 /dev/null "${KEYFILE}"
-          printf '%s\n' "${SFTP_KEY}" > "${KEYFILE}"
+          printf '%s\n' "${SFTP_KEY}" | tr -d '\r' > "${KEYFILE}"
 
           PASSFILE="${RUNNER_TEMP}/client_export_sftp_pass"
           install -m 600 /dev/null "${PASSFILE}"
-          printf '%s' "${SFTP_PASSWORD}" > "${PASSFILE}"
+          # Strip CR in case the secret was pasted from Windows (avoids "Permission denied").
+          printf '%s' "${SFTP_PASSWORD}" | tr -d '\r' > "${PASSFILE}"
 
           shopt -s nullglob
           tars=( *.tar )
@@ -154,11 +155,43 @@ jobs:
           if [ -n "${SFTP_PORT:-}" ]; then
             SFTP_OPTS+=(-P "${SFTP_PORT}")
           fi
-          # No BatchMode: server requires publickey then password; sshpass supplies the latter.
-          SFTP_OPTS+=(-i "${KEYFILE}" -o StrictHostKeyChecking=accept-new -b "${BATCH}")
+          # Dual auth + many gateways expose the second factor as keyboard-interactive (needs a PTY).
+          # sshpass feeds password/kbdinteractive prompts; `script` allocates a tty for SFTP uploads.
+          SFTP_OPTS+=(
+            -i "${KEYFILE}"
+            -o StrictHostKeyChecking=accept-new
+            -o PreferredAuthentications=publickey,keyboard-interactive,password
+            -o PubkeyAuthentication=yes
+            -o KbdInteractiveAuthentication=yes
+            -o PasswordAuthentication=yes
+            -b "${BATCH}"
+          )
 
           echo "Uploading to ${SFTP_USER}@${SFTP_HOST}:${REMOTE_DIR}"
-          sshpass -f "${PASSFILE}" sftp "${SFTP_OPTS[@]}" "${SFTP_USER}@${SFTP_HOST}"
+
+          SFTP_REMOTE="${SFTP_USER}@${SFTP_HOST}"
+          REMOTE_CMD_SHELL=$(printf '%q ' sshpass -f "${PASSFILE}" sftp "${SFTP_OPTS[@]}" "${SFTP_REMOTE}")
+
+          set +e
+          SSH_RC=1
+
+          # Prefer a PTY: many gateways only offer keyboard-interactive (second factor) on a tty.
+          if command -v script >/dev/null 2>&1; then
+            script --quiet --command "${REMOTE_CMD_SHELL}" /dev/null 2>/dev/null
+            SSH_RC=$?
+            if [ "${SSH_RC}" -ne 0 ]; then
+              script -qc "${REMOTE_CMD_SHELL}" /dev/null
+              SSH_RC=$?
+            fi
+          fi
+
+          if [ "${SSH_RC}" -ne 0 ]; then
+            sshpass -f "${PASSFILE}" sftp "${SFTP_OPTS[@]}" "${SFTP_REMOTE}"
+            SSH_RC=$?
+          fi
+
+          set -e
+          [ "${SSH_RC}" -eq 0 ] || exit "${SSH_RC}"
 
           echo "Cleaning local tarballs"
           rm -f "${WORKDIR}"/*.tar || true
