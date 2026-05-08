@@ -1,0 +1,183 @@
+# Export BA + KV images from ACR as .tar files and upload to the client SFTP server.
+#
+# Runs on the prod self-hosted runner (outbound SFTP allowlisting).
+#
+# Repository variables: REGISTRY, REPO_PATH
+#
+# Required repository secrets:
+#   SFTP_HOST       — SFTP server hostname or IP
+#   SFTP_USER       — SFTP login user
+#   SFTP_SSH_KEY    — Full PEM private key (paste including BEGIN/END lines)
+#   SFTP_PASSWORD   — Password (server requires key + password)
+#
+# Optional:
+#   SFTP_PORT       — SSH port if not 22
+
+name: Export client images (SFTP)
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      include_prod:
+        description: "Include prod images?"
+        required: true
+        default: true
+        type: boolean
+      include_uat:
+        description: "Include UAT images?"
+        required: true
+        default: true
+        type: boolean
+      ba_services_version:
+        description: "Version for BA images"
+        required: true
+        default: "4.8.1.2"
+        type: string
+      kv_services_version:
+        description: "Version for KV image"
+        required: true
+        default: "1.2.1.1"
+        type: string
+      sftp_remote_dir:
+        description: "Remote directory on SFTP server (must exist)"
+        required: true
+        default: "ISPIRT_Images"
+        type: string
+
+jobs:
+  export-and-upload:
+    runs-on: ["self-hosted", "prod"]
+    timeout-minutes: 15
+    env:
+      REGISTRY: ${{ vars.REGISTRY }}
+      REPO_PATH: ${{ vars.REPO_PATH }}
+    steps:
+      - name: Validate inputs and configuration
+        env:
+          INCLUDE_PROD: ${{ inputs.include_prod }}
+          INCLUDE_UAT: ${{ inputs.include_uat }}
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SFTP_KEY: ${{ secrets.SFTP_SSH_KEY }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ "$INCLUDE_PROD" != "true" ] && [ "$INCLUDE_UAT" != "true" ]; then
+            echo "::error::Select at least one of include_prod or include_uat."
+            exit 1
+          fi
+          test -n "${REGISTRY:-}" || { echo "::error::Set repository variable REGISTRY (ACR login server)."; exit 1; }
+          test -n "${REPO_PATH:-}" || { echo "::error::Set repository variable REPO_PATH (image repo path under registry)."; exit 1; }
+          test -n "${SFTP_HOST:-}" || { echo "::error::Set secret SFTP_HOST."; exit 1; }
+          test -n "${SFTP_USER:-}" || { echo "::error::Set secret SFTP_USER."; exit 1; }
+          test -n "${SFTP_KEY:-}" || { echo "::error::Set secret SFTP_SSH_KEY."; exit 1; }
+          test -n "${SFTP_PASSWORD:-}" || { echo "::error::Set secret SFTP_PASSWORD."; exit 1; }
+
+      - name: Log in to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY }}
+          username: ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}
+          password: ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
+
+      - name: Pull, save tarballs, SFTP upload
+        env:
+          INCLUDE_PROD: ${{ inputs.include_prod }}
+          INCLUDE_UAT: ${{ inputs.include_uat }}
+          BA_VER: ${{ inputs.ba_services_version }}
+          KV_VER: ${{ inputs.kv_services_version }}
+          REMOTE_DIR: ${{ inputs.sftp_remote_dir }}
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SFTP_KEY: ${{ secrets.SFTP_SSH_KEY }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+        run: |
+          set -euo pipefail
+          command -v sshpass >/dev/null 2>&1 || { sudo apt-get update -qq && sudo apt-get install -y -qq sshpass; }
+
+          WORKDIR="${GITHUB_WORKSPACE}/client-image-export-${GITHUB_RUN_ID}"
+          mkdir -p "$WORKDIR"
+          cd "$WORKDIR"
+
+          pull_save() {
+            local image_ref="$1"
+            local outfile="$2"
+            echo "Pulling ${image_ref}"
+            docker pull "${image_ref}"
+            echo "Saving -> ${outfile}"
+            docker save -o "${outfile}" "${image_ref}"
+          }
+
+          if [ "${INCLUDE_PROD}" = "true" ]; then
+            pull_save "${REGISTRY}/${REPO_PATH}/buyer-frontend-service:prod-${BA_VER}" \
+              "offer-frontend-service-prod-${BA_VER}.tar"
+            pull_save "${REGISTRY}/${REPO_PATH}/bidding-service:prod-${BA_VER}" \
+              "offer-service-prod-${BA_VER}.tar"
+            pull_save "${REGISTRY}/${REPO_PATH}/key-value-service:prod-${KV_VER}" \
+              "key-value-service-prod-${KV_VER}.tar"
+          fi
+
+          if [ "${INCLUDE_UAT}" = "true" ]; then
+            pull_save "${REGISTRY}/${REPO_PATH}/buyer-frontend-service:nonprod-${BA_VER}" \
+              "offer-frontend-service-nonprod-${BA_VER}.tar"
+            pull_save "${REGISTRY}/${REPO_PATH}/bidding-service:nonprod-${BA_VER}" \
+              "offer-service-nonprod-${BA_VER}.tar"
+            pull_save "${REGISTRY}/${REPO_PATH}/key-value-service:nonprod-${KV_VER}" \
+              "key-value-service-nonprod-${KV_VER}.tar"
+          fi
+
+          KEYFILE="${RUNNER_TEMP}/client_export_sftp_key"
+          install -m 600 /dev/null "${KEYFILE}"
+          printf '%s\n' "${SFTP_KEY}" > "${KEYFILE}"
+
+          PASSFILE="${RUNNER_TEMP}/client_export_sftp_pass"
+          install -m 600 /dev/null "${PASSFILE}"
+          printf '%s' "${SFTP_PASSWORD}" > "${PASSFILE}"
+
+          shopt -s nullglob
+          tars=( *.tar )
+          if [ "${#tars[@]}" -eq 0 ]; then
+            echo "::error::No .tar files were produced; check image tags exist in ACR."
+            exit 1
+          fi
+
+          BATCH="${RUNNER_TEMP}/sftp_batch.txt"
+          {
+            echo "cd ${REMOTE_DIR}"
+            for f in "${tars[@]}"; do
+              echo "put ${WORKDIR}/${f}"
+            done
+            echo "bye"
+          } > "${BATCH}"
+
+          SFTP_OPTS=()
+          if [ -n "${SFTP_PORT:-}" ]; then
+            SFTP_OPTS+=(-P "${SFTP_PORT}")
+          fi
+          # No BatchMode: server requires publickey then password; sshpass supplies the latter.
+          SFTP_OPTS+=(-i "${KEYFILE}" -o StrictHostKeyChecking=accept-new -b "${BATCH}")
+
+          echo "Uploading to ${SFTP_USER}@${SFTP_HOST}:${REMOTE_DIR}"
+          sshpass -f "${PASSFILE}" sftp "${SFTP_OPTS[@]}" "${SFTP_USER}@${SFTP_HOST}"
+
+          echo "Cleaning local tarballs"
+          rm -f "${WORKDIR}"/*.tar || true
+          rmdir "${WORKDIR}" 2>/dev/null || true
+          rm -f "${KEYFILE}" "${PASSFILE}"
+          docker logout "${REGISTRY}" || true
+
+      - name: Summary
+        if: success()
+        run: |
+          {
+            echo "## Client image export"
+            echo "- **Prod images:** ${{ inputs.include_prod }}"
+            echo "- **UAT (nonprod) images:** ${{ inputs.include_uat }}"
+            echo "- **BA version:** ${{ inputs.ba_services_version }}"
+            echo "- **KV version:** ${{ inputs.kv_services_version }}"
+            echo "- **Remote dir:** ${{ inputs.sftp_remote_dir }}"
+          } >> "${GITHUB_STEP_SUMMARY}"
