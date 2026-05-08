@@ -13,12 +13,19 @@
 # Optional:
 #   SFTP_PORT       — SSH port if not 22
 
-name: Export client images (SFTP)
+# NOTE: Temporary `pull_request` trigger + `pr-registration-smoke` job: registers this workflow file
+# with GitHub Actions (run history appears). Remove that trigger/job after this workflow reaches `main`
+# once. Workflow_dispatch dropdown may still appear only once the YAML exists on the default branch.
+
+name: Push client images to SFTP server
 
 permissions:
   contents: read
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/sftp_image_push.yml'
   workflow_dispatch:
     inputs:
       include_prod:
@@ -48,7 +55,16 @@ on:
         type: string
 
 jobs:
+  # Temporary — delete this job + the `pull_request` trigger above once the workflow is merged to default.
+  pr-registration-smoke:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello world
+        run: echo 'hello world'
+
   export-and-upload:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ["self-hosted", "prod"]
     timeout-minutes: 15
     env:
