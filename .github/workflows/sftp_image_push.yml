@@ -6,6 +6,9 @@
 #
 # Required secrets: SFTP_HOST, SFTP_USER, SFTP_SSH_KEY, SFTP_PASSWORD (+ ACR secrets below)
 # Optional: SFTP_PORT
+#
+# SFTP auth: OpenSSH is driven by `.github/scripts/sftp_batch_upload.py` (pexpect) so keyboard-interactive
+# challenges after pubkey work; sshpass alone often fails with `Permission denied (password)`.
 
 name: SFTP image push
 
@@ -47,7 +50,7 @@ on:
 jobs:
   export-and-upload:
     runs-on: ["self-hosted", "prod"]
-    timeout-minutes: 15
+    timeout-minutes: 180
     env:
       REGISTRY: ${{ vars.REGISTRY }}
       REPO_PATH: ${{ vars.REPO_PATH }}
@@ -58,6 +61,8 @@ jobs:
       REMOTE_DIR: ${{ github.event_name == 'pull_request' && 'ISPIRT_Images' || github.event.inputs.sftp_remote_dir }}
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Validate inputs and configuration
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
@@ -93,7 +98,11 @@ jobs:
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
         run: |
           set -euo pipefail
-          command -v sshpass >/dev/null 2>&1 || { sudo apt-get update -qq && sudo apt-get install -y -qq sshpass; }
+          if ! python3 -c 'import pexpect' 2>/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq python3-pexpect \
+              || python3 -m pip install --user --break-system-packages --quiet pexpect
+          fi
 
           WORKDIR="${GITHUB_WORKSPACE}/client-image-export-${GITHUB_RUN_ID}"
           mkdir -p "$WORKDIR"
@@ -151,47 +160,16 @@ jobs:
             echo "bye"
           } > "${BATCH}"
 
-          SFTP_OPTS=()
-          if [ -n "${SFTP_PORT:-}" ]; then
-            SFTP_OPTS+=(-P "${SFTP_PORT}")
-          fi
-          # Dual auth + many gateways expose the second factor as keyboard-interactive (needs a PTY).
-          # sshpass feeds password/kbdinteractive prompts; `script` allocates a tty for SFTP uploads.
-          SFTP_OPTS+=(
-            -i "${KEYFILE}"
-            -o StrictHostKeyChecking=accept-new
-            -o PreferredAuthentications=publickey,keyboard-interactive,password
-            -o PubkeyAuthentication=yes
-            -o KbdInteractiveAuthentication=yes
-            -o PasswordAuthentication=yes
-            -b "${BATCH}"
-          )
-
+          SFTP_PORT_OPT="${SFTP_PORT:-22}"
           echo "Uploading to ${SFTP_USER}@${SFTP_HOST}:${REMOTE_DIR}"
 
-          SFTP_REMOTE="${SFTP_USER}@${SFTP_HOST}"
-          REMOTE_CMD_SHELL=$(printf '%q ' sshpass -f "${PASSFILE}" sftp "${SFTP_OPTS[@]}" "${SFTP_REMOTE}")
-
-          set +e
-          SSH_RC=1
-
-          # Prefer a PTY: many gateways only offer keyboard-interactive (second factor) on a tty.
-          if command -v script >/dev/null 2>&1; then
-            script --quiet --command "${REMOTE_CMD_SHELL}" /dev/null 2>/dev/null
-            SSH_RC=$?
-            if [ "${SSH_RC}" -ne 0 ]; then
-              script -qc "${REMOTE_CMD_SHELL}" /dev/null
-              SSH_RC=$?
-            fi
-          fi
-
-          if [ "${SSH_RC}" -ne 0 ]; then
-            sshpass -f "${PASSFILE}" sftp "${SFTP_OPTS[@]}" "${SFTP_REMOTE}"
-            SSH_RC=$?
-          fi
-
-          set -e
-          [ "${SSH_RC}" -eq 0 ] || exit "${SSH_RC}"
+          python3 "${GITHUB_WORKSPACE}/.github/scripts/sftp_batch_upload.py" \
+            --host "${SFTP_HOST}" \
+            --port "${SFTP_PORT_OPT}" \
+            --user "${SFTP_USER}" \
+            --identity "${KEYFILE}" \
+            --password-file "${PASSFILE}" \
+            --batch "${BATCH}"
 
           echo "Cleaning local tarballs"
           rm -f "${WORKDIR}"/*.tar || true
