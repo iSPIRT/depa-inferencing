@@ -91,6 +91,7 @@ jobs:
 
       - name: Pull, save tarballs, SFTP upload
         env:
+          SFTP_PEXPECT_DEBUG: "true" # TEMPORARY: SFTP auth debug (OpenSSH -vvv + DEBUG3 + pexpect transcript). Revert when done.
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_USER: ${{ secrets.SFTP_USER }}
           SFTP_KEY: ${{ secrets.SFTP_SSH_KEY }}
@@ -161,12 +162,16 @@ jobs:
           } > "${BATCH}"
 
           SFTP_PORT_OPT="${SFTP_PORT:-22}"
-          echo "Uploading to ${SFTP_USER}@${SFTP_HOST}:${REMOTE_DIR}"
+
+          HOST_TR="$(printf '%s' "${SFTP_HOST}" | tr -d '\r' | sed -e 's/^[[:space:]]\{1,\}//' -e 's/[[:space:]]\{1,\}$//')"
+          USER_TR="$(printf '%s' "${SFTP_USER}" | tr -d '\r' | sed -e 's/^[[:space:]]\{1,\}//' -e 's/[[:space:]]\{1,\}$//')"
+
+          echo "Uploading to ${USER_TR}@${HOST_TR}:${REMOTE_DIR}"
 
           python3 "${GITHUB_WORKSPACE}/.github/scripts/sftp_batch_upload.py" \
-            --host "${SFTP_HOST}" \
+            --host "${HOST_TR}" \
             --port "${SFTP_PORT_OPT}" \
-            --user "${SFTP_USER}" \
+            --user "${USER_TR}" \
             --identity "${KEYFILE}" \
             --password-file "${PASSFILE}" \
             --batch "${BATCH}"
