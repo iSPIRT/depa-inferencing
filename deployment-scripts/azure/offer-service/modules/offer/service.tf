@@ -99,6 +99,8 @@ module "app" {
   storage_account_name              = module.storage_account.name
   file_share_name                   = module.storage_account.file_share
   storage_account_access_key        = module.storage_account.access_key
+
+  depends_on = [module.virtual_node]
 }
 
 module "app_insights" {

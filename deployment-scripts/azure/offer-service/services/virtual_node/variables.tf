@@ -28,6 +28,12 @@ variable "resource_group_name" {
   type        = string
 }
 
+variable "helm_chart_version" {
+  description = "Pinned virtualnode Helm chart version from https://microsoft.github.io/virtualnodesOnAzureContainerInstances/index.yaml"
+  type        = string
+  default     = "1.3307.26033004"
+}
+
 variable "containers" {
   description = "Containers to deploy"
   type = list(object({

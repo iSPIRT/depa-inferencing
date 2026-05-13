@@ -43,6 +43,7 @@ resource "helm_release" "virtual_node" {
   name             = "${var.containers[count.index].name}-vn2"
   repository       = "https://microsoft.github.io/virtualnodesOnAzureContainerInstances"
   chart            = "virtualnode"
+  version          = var.helm_chart_version
   create_namespace = true
   timeout          = 600
   atomic           = count.index == 0 ? false : true
