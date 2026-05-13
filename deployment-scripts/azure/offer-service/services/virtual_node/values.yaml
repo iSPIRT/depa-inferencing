@@ -82,15 +82,24 @@ acrTrustedAccess:
   identityResourceId: '' # Resource ID of managed identity with ACR access eg -  /subscriptions/<subId>/resourceGroups/<rgName>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<miName>
   identityPrincipalId: '' # Principal ID of the managed identity with ACR access
 
+# Align with https://github.com/microsoft/virtualnodesOnAzureContainerInstances/blob/main/Helm/virtualnode/values.yaml
+# Older pins used virtual-node-2-aci for spdycompat and main_20251023.* images; kubelet startup probes failed with
+# exec: "curl": executable file not found — virtual nodes (kv/ofe) stayed NotReady and Helm releases timed out.
+kubeProxy:
+  enabled: true
+  reservedMemoryGB: 0.1
+  reservedCPUCores: 0.1
+
 images:
   pullPolicy: Always
   pullSecrets: []
-  crisockettotcpadapterImage: mcr.microsoft.com/aci/virtual-node-2-cri-socket-adapter:main_20251023.1
-  spdycompatImage: mcr.microsoft.com/aci/virtual-node-2-aci:main_20251023.1
-  proxycriImage: mcr.microsoft.com/aci/virtual-node-2-proxy-cri:main_20251023.1
-  mountImage: mcr.microsoft.com/aci/virtual-node-2-mount-host:main_20250801.1
-  initImage: mcr.microsoft.com/aci/virtual-node-2-init-config:main_20251023.1
-  kubeletImage: mcr.microsoft.com/aci/virtual-node-2-kubelet:main_20251023.1
-  virtualcsiImage: mcr.microsoft.com/aci/virtual-node-2-virtual-csi:main_20251023.1
-  admissioncontrollerImage: mcr.microsoft.com/aci/virtual-node-2-admission-controller:main_20251023.1
-  noddriverregistrarImage: mcr.microsoft.com/oss/kubernetes-csi/csi-node-driver-registrar:v2.8.0
+  crisockettotcpadapterImage: mcr.microsoft.com/aci/virtual-node-2-cri-socket-adapter:main_20260506.2
+  spdycompatImage: mcr.microsoft.com/aci/virtual-node-2-spdy-compat:main_20260506.2
+  proxycriImage: mcr.microsoft.com/aci/virtual-node-2-proxy-cri:main_20260506.2
+  mountImage: mcr.microsoft.com/aci/virtual-node-2-mount-host:main_20260506.2
+  mountConfidImage: mcr.microsoft.com/aci/virtual-node-2-mount-host:main_20250801.1
+  initImage: mcr.microsoft.com/aci/virtual-node-2-init-config:main_20260506.2
+  kubeletImage: mcr.microsoft.com/aci/virtual-node-2-kubelet:main_20260506.2
+  virtualcsiImage: mcr.microsoft.com/aci/virtual-node-2-virtual-csi:main_20260506.2
+  admissioncontrollerImage: mcr.microsoft.com/aci/virtual-node-2-admission-controller:main_20260506.2
+  noddriverregistrarImage: mcr.microsoft.com/aci/virtual-node-2-aci:main_20260506.2
