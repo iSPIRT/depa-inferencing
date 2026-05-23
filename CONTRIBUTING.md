@@ -1,91 +1,75 @@
 # Contributing feature changes (Azure)
 
-This note describes how to integrate and test feature work that flows through the data plane, BA/KV images, and this repo’s deployable offer stack.
+Use this flow to add new features or make changes to the Confidential Clean Room (CCR) services (Offer, Frontend and Key-Value services).
 
-**Note:** If your change does **not** touch the data-plane shared libraries, skip step 1 and leave `WORKSPACE` unchanged in the BA and KV repos.
+**Skip step 1** if your change does not touch [data-plane shared libraries](https://github.com/iSPIRT/ad-selection-api.data-plane-shared-libraries). In that case, leave `WORKSPACE` unchanged in the BA and KV repos.
 
-**Scenario:** A new feature (for example, HTTP headers) is implemented in the data-plane shared libraries.
+## Overview
+
+| Step | Repo | What you do |
+|------|------|-------------|
+| 1 | [data-plane-shared-libraries](https://github.com/iSPIRT/ad-selection-api.data-plane-shared-libraries) | Implement, commit, push |
+| 2 | [bidding-and-auction-servers](https://github.com/iSPIRT/ad-selection-api.bidding-and-auction-servers) | Point `WORKSPACE` data-plane library at step 1, implement any changes to the BA services, build & push Offer/Frontend images |
+| 3 | [protected-auction-key-value-service](https://github.com/iSPIRT/protected-auction-key-value-service) | Same `WORKSPACE` data-plane library, implement any changes to the KV service, build & push KV image |
+| 4 | **This repo** | Bump image tags, refresh CCE policies, open PR |
+| 5 | — | CI + manual validation; then PR the upstream repos |
 
 ## 1. Data plane
 
-**Repo:** [iSPIRT/ad-selection-api.data-plane-shared-libraries](https://github.com/iSPIRT/ad-selection-api.data-plane-shared-libraries)
+Implement the feature on a branch (or fork) of the data-plane library, then push.
 
-- Implement the change, commit, and push a feature branch or fork.
+## 2. Offer / Frontend images
 
-## 2. Rebuild BA images
-
-**Repo:** [iSPIRT/ad-selection-api.bidding-and-auction-servers](https://github.com/iSPIRT/ad-selection-api.bidding-and-auction-servers)
-
-- Point `WORKSPACE` at your data-plane branch or fork path.
-- Build:
+In **bidding-and-auction-servers**, point `WORKSPACE` at your data-plane branch or fork. Then, implement any changes to the source code, and build and push the images.
 
 ```bash
 ./production/packaging/build_and_test_all_in_docker \
   --service-path bidding_service \
   --service-path buyer_frontend_service \
-  --no-precommit \
-  --no-tests \
-  --build-flavor prod \
-  --platform azure \
-  --instance azure
+  --no-precommit --no-tests \
+  --build-flavor prod --platform azure --instance azure
+
+az login && az acr login -n <your_acr_name>
+BUILD_FLAVOR=prod RELEASE_VERSION=<tag> ./production/packaging/azure/push_images_to_acr.sh
 ```
 
-- Log in and push images to ACR with **unique release tags**:
+Use a **new, unique** `RELEASE_VERSION` for each release (e.g. `4.8.1.2`).
 
-```bash
-az login
-az acr login -n <your_acr_name>
-BUILD_FLAVOR=prod RELEASE_VERSION=4.8.1.2 ./production/packaging/azure/push_images_to_acr.sh
-```
+## 3. KV image
 
-(Replace `RELEASE_VERSION` and `your_acr_name` with your tag and ACR name.)
-
-## 3. Rebuild KV image
-
-**Repo:** [iSPIRT/protected-auction-key-value-service](https://github.com/iSPIRT/protected-auction-key-value-service)
-
-- Point `WORKSPACE` at the same data-plane branch or fork path.
-- Build:
+In **protected-auction-key-value-service**, use the **same** data-plane `WORKSPACE` reference. Then, implement any changes to the source code, and build and push the image.
 
 ```bash
 ./production/packaging/build_and_test_all_in_docker \
-  --no-precommit \
-  --mode prod \
-  --platform azure_microsoft \
-  --instance azure_microsoft
+  --no-precommit --mode prod \
+  --platform azure_microsoft --instance azure_microsoft
+
+az login && az acr login -n <your_acr_name>
+BUILD_FLAVOR=prod RELEASE_VERSION=<tag> ./production/packaging/azure/push_image_to_acr.sh
 ```
 
-- Log in and push to ACR:
+Again, use a **new, unique** tag (e.g. `1.2.1.2`).
+
+## 4. This repo
+
+Update the **same image tags** in all of:
+
+- `deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf`
+- `deployment-scripts/azure/offer-service/services/app/helm/offer.yaml`
+- `policies/kv-policy.json`
+- `policies/ofe-policy.json`
+- `policies/offer-policy.json`
+
+Regenerate CCE policy artifacts for Terraform:
 
 ```bash
-az login
-az acr login -n <your_acr_name>
-BUILD_FLAVOR=prod RELEASE_VERSION=1.2.1.1 ./production/packaging/azure/push_image_to_acr.sh
+cd policies && ./update_policies_tf.sh
 ```
 
-(Replace `RELEASE_VERSION` and `your_acr_name` with your tag and ACR name.)
+Open a PR here. CI must pass (failures usually mean a bad tag, policy drift, or a build bug).
 
-## 4. This repo: image tags and CCE policies
+## 5. Validate and upstream
 
-**Repo:** [iSPIRT/depa-inferencing](https://github.com/iSPIRT/depa-inferencing)
-
-Update image tag versions consistently in:
-
-1. `deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf`
-2. `deployment-scripts/azure/offer-service/services/app/helm/offer.yaml`
-3. `policies/kv-policy.json`
-4. `policies/ofe-policy.json`
-5. `policies/offer-policy.json`
-
-Regenerate Terraform-loaded CCE policy artifacts:
-
-```bash
-cd policies
-./update_policies_tf.sh
-```
-
-## 5. PR and validation
-
-- Open a PR on this repo; CI runs automatically and must pass (failures usually mean a bug, wrong tag, or policy drift).
-- After green CI, still **manually test** that the feature behaves as intended in your target environment.
-- If the feature works as intended, raise PRs for the Data Plane, BA, and KV repos to include the new feature. Revert their WORKSPACE back to the original branch or fork path.
+1. **Manually test** the feature in your target environment, even after CI passes.
+2. If it works, open PRs in the data-plane, BA, and KV repos with the feature.
+3. Revert temporary `WORKSPACE` overrides in BA/KV back to the official branch or fork path.
