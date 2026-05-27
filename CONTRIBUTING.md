@@ -60,10 +60,11 @@ Update the **same image tags** in all of:
 - `policies/ofe-policy.json`
 - `policies/offer-policy.json`
 
-Regenerate CCE policy artifacts for Terraform:
+Regenerate CCE policy artifacts for Terraform (uses pinned `confcom` version in `policies/confcom.version`, same as CI):
 
 ```bash
 cd policies && ./update_policies_tf.sh
+cd policies && ./update_policies_tf.sh nonprod   # UAT/nonprod policies
 ```
 
 Open a PR here. CI must pass (failures usually mean a bad tag, policy drift, or a build bug).
