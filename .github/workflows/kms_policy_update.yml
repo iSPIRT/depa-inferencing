@@ -11,12 +11,12 @@ on:
         description: 'DEPA Inferencing Release Version for Bidding and Auction Services'
         required: true
         type: string
-        default: 'prod-4.8.1.1'
+        default: 'prod-4.8.1.2'
       kv-services-version:
         description: 'DEPA Inferencing Release Version for Key-Value Services'
         required: true
         type: string
-        default: 'prod-1.2.1.0'
+        default: 'prod-1.2.1.2'
       kms_target_environment:
         description: 'KMS: UAT or Prod deployment environment'
         required: true
@@ -89,25 +89,44 @@ jobs:
         env:
           REGISTRY: ${{ vars.REGISTRY }}
           REPO_PATH: ${{ vars.REPO_PATH }}
+          KMS_TARGET: ${{ github.event.inputs.kms_target_environment }}
         run: |
+          POLICY_DIR="policies"
+          KV_VERSION="${{ inputs.kv-services-version }}"
+          BA_VERSION="${{ inputs.bidding-auction-version }}"
+
+          if [ "$KMS_TARGET" = "uat" ]; then
+            TMP_DIR=$(mktemp -d)
+            POLICY_DIR="$TMP_DIR"
+            PROD_KMS_URL="https://depa-inferencing-kms-azure.ispirt.in"
+            UAT_KMS_URL="https://depa-inferencing-kms-uat-azure.ispirt.in"
+            for policy in kv-policy.json ofe-policy.json offer-policy.json; do
+              sed \
+                -e 's/:prod-/:nonprod-/g' \
+                -e "s|${PROD_KMS_URL}|${UAT_KMS_URL}|g" \
+                "policies/$policy" > "$TMP_DIR/$policy"
+            done
+            KV_VERSION="${KV_VERSION/prod-/nonprod-}"
+            BA_VERSION="${BA_VERSION/prod-/nonprod-}"
+          fi
+
           # Generate CCE policy for KV service
-          docker pull ${REGISTRY}/${REPO_PATH}/key-value-service:${{ inputs.kv-services-version }}
-          KV_POLICY=$(az confcom acipolicygen -y -i policies/kv-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
+          docker pull ${REGISTRY}/${REPO_PATH}/key-value-service:${KV_VERSION}
+          KV_POLICY=$(az confcom acipolicygen -y -i ${POLICY_DIR}/kv-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
           echo "KV_POLICY=$KV_POLICY" >> $GITHUB_ENV
 
           # Generate CCE policy for OFE service
-          docker pull ${REGISTRY}/${REPO_PATH}/buyer-frontend-service:${{ inputs.bidding-auction-version }}
-          OFE_POLICY=$(az confcom acipolicygen -y -i policies/ofe-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
+          docker pull ${REGISTRY}/${REPO_PATH}/buyer-frontend-service:${BA_VERSION}
+          OFE_POLICY=$(az confcom acipolicygen -y -i ${POLICY_DIR}/ofe-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
           echo "OFE_POLICY=$OFE_POLICY" >> $GITHUB_ENV
 
           # Generate CCE policy for offer service
-          docker pull ${REGISTRY}/${REPO_PATH}/bidding-service:${{ inputs.bidding-auction-version }}
-          OFFER_POLICY=$(az confcom acipolicygen -y -i policies/offer-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
+          docker pull ${REGISTRY}/${REPO_PATH}/bidding-service:${BA_VERSION}
+          OFFER_POLICY=$(az confcom acipolicygen -y -i ${POLICY_DIR}/offer-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
           echo "OFFER_POLICY=$OFFER_POLICY" >> $GITHUB_ENV
 
           echo "CCE policies generated for all services"
 
-          KMS_TARGET="${{ github.event.inputs.kms_target_environment }}"
           if [ "$KMS_TARGET" = "uat" ]; then
             ALLOWALL_PATH="${GITHUB_WORKSPACE}/deployment-scripts/azure/offer-service/environment/demo/cce-policies/allow_all.base64"
             ALLOWALL_POLICY=$(base64 --decode < "$ALLOWALL_PATH" | sha256sum | cut -d' ' -f1)
