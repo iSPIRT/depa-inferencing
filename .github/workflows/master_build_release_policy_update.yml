@@ -13,7 +13,7 @@ on:
         default: false
         type: boolean
       kms_target_environment:
-        description: 'Deployment target (UAT → nonprod images; Prod → prod images)'
+        description: 'Deployment target'
         required: true
         default: uat
         type: choice
@@ -30,7 +30,7 @@ on:
       kv_release_tag:
         description: 'KV Service: Release version'
         required: true
-        default: '1.2.1.0'
+        default: '1.2.1.2'
         type: string
       kv_run_tests:
         description: 'KV Service: Run tests'
@@ -52,7 +52,7 @@ on:
       ba_release_tag:
         description: 'BA Services: Release version'
         required: true
-        default: '4.8.1.1'
+        default: '4.8.1.2'
         type: string
       ba_services:
         description: 'BA Services to build (comma-separated)'
@@ -429,8 +429,10 @@ jobs:
         curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
         sudo apt-get update && sudo apt-get install -y jq
         az version
-        az extension add --name confcom
-        az extension update --name confcom
+        CONFCOM_VERSION=$(tr -d '[:space:]' < policies/confcom.version)
+        az extension remove --name confcom 2>/dev/null || true
+        az extension add --name confcom --version "$CONFCOM_VERSION"
+        az extension list --query "[?name=='confcom'].[name,version]" -o tsv
         az version
 
     - name: Setup Python virtual environment
@@ -477,16 +479,35 @@ jobs:
         OFE_IMG="ofe-service:${IMAGE_FLAVOR}-${BA_TAG}"
         OFFER_IMG="offer-service:${IMAGE_FLAVOR}-${BA_TAG}"
 
-        jq --arg img "$KV_IMG" '.containers[0].properties.image = $img' policies/kv-policy.json > /tmp/kv-policy-run.json
+        KV_POLICY_JSON="policies/kv-policy.json"
+        OFE_POLICY_JSON="policies/ofe-policy.json"
+        OFFER_POLICY_JSON="policies/offer-policy.json"
+
+        if [ "$KMS_TARGET" = "uat" ]; then
+          PROD_KMS_URL="https://depa-inferencing-kms-azure.ispirt.in"
+          UAT_KMS_URL="https://depa-inferencing-kms-uat-azure.ispirt.in"
+          for policy in kv-policy.json ofe-policy.json offer-policy.json; do
+            sed \
+              -e 's/:prod-/:nonprod-/g' \
+              -e "s|${PROD_KMS_URL}|${UAT_KMS_URL}|g" \
+              "policies/$policy" > "/tmp/$policy"
+          done
+          KV_POLICY_JSON="/tmp/kv-policy.json"
+          OFE_POLICY_JSON="/tmp/ofe-policy.json"
+          OFFER_POLICY_JSON="/tmp/offer-policy.json"
+        fi
+
+        jq --arg img "$KV_IMG" '.containers[0].properties.image = $img' "$KV_POLICY_JSON" > /tmp/kv-policy-run.json
         KV_POLICY=$(az confcom acipolicygen -y -i /tmp/kv-policy-run.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
 
-        jq --arg img "$OFE_IMG" '.containers[0].properties.image = $img' policies/ofe-policy.json > /tmp/ofe-policy-run.json
+        jq --arg img "$OFE_IMG" '.containers[0].properties.image = $img' "$OFE_POLICY_JSON" > /tmp/ofe-policy-run.json
         OFE_POLICY=$(az confcom acipolicygen -y -i /tmp/ofe-policy-run.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
 
-        jq --arg img "$OFFER_IMG" '.containers[0].properties.image = $img' policies/offer-policy.json > /tmp/offer-policy-run.json
+        jq --arg img "$OFFER_IMG" '.containers[0].properties.image = $img' "$OFFER_POLICY_JSON" > /tmp/offer-policy-run.json
         OFFER_POLICY=$(az confcom acipolicygen -y -i /tmp/offer-policy-run.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
 
         rm -f /tmp/kv-policy-run.json /tmp/ofe-policy-run.json /tmp/offer-policy-run.json
+        rm -f /tmp/kv-policy.json /tmp/ofe-policy.json /tmp/offer-policy.json
 
         echo "KV_POLICY=$KV_POLICY" >> $GITHUB_ENV
         echo "✅ KV policy:      $KV_POLICY"
