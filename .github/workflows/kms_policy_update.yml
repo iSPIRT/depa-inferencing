@@ -106,8 +106,8 @@ jobs:
                 -e "s|${PROD_KMS_URL}|${UAT_KMS_URL}|g" \
                 "policies/$policy" > "$TMP_DIR/$policy"
             done
-            KV_VERSION="${KV_VERSION/prod-/nonprod-}"
-            BA_VERSION="${BA_VERSION/prod-/nonprod-}"
+            KV_VERSION="${KV_VERSION/#prod-/nonprod-}"
+            BA_VERSION="${BA_VERSION/#prod-/nonprod-}"
           fi
 
           # Generate CCE policy for KV service
