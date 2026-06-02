@@ -2,7 +2,7 @@
 # Licensed under the Apache License, Version 2.0.
 
 locals {
-  environment  = "prod"
+  environment  = "uat"
   operator     = "tf"
   region       = "centralindia"
   region_short = "cin"
@@ -20,7 +20,7 @@ locals {
 
   # Private Link Service alias for the Confidential Ledger.
   # This must be filled in after the manual step of creating the PLS out-of-band.
-  # Example: depa-inferencing-kms-prod-cin-pls.bda3e1dd-05f2-4760-aab6-df4ebb5aaa90.centralindia.azure.privatelinkservice
+  # Example: depa-inferencing-kms-prod-cin-pls.abcxyz.centralindia.azure.privatelinkservice
   ledger_private_link_service_alias = "" # REQUIRED: Fill in after manual PLS creation
 
   ssl_certificate_name                                    = "depa-inferencing-kms-${local.environment}-${local.region_short}-frontend-cert"

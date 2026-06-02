@@ -2,8 +2,8 @@
 # Licensed under the Apache License, Version 2.0.
 
 output "private_endpoint_id" {
-  description = "Resource ID of the private endpoint for the Confidential Ledger."
-  value       = azurerm_private_endpoint.ledger.id
+  description = "Resource ID of the KMS-side private endpoint (empty when existing_kms_ledger_private_ip is used)."
+  value       = local.create_kms_ledger_pe ? azurerm_private_endpoint.ledger[0].id : ""
 }
 
 output "vm_private_endpoint_id" {

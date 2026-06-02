@@ -23,7 +23,13 @@ variable "private_link_service_alias" {
 
 variable "private_endpoint_subnet_id" {
   type        = string
-  description = "Subnet ID for the private endpoint."
+  description = "Subnet ID for the private endpoint when Terraform creates the KMS-side ledger PE."
+}
+
+variable "existing_kms_ledger_private_ip" {
+  type        = string
+  description = "When set (prod kmspls PE IP), skip creating {name}-pe and use this IP in the ledger DNS A record."
+  default     = ""
 }
 
 variable "virtual_network_id" {
