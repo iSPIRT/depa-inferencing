@@ -6,7 +6,7 @@ The container accepts the **same environment variables** as the legacy C++ `secu
 
 **Published image:** `ispirt.azurecr.io/depainferencing/tools/secure_invoke_python:0.1.1`
 
-## Client runbook
+## Client Quickstart
 
 ### 1. Prerequisites
 
@@ -30,12 +30,12 @@ ls tools/requests/get_bids_request.json
 
 To use your own payload, add a JSON file under `tools/requests/` (or any host directory you mount as `/requests`).
 
-### 4. Run (UAT example)
+### 4. Run inference request
 
 From the **repo root**, replace `OFE_IP` with the Offer Frontend load balancer IP (`kubectl get svc ofe-lb -n default`).
 
 ```bash
-export OFE_IP=4.247.209.150   # example UAT IP
+export OFE_IP=<OFE_IP>
 
 docker run --rm --network host \
   -v "${PWD}/tools/requests:/requests" \
@@ -48,8 +48,7 @@ docker run --rm --network host \
   -e KMS_KEYS_ENDPOINT=/app/listpubkeys \
   ispirt.azurecr.io/depainferencing/tools/secure_invoke_python:0.1.1
 ```
-
-**Prod:** use `KMS_HOST=https://depa-inferencing-kms-azure.ispirt.in` and the prod OFE IP. Note, prod KMS is only compatible with prod CCR services.
+The above command is for UAT. For prod, use `KMS_HOST=https://depa-inferencing-kms-azure.ispirt.in` and the prod OFE IP. Note, prod KMS is only compatible with prod CCR services.
 
 A successful run prints decrypted JSON to stdout (an empty `updateInterestGroupList` is normal for the sample request).
 
@@ -108,57 +107,6 @@ Set `HOST_REQUESTS_DIR` to your checkout’s `tools/requests` directory (see `.e
 | `MAX_CONCURRENT_REQUESTS` | Batch parallelism | `2` |
 | `KMS_KEYS_ENDPOINT` | KMS list-keys path | `/listpubkeys` |
 | `SECURE_REQUEST_USER_AGENT` | User-Agent for KMS calls | `depa-secure-invoke-python/0.1.0` |
-
-For Azure App Gateway deployments, set `KMS_KEYS_ENDPOINT=/app/listpubkeys`.
-
-## Troubleshooting HTTP 504
-
-If you see **504 Gateway Timeout** from OFE, check the **deployment**, not the client image.
-
-OFE logs will show:
-
-```text
-GetBiddingSignals request failed with status: DEADLINE_EXCEEDED
-```
-
-**Root cause:** OFE (on AKS virtual nodes) calls KV at `kv.ad_selection.microsoft:51052`. Private DNS for that hostname must resolve to an **internal** VNet address. If the KV service uses a **public** load balancer, virtual-node pods hairpin through the public IP and the KV lookup times out → OFE returns 504.
-
-**Fix (in repo):** `internalLB: true` on the `kv` service in `deployment-scripts/azure/offer-service/services/app/helm/offer.yaml`. Redeploy with Terraform so private DNS updates. After deploy, verify:
-
-```bash
-az network private-dns record-set a show \
-  -g tf-demo-offer-inc-rg -z ad_selection.microsoft -n kv \
-  --query aRecords[0].ipv4Address -o tsv
-```
-
-The IP should be a **private** address (like `10.x.x.x`), not a public one.
-
-`RUN_RETRIES` covers brief startup races only; persistent 504s mean the backend routing fix above is required.
-
-## Operations
-
-### `rest_invoke` (default)
-
-Encrypts the request, POSTs to `BUYER_HOST`, decrypts the response, and prints JSON to stdout.
-
-### `encrypt`
-
-Fetches a KMS key and prints the encrypted payload only (no offer-service call).
-
-### `batch_invoke`
-
-Reads a JSONL file from `REQUEST_PATH`. Each line must include an `id` and `request` object. Writes `success_log.jsonl` and `failure_log.jsonl` next to the input file.
-
-## Differences from the C++ image
-
-| Feature | C++ image | Python image |
-|---------|-----------|--------------|
-| HTTP `rest_invoke` | yes | yes |
-| gRPC `invoke` | yes | no — use HTTP `BUYER_HOST` with `/v1/getbids` |
-| Retries env | `RETRIES` | `RUN_RETRIES` |
-| `encrypt` | yes | yes |
-| `batch_invoke` | yes | yes |
-| Runtime | native binary | Python 3.10 + `secure_request` wheel |
 
 ## Layout
 
