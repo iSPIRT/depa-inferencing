@@ -16,7 +16,11 @@ __pycache__
 *.tfstate.*
 .terraform
 .terraform.lock.hcl
+# Python virtual environments
 **/.venv/
+**/.venv*/
+**/venv/
+**/env/
 ispirt
 uat
 prod

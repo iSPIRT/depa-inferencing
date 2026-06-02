@@ -1,0 +1,5 @@
+# Python secure-invoke image build context
+__pycache__/
+*.pyc
+.env
+README.md

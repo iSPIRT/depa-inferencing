@@ -1,0 +1,24 @@
+services:
+  secure-invoke-python:
+    image: ${SECURE_INVOKE_PYTHON_IMAGE:-${REGISTRY:-ispirt.azurecr.io/depainferencing/tools}/secure_invoke_python:${TAG:-0.1.1}}
+    network_mode: "host"
+    container_name: secure_invoke_python_container
+    volumes:
+      - ${HOST_REQUESTS_DIR}:/requests
+      - ${HOST_CERTS_DIR}:/etc/ssl/client/certs
+    environment:
+      KMS_HOST: ${KMS_HOST}
+      BUYER_HOST: ${BUYER_HOST}
+      OPERATION: ${OPERATION:-rest_invoke}
+      REQUEST_PATH: ${REQUEST_PATH:-/requests/get_bids_request.json}
+      RUN_RETRIES: ${RUN_RETRIES:-3}
+      RUN_RETRY_DELAY: ${RUN_RETRY_DELAY:-5}
+      INSECURE: ${INSECURE:-true}
+      HEADERS: ${HEADERS:-}
+      CLIENT_KEY: /etc/ssl/client/certs/${CLIENT_KEY}
+      CLIENT_CERT: /etc/ssl/client/certs/${CLIENT_CERT}
+      CA_CERT: /etc/ssl/client/certs/${CA_CERT}
+      ENABLE_VERBOSE: "${ENABLE_VERBOSE:-false}"
+      MAX_CONCURRENT_REQUESTS: ${MAX_CONCURRENT_REQUESTS:-2}
+      KMS_KEYS_ENDPOINT: ${KMS_KEYS_ENDPOINT:-/listpubkeys}
+      SECURE_REQUEST_USER_AGENT: ${SECURE_REQUEST_USER_AGENT:-depa-secure-invoke-python/0.1.0}
