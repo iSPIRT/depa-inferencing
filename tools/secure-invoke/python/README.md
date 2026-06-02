@@ -20,24 +20,25 @@ The container accepts the **same environment variables** as the legacy C++ `secu
 docker pull ispirt.azurecr.io/depainferencing/tools/secure_invoke_python:0.1.1
 ```
 
-### 3. Prepare the request file
+### 3. Request file
 
-Create a directory for request JSON and add your payload, e.g. `get_bids_request.json`:
+Use the sample request bundled in this repo at [`tools/requests/get_bids_request.json`](../../requests/get_bids_request.json). From the repo root:
 
 ```bash
-mkdir -p ~/secure-invoke-requests
-cp get_bids_request.json ~/secure-invoke-requests/
+ls tools/requests/get_bids_request.json
 ```
+
+To use your own payload, add a JSON file under `tools/requests/` (or any host directory you mount as `/requests`).
 
 ### 4. Run (UAT example)
 
-Replace `OFE_IP` with the Offer Frontend load balancer IP (`kubectl get svc ofe-lb -n default`).
+From the **repo root**, replace `OFE_IP` with the Offer Frontend load balancer IP (`kubectl get svc ofe-lb -n default`).
 
 ```bash
 export OFE_IP=4.247.209.150   # example UAT IP
 
 docker run --rm --network host \
-  -v ~/secure-invoke-requests:/requests \
+  -v "${PWD}/tools/requests:/requests" \
   -e KMS_HOST=https://depa-inferencing-kms-uat-azure.ispirt.in \
   -e BUYER_HOST="${OFE_IP}:51052/v1/getbids" \
   -e REQUEST_PATH=/requests/get_bids_request.json \
@@ -58,10 +59,12 @@ From a checkout of this repo:
 
 ```bash
 cd tools/secure-invoke/python
-cp .env.example .env   # edit HOST_REQUESTS_DIR, KMS_HOST, BUYER_HOST, OFE IP
+cp .env.example .env   # set HOST_REQUESTS_DIR to repo tools/requests, plus KMS_HOST, BUYER_HOST, OFE IP
 export SECURE_INVOKE_PYTHON_IMAGE=ispirt.azurecr.io/depainferencing/tools/secure_invoke_python:0.1.1
 ./secure_invoke_test.sh
 ```
+
+In `.env`, set `HOST_REQUESTS_DIR` to the absolute path of `tools/requests` in your checkout, e.g. `"${PWD}/../../requests"` when your shell is in `tools/secure-invoke/python`.
 
 ## Quick start (build from source)
 
@@ -78,7 +81,7 @@ cd tools/secure-invoke/python
 cp .env.example .env
 ```
 
-Place your request JSON in the host directory referenced by `HOST_REQUESTS_DIR`.
+Set `HOST_REQUESTS_DIR` to your checkout’s `tools/requests` directory (see `.env.example`).
 
 ### 3. Run
 
