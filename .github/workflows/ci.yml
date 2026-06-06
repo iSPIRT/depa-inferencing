@@ -27,13 +27,13 @@ on:
         default: true
         type: boolean
       secure_invoke_backend:
-        description: 'Secure invoke: python SDK or docker image'
+        description: 'Secure invoke Docker image'
         required: false
-        default: python
+        default: python-docker-v1.1.0
         type: choice
         options:
-          - python
-          - docker
+          - python-docker-v1.1.0
+          - cpp-docker-v1.0.0
 
 jobs:
   stack_prod:
@@ -44,7 +44,7 @@ jobs:
     with:
       deploy_env: azure-prod
       run_cleanup: ${{ github.event_name != 'workflow_dispatch' || inputs.run_cleanup }}
-      secure_invoke_backend: ${{ github.event_name == 'workflow_dispatch' && inputs.secure_invoke_backend || 'python' }}
+      secure_invoke_backend: ${{ github.event_name == 'workflow_dispatch' && inputs.secure_invoke_backend || 'python-docker-v1.1.0' }}
 
   stack_uat:
     name: Azure stack (uat)
@@ -54,4 +54,4 @@ jobs:
     with:
       deploy_env: azure-uat
       run_cleanup: ${{ github.event_name != 'workflow_dispatch' || inputs.run_cleanup }}
-      secure_invoke_backend: ${{ github.event_name == 'workflow_dispatch' && inputs.secure_invoke_backend || 'python' }}
+      secure_invoke_backend: ${{ github.event_name == 'workflow_dispatch' && inputs.secure_invoke_backend || 'python-docker-v1.1.0' }}

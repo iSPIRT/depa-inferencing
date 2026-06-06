@@ -5,8 +5,7 @@ permissions:
   id-token: write
 
 env:
-  SECURE_REQUEST_WHEEL_URL: >-
-    https://github.com/saranggalada/bidding-auction-servers/releases/download/v0.1.0/secure_request-0.1.0-py3-none-any.whl
+  SECURE_INVOKE_PYTHON_IMAGE: ispirt.azurecr.io/depainferencing/tools/secure_invoke_python:0.1.1
 
 on:
   workflow_dispatch:
@@ -19,23 +18,22 @@ on:
           - azure-uat
         default: azure-prod
       secure_invoke_backend:
-        description: >-
-          Secure invoke: python SDK or docker image
+        description: 'Secure invoke tool'
         type: choice
         options:
-          - python
-          - docker
-        default: python
+          - python-docker-v1.1.0
+          - cpp-docker-v1.0.0
+        default: python-docker-v1.1.0
   workflow_call:
     inputs:
       deploy_env:
         type: string
         required: true
       secure_invoke_backend:
-        description: 'Secure invoke: python SDK or docker image'
+        description: 'Secure invoke tool'
         type: string
         required: false
-        default: python
+        default: python-docker-v1.1.0
 
 jobs:
   test-azure:
@@ -58,29 +56,47 @@ jobs:
           OFE_IP=$(kubectl get svc ofe-lb -n default -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
           echo "OFE_IP=$OFE_IP" >> $GITHUB_ENV
 
-      - name: Run secure invoke (Python SDK)
-        if: ${{ inputs.secure_invoke_backend != 'docker' }}
+      # Disabled: host Python SDK + venv (replaced by Python Docker below).
+      # - name: Run secure invoke (Python SDK)
+      #   env:
+      #     SECURE_REQUEST_WHEEL_URL: >-
+      #       https://github.com/saranggalada/bidding-auction-servers/releases/download/v0.1.0/secure_request-0.1.0-py3-none-any.whl
+      #     KMS_URL: ${{ inputs.deploy_env == 'azure-uat' && 'https://depa-inferencing-kms-uat-azure.ispirt.in' || 'https://depa-inferencing-kms-azure.ispirt.in' }}
+      #     OFFER_URL: http://${{ env.OFE_IP }}:51052/v1/getbids
+      #     SECURE_REQUEST_RETRIES: '3'
+      #   working-directory: ./tools/secure-invoke
+      #   run: |
+      #     python3 -m venv .venv-secure-invoke
+      #     . .venv-secure-invoke/bin/activate
+      #     python -m pip install --upgrade pip
+      #     pip install "${SECURE_REQUEST_WHEEL_URL}"
+      #     export LD_LIBRARY_PATH="$(
+      #       python -c "import secure_request_client, os; print(os.path.join(os.path.dirname(secure_request_client.__file__), 'lib'))"
+      #     ):${LD_LIBRARY_PATH:-}"
+      #     python ./run_azure_test_python_sdk.py "${GITHUB_WORKSPACE}/tools/requests/get_bids_request.json"
+      #     deactivate
+      #     rm -rf .venv-secure-invoke
+
+      - name: Run secure invoke (Python Docker v1.1.0)
+        if: ${{ inputs.secure_invoke_backend != 'cpp-docker-v1.0.0' }}
         env:
           KMS_URL: ${{ inputs.deploy_env == 'azure-uat' && 'https://depa-inferencing-kms-uat-azure.ispirt.in' || 'https://depa-inferencing-kms-azure.ispirt.in' }}
-          OFFER_URL: http://${{ env.OFE_IP }}:51052/v1/getbids
-          SECURE_REQUEST_RETRIES: '3'
-        working-directory: ./tools/secure-invoke
+        working-directory: ./tools/secure-invoke/python
         run: |
-          python3 -m venv .venv-secure-invoke
-          . .venv-secure-invoke/bin/activate
-          python -m pip install --upgrade pip
-          pip install "${SECURE_REQUEST_WHEEL_URL}"
-          export LD_LIBRARY_PATH="$(
-            python -c "import secure_request_client, os; print(os.path.join(os.path.dirname(secure_request_client.__file__), 'lib'))"
-          ):${LD_LIBRARY_PATH:-}"
-          python ./run_azure_test_python_sdk.py "${GITHUB_WORKSPACE}/tools/requests/get_bids_request.json"
+          export HOST_REQUESTS_DIR="${GITHUB_WORKSPACE}/tools/requests"
+          export HOST_CERTS_DIR="/etc/ssl/certs"
+          export KMS_HOST="${KMS_URL}"
+          export BUYER_HOST="${OFE_IP}:51052/v1/getbids"
+          export OPERATION=rest_invoke
+          export REQUEST_PATH=/requests/get_bids_request.json
+          export RUN_RETRIES=3
+          export INSECURE=true
+          export KMS_KEYS_ENDPOINT=/app/listpubkeys
+          export SECURE_INVOKE_PYTHON_IMAGE="${SECURE_INVOKE_PYTHON_IMAGE}"
+          ./secure_invoke_test.sh
 
-          # cleanup venv
-          deactivate
-          rm -rf .venv-secure-invoke
-
-      - name: Run secure invoke (Docker)
-        if: ${{ inputs.secure_invoke_backend == 'docker' }}
+      - name: Run secure invoke (C++ Docker v1.0.0)
+        if: ${{ inputs.secure_invoke_backend == 'cpp-docker-v1.0.0' }}
         env:
           KMS_URL: ${{ inputs.deploy_env == 'azure-uat' && 'https://depa-inferencing-kms-uat-azure.ispirt.in' || 'https://depa-inferencing-kms-azure.ispirt.in' }}
         working-directory: ./tools/secure-invoke
