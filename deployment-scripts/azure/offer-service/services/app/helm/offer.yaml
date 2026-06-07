@@ -84,6 +84,7 @@ services:
         port: 51052
     healthCheck: {}
     resources: {}
+    internalLB: true
     nodeSelector: {}
     volumeName: "data-vol"
     volumeMounts:
