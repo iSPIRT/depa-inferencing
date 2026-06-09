@@ -297,3 +297,4 @@ This does **not** remove `project_setup_utils`, the state bucket, UDF bucket, co
 | Certs stuck | Apex **NS** delegation and **`terraform apply`** again after propagation. |
 | Bidding can’t load UDF | Bucket exists, object path matches `buyer_code_blob`, **`storage.objectViewer`** for `service_account_email`. |
 | Images not found | `image_repo` / `image_tag` match registry; SA can pull (e.g. Artifact Registry **Reader** on GCP). |
+| Subnet stack_type change fails | Greenfield only, or **`terraform destroy`** buyer stack and re-apply (backend subnet cannot shrink dual-stack → IPv4 in place). |

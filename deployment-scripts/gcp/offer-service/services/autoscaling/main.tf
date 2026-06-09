@@ -79,18 +79,7 @@ resource "google_compute_instance_template" "frontends" {
     network    = var.vpc_id
     subnetwork = each.value.id
 
-    // Notes that this instance is a dual-stack resource.
-    stack_type = "IPV4_IPV6"
-    // Including this gives the instance an 'external' IPv6.
-    ipv6_access_config {
-      // Keeps the traffic on the GCP backbone for as long as possible.
-      network_tier = "PREMIUM"
-    }
-
-    # Uncomment below to give instances external IPs:
-    # access_config {
-    #   network_tier = "PREMIUM"
-    # }
+    # No access_config / ipv6_access_config — private IPv4 only; egress via Cloud NAT.
   }
 
   machine_type = var.region_config[each.value.region].frontend.machine_type
@@ -244,18 +233,7 @@ resource "google_compute_instance_template" "backends" {
     network    = var.vpc_id
     subnetwork = each.value.id
 
-    // Notes that this instance is a dual-stack resource.
-    stack_type = "IPV4_IPV6"
-    // Including this gives the instance an 'external' IPv6.
-    ipv6_access_config {
-      // Keeps the traffic on the GCP backbone for as long as possible.
-      network_tier = "PREMIUM"
-    }
-
-    # Uncomment below to give instances external IPs:
-    # access_config {
-    #   network_tier = "PREMIUM"
-    # }
+    # No access_config / ipv6_access_config — private IPv4 only; egress via Cloud NAT.
   }
 
   machine_type = var.region_config[each.value.region].backend.machine_type

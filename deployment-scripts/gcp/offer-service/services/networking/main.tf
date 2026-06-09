@@ -27,11 +27,7 @@ resource "google_compute_subnetwork" "backends" {
   purpose       = "PRIVATE"
   region        = each.value
   ip_cidr_range = "10.${each.key}.2.0/24"
-
-  // Enable dual-stack network.
-  stack_type = "IPV4_IPV6"
-  // We need IPv6 addresses to be external, since we need to route to IPv6 resources outside of our own network.
-  ipv6_access_type = "EXTERNAL"
+  // IPv4-only backend subnet; VM egress uses Cloud NAT (no external IPv6 on service VMs).
 }
 
 resource "google_compute_subnetwork" "proxy_subnets" {
