@@ -54,11 +54,11 @@ Again, use a **new, unique** tag (e.g. `1.2.1.2`).
 
 Update the **same image tags** in all of:
 
-- `deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf`
-- `deployment-scripts/azure/offer-service/services/app/helm/offer.yaml`
-- `policies/kv-policy.json`
-- `policies/ofe-policy.json`
-- `policies/offer-policy.json`
+- [`deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf`](./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf)
+- [`deployment-scripts/azure/offer-service/services/app/helm/offer.yaml`](./deployment-scripts/azure/offer-service/services/app/helm/offer.yaml)
+- [`policies/kv-policy.json`](./policies/kv-policy.json)
+- [`policies/ofe-policy.json`](./policies/ofe-policy.json)
+- [`policies/offer-policy.json`](./policies/offer-policy.json)
 
 Regenerate CCE policy artifacts for Terraform (uses pinned `confcom` version in `policies/confcom.version`, same as CI):
 
