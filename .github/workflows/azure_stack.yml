@@ -17,10 +17,10 @@ on:
         required: false
         default: true
       secure_invoke_backend:
-        description: 'Secure invoke: python SDK or docker image'
+        description: 'Secure invoke Docker image'
         type: string
         required: false
-        default: python
+        default: python-docker-v1.1.0
 
 jobs:
   deploy:

@@ -24,7 +24,7 @@ locals {
 
   image_registry = "ispirt.azurecr.io"
   registry_path  = "depainferencing/azure"
-  image_tag      = "prod-4.8.1.2"
+  image_tag      = "prod-4.8.1.3"
   kv_image_tag   = "prod-1.2.1.2"
   kms_url        = "https://depa-inferencing-kms-azure.ispirt.in"
 
@@ -150,7 +150,7 @@ module "offer" {
         GENERATE_BID_TIMEOUT_MS                       = "60000"
         GRPC_ARG_DEFAULT_AUTHORITY                    = ""
         PROTECTED_APP_SIGNALS_GENERATE_BID_TIMEOUT_MS = "60000"
-        BUYER_TKV_V2_SERVER_ADDR                      = "kv.ad_selection.microsoft:51052"
+        BUYER_TKV_V2_SERVER_ADDR                      = "kv.ad_selection.microsoft:51052" # Requires kv internalLB; see helm/offer.yaml
         ENABLE_TKV_V2_BROWSER                         = "true"
       }
     },
@@ -208,7 +208,7 @@ module "offer" {
     SELECTION_KV_SERVER_EGRESS_TLS     = ""
     SELECTION_KV_SERVER_TIMEOUT_MS     = "60000"
     TEE_AD_RETRIEVAL_KV_SERVER_ADDR    = ""
-    TEE_KV_SERVER_ADDR                 = "kv.ad_selection.microsoft:51052"
+    TEE_KV_SERVER_ADDR                 = "kv.ad_selection.microsoft:51052" # Requires kv internalLB; see helm/offer.yaml
     TELEMETRY_CONFIG                   = "mode: EXPERIMENT"
 
     AZURE_BA_PARAM_GET_TOKEN_URL             = "http://169.254.169.254/metadata/identity/oauth2/token"

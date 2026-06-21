@@ -10,6 +10,10 @@ To execute the `secure-invoke-test.sh` script, run:
 ./secure-invoke-test.sh
 ```
 
+### Python SDK Docker image
+
+If your environment requires containerized execution with the Python SDK (instead of the C++ binary), see [`python/README.md`](python/README.md). It uses the same `.env` parameters (`KMS_HOST`, `BUYER_HOST`, `REQUEST_PATH`, etc.).
+
 ## Prerequisites
 Before running the script, ensure that:
 
