@@ -11,7 +11,7 @@ Use this flow to add new features or make changes to the Confidential Clean Room
 | 1 | [data-plane-shared-libraries](https://github.com/iSPIRT/ad-selection-api.data-plane-shared-libraries) | Implement, commit, push |
 | 2 | [bidding-and-auction-servers](https://github.com/iSPIRT/ad-selection-api.bidding-and-auction-servers) | Point `WORKSPACE` data-plane library at step 1, implement any changes to the BA services, build & push Offer/Frontend images |
 | 3 | [protected-auction-key-value-service](https://github.com/iSPIRT/protected-auction-key-value-service) | Same `WORKSPACE` data-plane library, implement any changes to the KV service, build & push KV image |
-| 4 | **This repo** | Bump image tags, refresh CCE policies, open PR |
+| 4 | **This repo** | Bump image tags, refresh CCE policies, update KMS key release policy, open PR |
 | 5 | — | CI + manual validation; then PR the upstream repos |
 
 ## 1. Data plane
@@ -52,13 +52,13 @@ Again, use a **new, unique** tag (e.g. `1.2.1.2`).
 
 ## 4. This repo
 
-Update the **same image tags** in all of:
+#### I) Update the image tags:
 
-- `deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf`
-- `deployment-scripts/azure/offer-service/services/app/helm/offer.yaml`
-- `policies/kv-policy.json`
-- `policies/ofe-policy.json`
-- `policies/offer-policy.json`
+- [deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf](./deployment-scripts/azure/offer-service/environment/demo/terraform/offer.tf)
+- [deployment-scripts/azure/offer-service/services/app/helm/offer.yaml](./deployment-scripts/azure/offer-service/services/app/helm/offer.yaml)
+- [policies/kv-policy.json](./policies/kv-policy.json)
+- [policies/ofe-policy.json](./policies/ofe-policy.json)
+- [policies/offer-policy.json](./policies/offer-policy.json)
 
 Regenerate CCE policy artifacts for Terraform (uses pinned `confcom` version in `policies/confcom.version`, same as CI):
 
@@ -67,10 +67,15 @@ cd policies && ./update_policies_tf.sh
 cd policies && ./update_policies_tf.sh nonprod   # UAT/nonprod policies
 ```
 
-Open a PR here. CI must pass (failures usually mean a bad tag, policy drift, or a build bug).
+#### II) Update the KMS key release policy:
 
-## 5. Validate and upstream
+In order for the new images to be able to retrieve private keys from the KMS, we need to update the key release policy so that the new images are allowed to do so. Run the [kms_policy_update.yml](.github/workflows/kms_policy_update.yml) workflow with the appropriate inputs and target environment (e.g. `uat` or `prod`).
 
-1. **Manually test** the feature in your target environment, even after CI passes.
-2. If it works, open PRs in the data-plane, BA, and KV repos with the feature.
-3. Revert temporary `WORKSPACE` overrides in BA/KV back to the official branch or fork path.
+#### III) Open a PR:
+
+First, manually test and validate the new images and the features in your target environment. If successful, open a PR in this repo. CI must pass (failures usually mean a bad tag, policy drift, or a build bug).
+
+## 5. Upstream changes
+
+Once your PR here is merged, open PRs in the data-plane, BA, and KV repos with the feature.
+Revert temporary `WORKSPACE` overrides in BA/KV back to the official branch or fork path.

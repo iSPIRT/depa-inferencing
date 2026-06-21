@@ -7,16 +7,6 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      bidding-auction-version:
-        description: 'DEPA Inferencing Release Version for Bidding and Auction Services'
-        required: true
-        type: string
-        default: 'prod-4.8.1.2'
-      kv-services-version:
-        description: 'DEPA Inferencing Release Version for Key-Value Services'
-        required: true
-        type: string
-        default: 'prod-1.2.1.2'
       kms_target_environment:
         description: 'KMS: UAT or Prod deployment environment'
         required: true
@@ -25,6 +15,24 @@ on:
         options:
           - uat
           - prod
+      key_release_policy_operation:
+        description: 'Add or remove CCE policy hashes from the key release policy'
+        required: true
+        type: choice
+        default: add
+        options:
+          - add
+          - remove
+      bidding-auction-version:
+        description: 'Release Version for Bidding and Auction Services'
+        required: true
+        type: string
+        default: '4.8.1.3'
+      kv-services-version:
+        description: 'Release Version for Key-Value Service'
+        required: true
+        type: string
+        default: '1.2.1.2'
 
 jobs:
   update-kms-policy:
@@ -92,108 +100,194 @@ jobs:
           REGISTRY: ${{ vars.REGISTRY }}
           REPO_PATH: ${{ vars.REPO_PATH }}
           KMS_TARGET: ${{ github.event.inputs.kms_target_environment }}
+          KV_VERSION: ${{ inputs.kv-services-version }}
+          BA_VERSION: ${{ inputs.bidding-auction-version }}
         run: |
-          POLICY_DIR="policies"
-          KV_VERSION="${{ inputs.kv-services-version }}"
-          BA_VERSION="${{ inputs.bidding-auction-version }}"
+          set -euo pipefail
+
+          # Accept bare semver inputs; strip legacy prod-/nonprod- prefix if present.
+          KV_VERSION="${KV_VERSION#prod-}"
+          KV_VERSION="${KV_VERSION#nonprod-}"
+          BA_VERSION="${BA_VERSION#prod-}"
+          BA_VERSION="${BA_VERSION#nonprod-}"
 
           if [ "$KMS_TARGET" = "uat" ]; then
-            TMP_DIR=$(mktemp -d)
-            POLICY_DIR="$TMP_DIR"
+            IMAGE_FLAVOR="nonprod"
             PROD_KMS_URL="https://depa-inferencing-kms-azure.ispirt.in"
             UAT_KMS_URL="https://depa-inferencing-kms-uat-azure.ispirt.in"
-            for policy in kv-policy.json ofe-policy.json offer-policy.json; do
-              sed \
-                -e 's/:prod-/:nonprod-/g' \
-                -e "s|${PROD_KMS_URL}|${UAT_KMS_URL}|g" \
-                "policies/$policy" > "$TMP_DIR/$policy"
-            done
-            KV_VERSION="${KV_VERSION/#prod-/nonprod-}"
-            BA_VERSION="${BA_VERSION/#prod-/nonprod-}"
+          else
+            IMAGE_FLAVOR="prod"
           fi
 
-          # Generate CCE policy for KV service
-          docker pull ${REGISTRY}/${REPO_PATH}/key-value-service:${KV_VERSION}
+          KV_TAG="${IMAGE_FLAVOR}-${KV_VERSION}"
+          BA_TAG="${IMAGE_FLAVOR}-${BA_VERSION}"
+
+          TMP_DIR=$(mktemp -d)
+          POLICY_DIR="$TMP_DIR"
+          for policy in kv-policy.json ofe-policy.json offer-policy.json; do
+            cp "policies/$policy" "$POLICY_DIR/$policy"
+          done
+
+          if [ "$KMS_TARGET" = "uat" ]; then
+            for policy in kv-policy.json ofe-policy.json offer-policy.json; do
+              sed -i "s|${PROD_KMS_URL}|${UAT_KMS_URL}|g" "$POLICY_DIR/$policy"
+            done
+          fi
+
+          sed -i "s|key-value-service:[^\"]*|key-value-service:${KV_TAG}|" "$POLICY_DIR/kv-policy.json"
+          sed -i "s|buyer-frontend-service:[^\"]*|buyer-frontend-service:${BA_TAG}|" "$POLICY_DIR/ofe-policy.json"
+          sed -i "s|bidding-service:[^\"]*|bidding-service:${BA_TAG}|" "$POLICY_DIR/offer-policy.json"
+
+          echo "Policy templates for confcom (${KMS_TARGET}, ${IMAGE_FLAVOR}):"
+          grep '"image"' "$POLICY_DIR"/*.json
+
+          echo "IMAGE_FLAVOR=$IMAGE_FLAVOR" >> $GITHUB_ENV
+          echo "KV_TAG=$KV_TAG" >> $GITHUB_ENV
+          echo "BA_TAG=$BA_TAG" >> $GITHUB_ENV
+
+          docker pull ${REGISTRY}/${REPO_PATH}/key-value-service:${KV_TAG}
           KV_POLICY=$(az confcom acipolicygen -y -i ${POLICY_DIR}/kv-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
           echo "KV_POLICY=$KV_POLICY" >> $GITHUB_ENV
 
-          # Generate CCE policy for OFE service
-          docker pull ${REGISTRY}/${REPO_PATH}/buyer-frontend-service:${BA_VERSION}
+          docker pull ${REGISTRY}/${REPO_PATH}/buyer-frontend-service:${BA_TAG}
           OFE_POLICY=$(az confcom acipolicygen -y -i ${POLICY_DIR}/ofe-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
           echo "OFE_POLICY=$OFE_POLICY" >> $GITHUB_ENV
 
-          # Generate CCE policy for offer service
-          docker pull ${REGISTRY}/${REPO_PATH}/bidding-service:${BA_VERSION}
+          docker pull ${REGISTRY}/${REPO_PATH}/bidding-service:${BA_TAG}
           OFFER_POLICY=$(az confcom acipolicygen -y -i ${POLICY_DIR}/offer-policy.json --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
           echo "OFFER_POLICY=$OFFER_POLICY" >> $GITHUB_ENV
 
           echo "CCE policies generated for all services"
+          echo "KV hostdata:    $KV_POLICY"
+          echo "OFE hostdata:   $OFE_POLICY"
+          echo "Offer hostdata: $OFFER_POLICY"
 
           if [ "$KMS_TARGET" = "uat" ]; then
             ALLOWALL_PATH="${GITHUB_WORKSPACE}/deployment-scripts/azure/offer-service/environment/demo/cce-policies/allow_all.base64"
             ALLOWALL_POLICY=$(base64 --decode < "$ALLOWALL_PATH" | sha256sum | cut -d' ' -f1)
             echo "ALLOWALL_POLICY=$ALLOWALL_POLICY" >> $GITHUB_ENV
+            echo "Allow-all policy hash: $ALLOWALL_POLICY"
           else
             echo "ALLOWALL_POLICY=" >> $GITHUB_ENV
           fi
 
+          rm -rf "$TMP_DIR"
+
       - name: Generate key release policy JSON
         env: 
           KMS_TARGET: ${{ github.event.inputs.kms_target_environment }}
+          POLICY_OPERATION: ${{ github.event.inputs.key_release_policy_operation }}
+          KMS_DEPLOYMENT_NAME: ${{ vars.KMS_CONFIDENTIAL_LEDGER }}
+          KV_TAG: ${{ env.KV_TAG }}
+          BA_TAG: ${{ env.BA_TAG }}
           KV_POLICY: ${{ env.KV_POLICY }}
           OFE_POLICY: ${{ env.OFE_POLICY }}
           OFFER_POLICY: ${{ env.OFFER_POLICY }}
           ALLOWALL_POLICY: ${{ env.ALLOWALL_POLICY }}
         run: |
-          if [ "$KMS_TARGET" = "uat" ]; then
-            cat > $GITHUB_WORKSPACE/key_release_policy.json << EOF
-          {
-            "actions": [
-              {
-                "name": "set_key_release_policy",
-                "args": {
-                  "service": "offer-services",
-                  "type": "add",
-                  "claims": {
-                    "x-ms-sevsnpvm-hostdata": [
-                      "$KV_POLICY",
-                      "$OFE_POLICY",
-                      "$OFFER_POLICY",
-                      "$ALLOWALL_POLICY"
-                    ]
-                  }
-                }
-              }
-            ]
-          }
-          EOF
-          else
-            cat > $GITHUB_WORKSPACE/key_release_policy.json << EOF
-          {
-            "actions": [
-              {
-                "name": "set_key_release_policy",
-                "args": {
-                  "service": "offer-services",
-                  "type": "add",
-                  "claims": {
-                    "x-ms-sevsnpvm-hostdata": [
-                      "$KV_POLICY",
-                      "$OFE_POLICY",
-                      "$OFFER_POLICY"
-                    ]
-                  }
-                }
-              }
-            ]
-          }
-          EOF
+          GOV_BASE="https://${KMS_DEPLOYMENT_NAME}.confidential-ledger.azure.com"
+          GOV_BASE="${GOV_BASE%/}"
+          TOKEN=$(az account get-access-token --resource https://confidential-ledger.azure.com | jq -r '.accessToken')
+
+          CURRENT_POLICY=$(curl -sS -k "$GOV_BASE/app/keyReleasePolicy" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $TOKEN")
+
+          if ! echo "$CURRENT_POLICY" | jq -e '.claims' >/dev/null 2>&1; then
+            echo "Failed to fetch or parse current key release policy from $GOV_BASE/app/keyReleasePolicy"
+            echo "$CURRENT_POLICY"
+            exit 1
           fi
-          
-          echo "Key release policy JSON generated: key_release_policy.json"
-          cat $GITHUB_WORKSPACE/key_release_policy.json
+
+          echo "Current key release policy:"
+          echo "$CURRENT_POLICY" | jq .
+
+          EXISTING_HOSTDATA=$(echo "$CURRENT_POLICY" | jq -c '.claims["x-ms-sevsnpvm-hostdata"] // []')
+          echo "Existing x-ms-sevsnpvm-hostdata claims:"
+          echo "$EXISTING_HOSTDATA" | jq -r '.[]?'
+
+          CANDIDATES=$(jq -n \
+            --arg kv "$KV_POLICY" \
+            --arg ofe "$OFE_POLICY" \
+            --arg offer "$OFFER_POLICY" \
+            --arg allowall "$ALLOWALL_POLICY" \
+            --arg kms_target "$KMS_TARGET" \
+            '
+              [$kv, $ofe, $offer]
+              + if ($kms_target == "uat" and ($allowall | length) > 0)
+                then [$allowall]
+                else []
+                end
+            ')
+
+          echo "Requested claims for this run:"
+          echo "  KV (${KV_TAG}): $KV_POLICY"
+          echo "  OFE (${BA_TAG}): $OFE_POLICY"
+          echo "  Offer (${BA_TAG}): $OFFER_POLICY"
+          if [ "$KMS_TARGET" = "uat" ] && [ -n "$ALLOWALL_POLICY" ]; then
+            echo "  Allow-all: $ALLOWALL_POLICY"
+          fi
+
+          if [ "$POLICY_OPERATION" = "add" ]; then
+            FILTERED=$(jq -n \
+              --argjson existing "$EXISTING_HOSTDATA" \
+              --argjson candidates "$CANDIDATES" \
+              '$candidates | map(select(. as $c | ($existing | index($c)) | not))')
+            SKIPPED=$(jq -n \
+              --argjson existing "$EXISTING_HOSTDATA" \
+              --argjson candidates "$CANDIDATES" \
+              '$candidates | map(select(. as $c | ($existing | index($c)) != null))')
+            SKIP_REASON="already present"
+          else
+            FILTERED=$(jq -n \
+              --argjson existing "$EXISTING_HOSTDATA" \
+              --argjson candidates "$CANDIDATES" \
+              '$candidates | map(select(. as $c | ($existing | index($c)) != null))')
+            SKIPPED=$(jq -n \
+              --argjson existing "$EXISTING_HOSTDATA" \
+              --argjson candidates "$CANDIDATES" \
+              '$candidates | map(select(. as $c | ($existing | index($c)) | not))')
+            SKIP_REASON="not present"
+          fi
+
+          echo "Claims to ${POLICY_OPERATION}:"
+          echo "$FILTERED" | jq -r '.[]?'
+
+          SKIPPED_COUNT=$(echo "$SKIPPED" | jq 'length')
+          if [ "$SKIPPED_COUNT" -gt 0 ]; then
+            echo "Skipped (${SKIP_REASON}):"
+            echo "$SKIPPED" | jq -r '.[]?'
+          fi
+
+          FILTERED_COUNT=$(echo "$FILTERED" | jq 'length')
+          if [ "$FILTERED_COUNT" -eq 0 ]; then
+            echo "No claims to ${POLICY_OPERATION}; skipping proposal submission."
+            echo "SUBMIT_PROPOSAL=false" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          jq -n \
+            --arg op "$POLICY_OPERATION" \
+            --argjson hostdata "$FILTERED" \
+            '{
+              actions: [{
+                name: "set_key_release_policy",
+                args: {
+                  service: "offer-services",
+                  type: $op,
+                  claims: {
+                    "x-ms-sevsnpvm-hostdata": $hostdata
+                  }
+                }
+              }]
+            }' > "$GITHUB_WORKSPACE/key_release_policy.json"
+
+          echo "SUBMIT_PROPOSAL=true" >> $GITHUB_ENV
+          echo "Key release policy JSON generated ($POLICY_OPERATION): key_release_policy.json"
+          cat "$GITHUB_WORKSPACE/key_release_policy.json"
     
       - name: Sign and submit key release policy proposal
+        if: env.SUBMIT_PROPOSAL == 'true'
         env:
           AZURE_VAULT_NAME: ${{ vars.KMS_SIGNING_KV }}
           KMS_DEPLOYMENT_NAME: ${{ vars.KMS_CONFIDENTIAL_LEDGER }}
