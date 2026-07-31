@@ -64,9 +64,9 @@ jobs:
         working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
         run: |
           sed -i \
-            -e 's|../cce-policies/offer.base64|../cce-policies/nonprod/offer.base64|' \
-            -e 's|../cce-policies/ofe.base64|../cce-policies/nonprod/ofe.base64|' \
-            -e 's|../cce-policies/kv.base64|../cce-policies/nonprod/kv.base64|' \
+            -e 's|../cce-policies/offer.base64|../cce-policies/allow_all.base64|' \
+            -e 's|../cce-policies/ofe.base64|../cce-policies/allow_all.base64|' \
+            -e 's|../cce-policies/kv.base64|../cce-policies/allow_all.base64|' \
             offer.tf
 
       # Storage account names are globally unique; prod keeps the Terraform default.
