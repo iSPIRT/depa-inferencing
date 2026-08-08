@@ -168,6 +168,8 @@ Required GitHub secret (in addition to the existing `AZURE_AKS_*` OIDC secrets):
 
 - `LETSENCRYPT_EMAIL` — email used to register the ACME account.
 
+For a **manual** renewal (Let's Encrypt DNS-01 with sysadmin TXT update, Key Vault import, and App Gateway force-refresh), follow [MANUAL_FRONTEND_CERT_RENEWAL.md](MANUAL_FRONTEND_CERT_RENEWAL.md).
+
 ## State Migration and Recovery
 
 The repository includes [environment/demo/import-state.sh](environment/demo/import-state.sh) for rebuilding Terraform state from an existing Azure deployment. The script:
