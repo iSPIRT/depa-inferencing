@@ -1,0 +1,16 @@
+dist/
+build/
+*.egg-info/
+src/*.egg-info/
+**/__pycache__/
+*.pyc
+.venv*/
+.pytest_cache/
+
+# The heavy B&A crypto binaries are NOT committed (~120 MB total). They live as
+# an OCI artifact in the container registry (anonymous pull) and are fetched with
+# scripts/fetch_libs.sh (see README). Kept out of git:
+#   * Azure fork (python backend): lib/libsecure_invoke.so (~72 MB) + lib/libcddl.so
+#   * GCP fork (native backend):   native/bin/invoke (~40 MB) + native/lib/libcddl.so
+src/depa_secure_invoke/lib/*.so
+src/depa_secure_invoke/native/
