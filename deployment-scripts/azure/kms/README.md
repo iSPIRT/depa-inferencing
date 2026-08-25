@@ -170,6 +170,17 @@ Required GitHub secret (in addition to the existing `AZURE_AKS_*` OIDC secrets):
 
 For a **manual** renewal (Let's Encrypt DNS-01 with sysadmin TXT update, Key Vault import, and App Gateway force-refresh), follow [MANUAL_FRONTEND_CERT_RENEWAL.md](MANUAL_FRONTEND_CERT_RENEWAL.md).
 
+## Refreshing the ledger TLS trusted-root certificate
+
+The Application Gateway pins the Confidential Ledger's TLS identity certificate as a **trusted root** for backend HTTPS. When the ledger (CCF) restarts, that identity certificate regenerates. If the gateway is not updated, backend TLS validation fails and clients see **502** errors.
+
+There is no Azure control-plane event for ledger restarts, so renewal is handled by an optional **ledger cert reconciler** add-on:
+
+- Module: [`services/ledger_cert_reconciler/`](services/ledger_cert_reconciler/) (see its README for purpose, safety properties, and manual tests)
+- Deploy root: [`environment/demo/terraform-ledger-cert-reconciler/`](environment/demo/terraform-ledger-cert-reconciler/) — **own Terraform state**, additive only (does not rewrite the Phase 3 gateway)
+
+It polls the public ledger identity endpoint on a timer (default every minute) and updates the gateway's trusted root only when the thumbprint changes. An `UnhealthyHostCount` metric alert can also trigger an immediate reconcile via an HTTP function.
+
 ## State Migration and Recovery
 
 The repository includes [environment/demo/import-state.sh](environment/demo/import-state.sh) for rebuilding Terraform state from an existing Azure deployment. The script:
