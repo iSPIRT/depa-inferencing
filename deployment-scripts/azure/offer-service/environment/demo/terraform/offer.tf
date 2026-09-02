@@ -24,8 +24,8 @@ locals {
 
   image_registry = "ispirt.azurecr.io"
   registry_path  = "depainferencing/azure"
-  image_tag      = "prod-4.8.1.3"
-  kv_image_tag   = "prod-1.2.1.2"
+  image_tag      = "prod-4.8.3.0"
+  kv_image_tag   = "prod-1.2.3.0"
   kms_url        = "https://depa-inferencing-kms-azure.ispirt.in"
 
   virtual_node_identity_id           = "<your_virtual_node_identity_resource_id>"
