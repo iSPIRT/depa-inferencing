@@ -13,66 +13,69 @@ jobs:
     env:
       GCP_DOMAIN: ${{ vars.GCP_DOMAIN }}
       GCP_BFE_HOST: ${{ vars.GCP_BFE_HOST }}
-      SECURE_INVOKE_IMAGE: ${{ vars.SECURE_INVOKE_IMAGE }}
+      GCP_KMS_URL: ${{ vars.GCP_KMS_URL }}
+      # GCP services are built from a different B&A fork with different data-plane
+      # crypto and ship only the monolithic `invoke` tool (no C-ABI .so). The SDK's
+      # native backend drives that binary. The crypto binaries are not committed;
+      # they are pulled anonymously from the registry as an OCI artifact (ORAS).
+      SECURE_INVOKE_LIBS_REF: ${{ vars.SECURE_INVOKE_LIBS_REF || 'ispirt.azurecr.io/depainferencing/tools/secure_invoke_sdk_libs:1.0.0' }}
       OPERATOR: ispirt
       ENV: ci
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Secure invoke test
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install ORAS
+        uses: oras-project/setup-oras@v1
+
+      - name: Secure invoke test (Python SDK v1.0.0, gRPC)
         run: |
           set -euo pipefail
           test -n "${GCP_DOMAIN}" || { echo "::error::Set variable GCP_DOMAIN"; exit 1; }
-          test -f "${GITHUB_WORKSPACE}/tools/requests/get_bids_request1.json" || { echo "::error::Missing get_bids_request1.json at repo root"; exit 1; }
+          test -f "${GITHUB_WORKSPACE}/tools/requests/get_bids_request1.json" || { echo "::error::Missing get_bids_request1.json"; exit 1; }
 
           if [ -n "${GCP_BFE_HOST:-}" ]; then
             HOST_ADDR="${GCP_BFE_HOST}"
           else
             HOST_ADDR="${OPERATOR}-${ENV}.bfe.${GCP_DOMAIN}:443"
           fi
+          # KMS that the deployed BFE trusts; override via repo variable GCP_KMS_URL.
+          KMS_URL="${GCP_KMS_URL:-https://p3dx-kms.iudx.org.in}"
 
-          echo "## secure_invoke" >> "$GITHUB_STEP_SUMMARY"
+          echo "## secure_invoke (Python SDK, gRPC / native backend)" >> "$GITHUB_STEP_SUMMARY"
           echo "**host_addr:** \`${HOST_ADDR}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**kms:** \`${KMS_URL}/app/listpubkeys\`" >> "$GITHUB_STEP_SUMMARY"
 
-          run_container() {
-            docker run --rm \
-              -v "${GITHUB_WORKSPACE}/tools/requests/get_bids_request1.json:/data/get_bids_request.json:ro" \
-              --entrypoint /secure_invoke/invoke \
-              "${SECURE_INVOKE_IMAGE}" \
-              --op=invoke \
-              --target_service=BFE \
-              --input_file=/data/get_bids_request.json \
-              --host_addr="${HOST_ADDR}" \
-              --client_type=CLIENT_TYPE_BROWSER \
-              --insecure=false \
-              --client_ip=192.168.1.1
-          }
+          # Fetch crypto binaries (incl. GCP native invoke) from the registry.
+          ./tools/secure-invoke/sdk/scripts/fetch_libs.sh "${SECURE_INVOKE_LIBS_REF}"
 
-          if [ -n "${SECURE_INVOKE_IMAGE:-}" ]; then
-            echo "Pulling ${SECURE_INVOKE_IMAGE}"
-            docker pull "${SECURE_INVOKE_IMAGE}"
-            echo "Using prebuilt image (retries apply to **run** only)." >> "$GITHUB_STEP_SUMMARY"
+          python3 -m pip install --upgrade pip
+          python3 -m pip install ./tools/secure-invoke/sdk
 
-            MAX=4
-            DELAY=120
-            for i in $(seq 1 "${MAX}"); do
-              echo "Attempt ${i}/${MAX}..."
-              if run_container; then
-                echo "Succeeded on attempt ${i}." >> "$GITHUB_STEP_SUMMARY"
-                exit 0
-              fi
-              [ "${i}" -lt "${MAX}" ] && sleep "${DELAY}"
-            done
-            echo "::error::secure_invoke failed after ${MAX} attempts"
-            exit 1
-          fi
-
-          echo "::error::Set repository variable SECURE_INVOKE_IMAGE (e.g. ispirt.azurecr.io/depainferencing/gcp/secure_invoke:4.10.0)"
+          MAX=4
+          DELAY=120
+          for i in $(seq 1 "${MAX}"); do
+            echo "Attempt ${i}/${MAX}..."
+            if secure-invoke \
+                --op invoke \
+                --protocol grpc \
+                --backend native \
+                --target-service bfe \
+                --kms-host "${KMS_URL}" \
+                --kms-keys-endpoint /app/listpubkeys \
+                --offer-host "${HOST_ADDR}" \
+                --request-file "${GITHUB_WORKSPACE}/tools/requests/get_bids_request1.json" \
+                --client-ip 192.168.1.1 \
+                --retries 2; then
+              echo "Succeeded on attempt ${i}." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            [ "${i}" -lt "${MAX}" ] && sleep "${DELAY}"
+          done
+          echo "::error::secure-invoke (gRPC) failed after ${MAX} attempts"
           exit 1
-
-          # echo "No SECURE_INVOKE_IMAGE — one-shot cbuild (slow)." >> "$GITHUB_STEP_SUMMARY"
-          # chmod +x ./builders/tools/cbuild
-          # exec ./builders/tools/cbuild \
-          #   --image build-debian \
-          #   --cmd "bazel run //tools/secure_invoke:invoke -- --op=invoke --target_service=BFE --input_file=/src/workspace/get_bids_request.json --host_addr=${HOST_ADDR} --client_type=CLIENT_TYPE_BROWSER --insecure=false --client_ip=192.168.1.1"

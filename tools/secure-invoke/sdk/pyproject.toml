@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "depa-secure-invoke"
+version = "1.0.0"
+description = "Python SDK + CLI to encrypt, send and decrypt DEPA inferencing (Bidding & Auction) offer requests over REST (Azure) and gRPC (GCP), reusing the B&A C++ crypto libraries."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "Apache-2.0" }
+authors = [{ name = "iSPIRT DEPA Team" }]
+keywords = ["depa", "secure-invoke", "bidding", "auction", "kms", "hpke", "grpc"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security :: Cryptography",
+]
+dependencies = [
+    "requests>=2.25.0",
+    "urllib3>=1.26.0",
+    "grpcio>=1.59.0",
+    "protobuf>=4.25.0,<6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "grpcio-tools>=1.51.0",
+    "pytest>=7.0",
+]
+
+[project.scripts]
+secure-invoke = "depa_secure_invoke.cli:main"
+
+[project.urls]
+Source = "https://github.com/iSPIRT/depa-inferencing"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+depa_secure_invoke = ["lib/*.so", "native/bin/*", "native/lib/*.so"]
+
+# The compiled crypto libraries are x86-64 Linux ELF objects, so wheels are
+# platform specific. Building on/for other platforms/arches is unsupported.

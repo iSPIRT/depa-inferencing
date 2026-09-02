@@ -1,0 +1,170 @@
+name: Secure Invoke SDK — build & push
+
+# Builds the DEPA secure-invoke SDK (wheel + Docker image) for a given cloud and
+# pushes both to the Azure Container Registry.
+#
+#   * Crypto binaries are NOT in git; they are pulled anonymously from the
+#     registry (OCI artifact via ORAS). See tools/secure-invoke/sdk/scripts.
+#   * `cloud` keeps per-cloud artifacts lean:
+#       azure -> python/REST backend  (libsecure_invoke.so + libcddl.so)
+#       gcp   -> native/gRPC backend  (invoke binary + libcddl.so)
+#       both  -> everything in one artifact
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloud:
+        description: 'Target cloud (which crypto backend to bundle)'
+        type: choice
+        options:
+          - azure
+          - gcp
+          - both
+        default: both
+      release_name:
+        description: 'Release version (used as the wheel version and image tag, e.g. 1.0.0)'
+        type: string
+        required: true
+      source_branch:
+        description: 'Branch/tag/ref of this repo to build from'
+        type: string
+        required: true
+        default: main
+      libs_ref:
+        description: 'Override the crypto-libs OCI artifact ref (blank = pinned default)'
+        type: string
+        required: false
+        default: ''
+      push_to_acr:
+        description: 'Push the wheel + image to ACR (uncheck to build only)'
+        type: boolean
+        default: true
+
+env:
+  REGISTRY: ${{ vars.REGISTRY || 'ispirt.azurecr.io' }}
+  REPO_PATH: ${{ vars.REPO_PATH || 'depainferencing' }}
+  SDK_DIR: tools/secure-invoke/sdk
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout ${{ inputs.source_branch }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_branch }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install ORAS
+        uses: oras-project/setup-oras@v1
+
+      - name: Compute build parameters
+        id: vars
+        run: |
+          set -euo pipefail
+          CLOUD='${{ inputs.cloud }}'
+          RELEASE='${{ inputs.release_name }}'
+          [ -n "${RELEASE}" ] || { echo "::error::release_name is required"; exit 1; }
+
+          if [ "${CLOUD}" = "both" ]; then TAG="${RELEASE}"; else TAG="${RELEASE}-${CLOUD}"; fi
+          IMAGE="${REGISTRY}/${REPO_PATH}/tools/secure_invoke_sdk"
+          WHEEL_REF="${REGISTRY}/${REPO_PATH}/tools/secure_invoke_sdk_wheel:${TAG}"
+          LIBS_REF='${{ inputs.libs_ref }}'
+          [ -n "${LIBS_REF}" ] || LIBS_REF="${REGISTRY}/${REPO_PATH}/tools/secure_invoke_sdk_libs:1.0.0"
+
+          {
+            echo "cloud=${CLOUD}"
+            echo "release=${RELEASE}"
+            echo "tag=${TAG}"
+            echo "image=${IMAGE}"
+            echo "image_ref=${IMAGE}:${TAG}"
+            echo "wheel_ref=${WHEEL_REF}"
+            echo "libs_ref=${LIBS_REF}"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## Secure Invoke SDK build"
+            echo "- **cloud:** \`${CLOUD}\`"
+            echo "- **release:** \`${RELEASE}\`"
+            echo "- **branch:** \`${{ inputs.source_branch }}\`"
+            echo "- **image:** \`${IMAGE}:${TAG}\`"
+            echo "- **wheel:** \`${WHEEL_REF}\`"
+            echo "- **libs:** \`${LIBS_REF}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Log in to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY }}
+          username: ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}
+          password: ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
+
+      - name: Pull crypto lib files
+        working-directory: ${{ env.SDK_DIR }}
+        run: ./scripts/fetch_libs.sh '${{ steps.vars.outputs.libs_ref }}'
+
+      - name: Bump version and prune to selected cloud
+        working-directory: ${{ env.SDK_DIR }}
+        run: |
+          set -euo pipefail
+          RELEASE='${{ steps.vars.outputs.release }}'
+          CLOUD='${{ steps.vars.outputs.cloud }}'
+
+          # Version the wheel + CLI --version to the release name.
+          sed -i -E 's/^version = ".*"/version = "'"${RELEASE}"'"/' pyproject.toml
+          sed -i -E 's/^__version__ = ".*"/__version__ = "'"${RELEASE}"'"/' src/depa_secure_invoke/_version.py
+
+          # Keep only the binaries the selected cloud needs (lean wheel).
+          case "${CLOUD}" in
+            azure) rm -rf src/depa_secure_invoke/native ;;
+            gcp)   rm -f  src/depa_secure_invoke/lib/*.so ;;
+          esac
+
+      - name: Build wheel
+        working-directory: ${{ env.SDK_DIR }}
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip build
+          python -m build --wheel --outdir dist
+          ls -la dist
+
+      - name: Upload wheel as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: secure_invoke_sdk-${{ steps.vars.outputs.tag }}-wheel
+          path: ${{ env.SDK_DIR }}/dist/*.whl
+          if-no-files-found: error
+
+      - name: Build Docker image
+        working-directory: ${{ env.SDK_DIR }}
+        run: |
+          set -euo pipefail
+          DOCKER_BUILDKIT=0 docker build \
+            -f docker/Dockerfile \
+            --build-arg "SECURE_INVOKE_LIBS_REF=${{ steps.vars.outputs.libs_ref }}" \
+            --build-arg "CLOUD=${{ steps.vars.outputs.cloud }}" \
+            -t "${{ steps.vars.outputs.image_ref }}" \
+            .
+
+      - name: Push image + wheel to ACR
+        if: ${{ inputs.push_to_acr }}
+        working-directory: ${{ env.SDK_DIR }}
+        run: |
+          set -euo pipefail
+          docker push "${{ steps.vars.outputs.image_ref }}"
+          oras push "${{ steps.vars.outputs.wheel_ref }}" \
+            --artifact-type application/vnd.depa.secure-invoke.wheel \
+            dist/*.whl
+          {
+            echo "### Pushed"
+            echo "- image: \`${{ steps.vars.outputs.image_ref }}\`"
+            echo "- wheel: \`${{ steps.vars.outputs.wheel_ref }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
