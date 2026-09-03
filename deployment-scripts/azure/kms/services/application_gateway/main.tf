@@ -17,10 +17,11 @@ locals {
   ssl_certificate_key_vault_secret_id = "${local.key_vault_uri_trimmed}/secrets/${var.ssl_certificate_name}"
 
   # Public URI allowlist (Lowercase+UrlDecode via WAF rule). Empty waf_allowed_public_uri_regex → regex below.
-  # Optional trailing slash + optional query per path. Override for e.g. /.well-known if HTTP+ACME shares this policy.
-  # Public KMS paths (sans pubkey): pubkey uses a separate BeginsWith rule — Azure Regex alternation skipped it wrongly.
-  default_kms_public_uri_allow_regex = "^(/app/listpubkeys/?(?:\\?[^#]*)?$|/app/key/?(?:\\?[^#]*)?$|/app/unwrapkey/?(?:\\?[^#]*)?)$"
+  # CCF exposes each app endpoint at both /x and /app/x, so only the /app form is allowed and the rest is denied.
+  # RequestUri carries the query string, hence the optional trailing slash and query group.
+  default_kms_public_uri_allow_regex = "^/app/(pubkey|listpubkeys|key|unwrapkey)/?(\\?[^#]*)?$"
   kms_public_uri_allow_regex         = var.waf_allowed_public_uri_regex != "" ? var.waf_allowed_public_uri_regex : local.default_kms_public_uri_allow_regex
+  acme_challenge_uri_prefix          = "/.well-known/acme-challenge/"
 }
 
 resource "azurerm_public_ip" "gateway" {
@@ -105,32 +106,12 @@ resource "azurerm_web_application_firewall_policy" "this" {
     }
   }
 
-  # Order: pubkey Allow → composite Allow → Block remaining /app/* → block CCF routes (regex must wholly match URIs).
-  dynamic "custom_rules" {
-    for_each = var.waf_public_allowlist_enabled ? [1] : []
-    content {
-      name      = "AllowKmsPubkeyPath"
-      priority  = 2
-      rule_type = "MatchRule"
-      action    = "Allow"
-
-      match_conditions {
-        match_variables {
-          variable_name = "RequestUri"
-        }
-        operator           = "BeginsWith"
-        match_values       = ["/app/pubkey"]
-        negation_condition = false
-        transforms         = ["Lowercase", "UrlDecode"]
-      }
-    }
-  }
-
+  # Order: Allow KMS paths → Allow ACME → Block everything else.
   dynamic "custom_rules" {
     for_each = var.waf_public_allowlist_enabled ? [1] : []
     content {
       name      = "AllowKmsPublicApiPaths"
-      priority  = 3
+      priority  = 2
       rule_type = "MatchRule"
       action    = "Allow"
 
@@ -146,60 +127,43 @@ resource "azurerm_web_application_firewall_policy" "this" {
     }
   }
 
+  # Let's Encrypt HTTP-01 on the port 80 listener; must precede the catch-all Block.
   dynamic "custom_rules" {
     for_each = var.waf_public_allowlist_enabled ? [1] : []
     content {
-      name      = "BlockUnlistedAppPaths"
-      priority  = 4
+      name      = "AllowAcmeChallengePath"
+      priority  = 3
       rule_type = "MatchRule"
-      action    = "Block"
-
-      match_conditions {
-        match_variables {
-          variable_name = "RequestUri"
-        }
-        operator           = "Regex"
-        match_values       = ["^/app/"]
-        negation_condition = false
-        transforms         = ["Lowercase", "UrlDecode"]
-      }
-    }
-  }
-
-  dynamic "custom_rules" {
-    for_each = var.waf_public_allowlist_enabled ? [1] : []
-    content {
-      name      = "BlockNodeAndGovPrefixes"
-      priority  = 5
-      rule_type = "MatchRule"
-      action    = "Block"
-
-      match_conditions {
-        match_variables {
-          variable_name = "RequestUri"
-        }
-        operator           = "Regex"
-        match_values       = ["^/(node|gov)(/.*)?$"]
-        negation_condition = false
-        transforms         = ["Lowercase", "UrlDecode"]
-      }
-    }
-  }
-
-  dynamic "custom_rules" {
-    for_each = var.waf_public_allowlist_enabled ? [1] : []
-    content {
-      name      = "BlockReceiptPrefixes"
-      priority  = 6
-      rule_type = "MatchRule"
-      action    = "Block"
+      action    = "Allow"
 
       match_conditions {
         match_variables {
           variable_name = "RequestUri"
         }
         operator           = "BeginsWith"
-        match_values       = ["/receipt"]
+        match_values       = [local.acme_challenge_uri_prefix]
+        negation_condition = false
+        transforms         = ["Lowercase", "UrlDecode"]
+      }
+    }
+  }
+
+  # Default deny: also covers /node, /gov, /receipt and the unprefixed CCF aliases.
+  # Backend health probes originate from the gateway and never traverse the WAF.
+  dynamic "custom_rules" {
+    for_each = var.waf_public_allowlist_enabled ? [1] : []
+    content {
+      name      = "BlockAllOtherPaths"
+      priority  = 100
+      rule_type = "MatchRule"
+      action    = "Block"
+
+      match_conditions {
+        match_variables {
+          variable_name = "RequestUri"
+        }
+        operator           = "Regex"
+        match_values       = [".*"]
         negation_condition = false
         transforms         = ["Lowercase", "UrlDecode"]
       }
