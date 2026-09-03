@@ -168,6 +168,26 @@ Required GitHub secret (in addition to the existing `AZURE_AKS_*` OIDC secrets):
 
 - `LETSENCRYPT_EMAIL` — email used to register the ACME account.
 
+For a **manual** renewal (Let's Encrypt DNS-01 with sysadmin TXT update, Key Vault import, and App Gateway force-refresh), follow [MANUAL_FRONTEND_CERT_RENEWAL.md](MANUAL_FRONTEND_CERT_RENEWAL.md).
+
+## Refreshing the ledger TLS trusted-root certificate
+
+The Application Gateway pins the Confidential Ledger's TLS identity certificate as a **trusted root** for backend HTTPS. If the gateway is not kept in step with the ledger, backend TLS validation fails and clients see **502** errors. This is independent of the frontend Let's Encrypt certificate above.
+
+Two things move that certificate, on very different timescales:
+
+- **Scheduled re-issue.** ACF re-issues the service certificate roughly every 60 days with a 90-day validity, so a replacement appears about 30 days before the current one expires. Prod went down on 2026-08-30 because the pinned certificate simply reached its expiry.
+- **Unscheduled restarts.** CCF can crash and restart, and the restarted service may come up with a **new identity key**. There is no advance warning and no Azure control-plane event, so the gateway starts failing immediately.
+
+Because of the second case, the primary mechanism is the **ledger cert reconciler** add-on, which polls the ledger identity endpoint every minute and updates the gateway's trusted root only when the thumbprint changes:
+
+- Module: [`services/ledger_cert_reconciler/`](services/ledger_cert_reconciler/) (see its README for behaviour, safety properties, and manual tests)
+- Deploy root: [`environment/demo/terraform-ledger-cert-reconciler/`](environment/demo/terraform-ledger-cert-reconciler/) — **own Terraform state**, so applying it cannot disturb the Phase 3 gateway state
+
+Application Insights is provisioned alongside the function. This matters: the timer's status is recorded even when an invocation throws, so without telemetry a reconciler that fails on every run still looks healthy from the outside.
+
+Note the trusted root entry is named `ledger-root-cert` in uat but **`ledger-rootcert3`** in prod (earlier manual fixes left three orphaned entries behind), so `trusted_root_certificate_name` must be set per environment. Pointing it at the wrong entry means the reconciler keeps orphaned config up to date while the live one expires.
+
 ## State Migration and Recovery
 
 The repository includes [environment/demo/import-state.sh](environment/demo/import-state.sh) for rebuilding Terraform state from an existing Azure deployment. The script:
