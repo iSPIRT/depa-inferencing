@@ -42,8 +42,8 @@ function Get-StoredCertificateThumbprint {
 
     try {
         $bytes = [Convert]::FromBase64String([string]$TrustedRootCertificate.Data)
-        # App Gateway returns base64 of PEM text (BEGIN CERTIFICATE...). Fall back
-        # to treating the decoded bytes as DER if PEM parsing fails.
+        # Entries created by Terraform/az CLI hold base64 of the PEM text; entries
+        # written by the Az trusted-root cmdlets hold base64 of the DER bytes.
         $asText = [System.Text.Encoding]::ASCII.GetString($bytes)
         if ($asText -match 'BEGIN CERTIFICATE') {
             $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::CreateFromPem($asText)
@@ -111,15 +111,23 @@ function Invoke-LedgerCertReconcile {
         }
     }
 
-    # App Gateway stores the trusted root cert as base64 of the PEM text
-    # (matches `az network application-gateway root-cert --cert-file`).
-    $dataB64 = [Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($pem))
+    # The trusted-root cmdlets take a certificate file path only; they load it
+    # into an X509Certificate2 and store the DER export. Stage the live cert in
+    # the writable temp directory for the duration of the call.
+    $certFile = Join-Path ([System.IO.Path]::GetTempPath()) ("ledger-root-{0}.cer" -f [guid]::NewGuid())
+    try {
+        $der = $liveCert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert)
+        [System.IO.File]::WriteAllBytes($certFile, $der)
 
-    if ($existing) {
-        Set-AzApplicationGatewayTrustedRootCertificate -ApplicationGateway $gw -Name $rootName -Data $dataB64 | Out-Null
+        if ($existing) {
+            Set-AzApplicationGatewayTrustedRootCertificate -ApplicationGateway $gw -Name $rootName -CertificateFile $certFile | Out-Null
+        }
+        else {
+            Add-AzApplicationGatewayTrustedRootCertificate -ApplicationGateway $gw -Name $rootName -CertificateFile $certFile | Out-Null
+        }
     }
-    else {
-        Add-AzApplicationGatewayTrustedRootCertificate -ApplicationGateway $gw -Name $rootName -Data $dataB64 | Out-Null
+    finally {
+        Remove-Item -LiteralPath $certFile -Force -ErrorAction SilentlyContinue
     }
 
     $tags = @{}

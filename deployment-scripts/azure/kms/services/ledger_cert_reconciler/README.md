@@ -21,12 +21,20 @@ There is no control-plane event when the ledger restarts, so this function:
 
 ## Safety properties
 
-- Additive only: it never recreates or rewrites the Application Gateway
-  definition (listeners, pools, WAF, frontend cert, etc.).
+- Narrow in effect: the only field it changes is the trusted root certificate.
+  It does so by reading the gateway and PUTting it back, so listeners, pools,
+  WAF and the frontend certificate are written back exactly as they were read.
 - Least privilege: system-assigned MI with a custom role scoped to the single
-  gateway (`read`/`write`/`backendHealth`).
+  gateway (`read`/`write`/`backendHealth`), plus a second role granting only
+  `join`/`assign` on the resources the gateway references (subnet, public IP,
+  WAF policy, user-assigned identity). ARM re-checks those links on every PUT
+  and rejects it with `LinkedAuthorizationFailed` otherwise.
 - Idempotent: stores `ledgerRootThumbprint` as a tag on the gateway and skips
-  writes when already up to date.
+  writes when already up to date. It writes the certificate in the same
+  base64-DER encoding phase-3 Terraform uses, so the two never fight over it.
+- Observable: Application Insights is wired up, because the timer's status is
+  recorded even when an invocation throws — a broken reconciler otherwise looks
+  perfectly healthy from the outside.
 - Standalone Terraform root under
   `environment/demo/terraform-ledger-cert-reconciler/` with its own state, so
   applying it cannot drift phase-3 gateway state.

@@ -16,9 +16,20 @@ variable "subscription_id" {
   description = "Subscription ID that contains the Application Gateway (used by the function to set its ARM context)."
 }
 
+variable "resource_group_id" {
+  type        = string
+  description = "Resource ID of the resource group, used as the assignable scope for the linked-resource join role."
+}
+
 variable "application_gateway_id" {
   type        = string
   description = "Resource ID of the Application Gateway whose ledger trusted-root certificate is reconciled."
+}
+
+variable "linked_resource_ids" {
+  type        = map(string)
+  description = "Resources referenced by the gateway definition (subnet, public IP, WAF policy, user-assigned identity), keyed by a stable name. Each receives a role assignment granting the join/assign action a full gateway PUT requires."
+  default     = {}
 }
 
 variable "application_gateway_name" {
@@ -74,6 +85,24 @@ variable "role_definition_name" {
   type        = string
   description = "Name for the custom role granted to the function identity (scoped to the Application Gateway). Defaults to <function_app_name>-agw-writer when empty."
   default     = ""
+}
+
+variable "application_insights_enabled" {
+  type        = bool
+  description = "If true, create Application Insights (and a Log Analytics workspace unless one is supplied) so reconcile failures are visible."
+  default     = true
+}
+
+variable "log_analytics_workspace_id" {
+  type        = string
+  description = "Existing Log Analytics workspace to back Application Insights. When empty, a workspace is created alongside the function."
+  default     = ""
+}
+
+variable "log_retention_days" {
+  type        = number
+  description = "Retention for the Log Analytics workspace and Application Insights component."
+  default     = 30
 }
 
 variable "alert_enabled" {

@@ -19,20 +19,28 @@
 # granted a custom role scoped to the single Application Gateway.
 
 locals {
-  service_plan_name    = var.service_plan_name != "" ? var.service_plan_name : "${var.function_app_name}-plan"
-  role_definition_name = var.role_definition_name != "" ? var.role_definition_name : "${var.function_app_name}-agw-writer"
+  service_plan_name           = var.service_plan_name != "" ? var.service_plan_name : "${var.function_app_name}-plan"
+  role_definition_name        = var.role_definition_name != "" ? var.role_definition_name : "${var.function_app_name}-agw-writer"
+  linked_role_definition_name = "${local.role_definition_name}-linked-join"
 
-  app_settings = {
-    FUNCTIONS_WORKER_RUNTIME = "powershell"
-    WEBSITE_RUN_FROM_PACKAGE = "${azurerm_storage_blob.package.url}${data.azurerm_storage_account_sas.package.sas}"
-    AGW_RESOURCE_GROUP       = var.resource_group_name
-    AGW_NAME                 = var.application_gateway_name
-    LEDGER_NAME              = var.ledger_name
-    ROOT_CERT_NAME           = var.trusted_root_certificate_name
-    LEDGER_IDENTITY_BASE_URL = var.ledger_identity_base_url
-    SUBSCRIPTION_ID          = var.subscription_id
-    AGW_RECONCILE_SCHEDULE   = var.reconcile_schedule
-  }
+  workspace_id = var.log_analytics_workspace_id != "" ? var.log_analytics_workspace_id : one(azurerm_log_analytics_workspace.this[*].id)
+
+  app_settings = merge(
+    {
+      FUNCTIONS_WORKER_RUNTIME = "powershell"
+      WEBSITE_RUN_FROM_PACKAGE = "${azurerm_storage_blob.package.url}${data.azurerm_storage_account_sas.package.sas}"
+      AGW_RESOURCE_GROUP       = var.resource_group_name
+      AGW_NAME                 = var.application_gateway_name
+      LEDGER_NAME              = var.ledger_name
+      ROOT_CERT_NAME           = var.trusted_root_certificate_name
+      LEDGER_IDENTITY_BASE_URL = var.ledger_identity_base_url
+      SUBSCRIPTION_ID          = var.subscription_id
+      AGW_RECONCILE_SCHEDULE   = var.reconcile_schedule
+    },
+    var.application_insights_enabled ? {
+      APPLICATIONINSIGHTS_CONNECTION_STRING = azurerm_application_insights.this[0].connection_string
+    } : {}
+  )
 }
 
 # --- Package the function code -------------------------------------------------
@@ -108,6 +116,35 @@ data "azurerm_storage_account_sas" "package" {
   }
 }
 
+# --- Telemetry ------------------------------------------------------------------
+#
+# Without this the function fails silently: the timer status blob is updated even
+# when an invocation throws, so a broken reconciler still looks healthy from the
+# outside.
+
+resource "azurerm_log_analytics_workspace" "this" {
+  count = var.application_insights_enabled && var.log_analytics_workspace_id == "" ? 1 : 0
+
+  name                = "${var.function_app_name}-law"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  sku                 = "PerGB2018"
+  retention_in_days   = var.log_retention_days
+  tags                = var.tags
+}
+
+resource "azurerm_application_insights" "this" {
+  count = var.application_insights_enabled ? 1 : 0
+
+  name                = "${var.function_app_name}-ai"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  workspace_id        = local.workspace_id
+  application_type    = "web"
+  retention_in_days   = var.log_retention_days
+  tags                = var.tags
+}
+
 # --- Function App -------------------------------------------------------------
 
 resource "azurerm_service_plan" "this" {
@@ -176,6 +213,42 @@ resource "azurerm_role_assignment" "reconciler" {
   principal_id       = azurerm_windows_function_app.this.identity[0].principal_id
 }
 
+# Updating a trusted root certificate means re-PUTting the whole gateway, and ARM
+# re-checks the links to every resource the gateway references. Without join/assign
+# on those, the PUT is rejected with LinkedAuthorizationFailed before the Network RP
+# ever sees it, so nothing shows up in the gateway's activity log.
+#
+# The role carries all four actions but each assignment is scoped to one referenced
+# resource, so an action only ever applies where it is meaningful.
+
+resource "azurerm_role_definition" "linked_join" {
+  count = length(var.linked_resource_ids) > 0 ? 1 : 0
+
+  name        = local.linked_role_definition_name
+  scope       = var.resource_group_id
+  description = "Re-link the resources referenced by ${var.application_gateway_name} during a full gateway PUT."
+
+  permissions {
+    actions = [
+      "Microsoft.Network/virtualNetworks/subnets/join/action",
+      "Microsoft.Network/publicIPAddresses/join/action",
+      "Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies/join/action",
+      "Microsoft.ManagedIdentity/userAssignedIdentities/assign/action",
+    ]
+    not_actions = []
+  }
+
+  assignable_scopes = [var.resource_group_id]
+}
+
+resource "azurerm_role_assignment" "linked_join" {
+  for_each = var.linked_resource_ids
+
+  scope              = each.value
+  role_definition_id = azurerm_role_definition.linked_join[0].role_definition_resource_id
+  principal_id       = azurerm_windows_function_app.this.identity[0].principal_id
+}
+
 # --- Immediate reaction: UnhealthyHostCount alert -> function HTTP trigger -----
 
 data "azurerm_function_app_host_keys" "this" {
@@ -194,8 +267,8 @@ resource "azurerm_monitor_action_group" "this" {
   resource_group_name = var.resource_group_name
   # Action group short_name must be ≤12 alphanumeric chars.
   short_name = substr(replace(replace(lower(var.function_app_name), "-", ""), ".", ""), 0, 12)
-  location            = "global"
-  tags                = var.tags
+  location   = "global"
+  tags       = var.tags
 
   azure_function_receiver {
     name                     = "reconcile"
