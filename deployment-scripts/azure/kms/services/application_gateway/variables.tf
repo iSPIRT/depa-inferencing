@@ -76,7 +76,7 @@ variable "waf_sqli_rule_overrides_enabled" {
 
 variable "waf_public_allowlist_enabled" {
   type        = bool
-  description = "If true: block RequestUri outside default allow regex (or waf_allowed_public_uri_regex when set)."
+  description = "If true: default-deny. Only the allow regex (or waf_allowed_public_uri_regex when set) and the ACME challenge prefix are permitted; every other RequestUri is blocked."
   default     = true
 }
 

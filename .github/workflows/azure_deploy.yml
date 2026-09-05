@@ -90,26 +90,45 @@ jobs:
         run: terraform apply -auto-approve
 
       - name: Inspect Kubernetes pods
+        if: failure()
         working-directory: ./deployment-scripts/azure/offer-service/environment/demo/terraform
         env:
           AZURE_AKS_SUBSCRIPTION_ID: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           if ! command -v kubectl >/dev/null 2>&1; then
             az aks install-cli
           fi
-          AKS_RG="$(terraform output -raw aks_resource_group_name)"
-          AKS_NAME="$(terraform output -raw aks_cluster_name)"
+          if ! AKS_RG="$(terraform output -raw aks_resource_group_name)" || \
+             ! AKS_NAME="$(terraform output -raw aks_cluster_name)"; then
+            echo "AKS Terraform outputs unavailable; cluster may not have been created."
+            exit 0
+          fi
           az aks get-credentials \
             --resource-group "$AKS_RG" \
             --name "$AKS_NAME" \
             --subscription "$AZURE_AKS_SUBSCRIPTION_ID" \
             --overwrite-existing
-          echo "=== kubectl get pods -n default ==="
-          kubectl get pods -n default
-          kubectl get pods -n default --no-headers | awk '$3 != "Running" { print $1, $3 }' | while read -r pod_name status; do
-            echo "\n=== kubectl describe pod $pod_name -n default (STATUS: $status) ==="
-            kubectl describe pod "$pod_name" -n default
+          echo "=== kubectl get pods -n default -o wide ==="
+          kubectl get pods -n default -o wide || true
+          echo "=== kubectl get events -n default --sort-by=.lastTimestamp ==="
+          kubectl get events -n default --sort-by=.lastTimestamp || true
+          kubectl get pods -n default --no-headers | while read -r pod_name ready status rest; do
+            [ -z "${pod_name:-}" ] && continue
+            ready_have="${ready%%/*}"
+            ready_want="${ready##*/}"
+            if [ "$status" = "Running" ] && [ "$ready_have" = "$ready_want" ]; then
+              continue
+            fi
+            echo ""
+            echo "=== kubectl describe pod $pod_name -n default (READY: $ready STATUS: $status) ==="
+            kubectl describe pod "$pod_name" -n default || true
+            echo ""
+            echo "=== kubectl logs $pod_name -n default --all-containers --tail=200 ==="
+            kubectl logs "$pod_name" -n default --all-containers --tail=200 --timestamps || true
+            echo ""
+            echo "=== kubectl logs $pod_name -n default --all-containers --previous --tail=100 ==="
+            kubectl logs "$pod_name" -n default --all-containers --previous --tail=100 --timestamps || true
           done
 
       # Optional: print Application Insights portal URL to the job summary (requires app_insights_portal_url Terraform output).
