@@ -24,6 +24,7 @@ kms/
 │       ├── terraform/                           # Phase 1: ledger + dependencies
 │       ├── terraform-key-vault-networking/      # Phase 2: KV private endpoint
 │       ├── terraform-application-gateway/       # Phase 3: ledger PE + App Gateway
+│       ├── terraform-system-tests/              # Standalone: KMS repo system test RG + identity
 │       └── import-state.sh                      # Rebuilds state across all phases
 ├── modules/
 │   └── kms/                                     # Phase 1 composite module
@@ -157,6 +158,47 @@ Each phase's `locals.tf` carries its own environment values. Replace placeholder
 - Optional **Azure Monitor** alerts for unhealthy ledger backends on the gateway: **`gateway_monitor_*`** in **`locals.tf`** (`UnhealthyHostCount` on ledger `BackendSettingsPool`). Set `gateway_monitor_unhealthy_alert_enabled = true` and `gateway_monitor_alert_email_addresses` and/or `gateway_monitor_additional_action_group_ids`; semantics match **`services/application_gateway/variables.tf`**.
 
 The ACME challenge storage account name is derived automatically as `depainfkmsacme${environment}${region_short}` (e.g. `depainfkmsacmeprodcin`) — no separate local is needed. The renewal workflow's identity must already have **Storage Blob Data Contributor** on this account and **Key Vault Certificates Officer** on the Key Vault; grant these out-of-band before the first run.
+
+## System test infrastructure
+
+[`environment/demo/terraform-system-tests/`](environment/demo/terraform-system-tests/) manages the Azure resources used by the system tests in [azure-depa-inferencing-kms](https://github.com/iSPIRT/azure-depa-inferencing-kms) (`.github/workflows/system-test.yml`). It is independent of the three KMS phases above and has its own state.
+
+**What it manages:**
+- Resource group `depa-inferencing-kms-test`, where the tests create and delete short-lived Confidential Ledgers
+- Managed identity `depa-inferencing-kms-test-mi` with **Contributor** on that resource group only
+- A federated credential for the `CI` GitHub Environment (`repo:iSPIRT/azure-depa-inferencing-kms:environment:CI`)
+
+The tests deliberately do not use the `UAT` GitHub Environment, whose identity belongs to the UAT KMS deployment.
+
+Keep the real subscription and tenant IDs out of git by putting them in a gitignored override file:
+
+```bash
+cd environment/demo/terraform-system-tests
+cat > ids_override.tf <<EOF
+locals {
+  subscription_id = "<subscription_id>"
+  tenant_id       = "<tenant_id>"
+}
+EOF
+terraform init
+terraform plan
+terraform apply
+```
+
+The resource group, identity and role assignment were created by hand before this root existed. To rebuild state, import them before planning:
+
+```bash
+RG=/subscriptions/<subscription_id>/resourceGroups/depa-inferencing-kms-test
+terraform import module.resource_group.azurerm_resource_group.this "$RG"
+terraform import module.managed_identity.azurerm_user_assigned_identity.this \
+  "$RG/providers/Microsoft.ManagedIdentity/userAssignedIdentities/depa-inferencing-kms-test-mi"
+terraform import azurerm_role_assignment.managed_identity_rg_contributor \
+  "$(az role assignment list --scope "$RG" --role Contributor \
+      --assignee "$(az identity show -g depa-inferencing-kms-test -n depa-inferencing-kms-test-mi --query principalId -o tsv)" \
+      --query '[0].id' -o tsv)"
+```
+
+After applying, copy the `github_environment_secrets` output into the secrets of the `CI` GitHub Environment (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`).
 
 ## Refreshing the frontend TLS certificate
 
