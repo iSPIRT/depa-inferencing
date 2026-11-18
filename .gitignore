@@ -16,6 +16,8 @@ __pycache__
 *.tfstate.*
 .terraform
 .terraform.lock.hcl
+override.tf
+*_override.tf
 # Python virtual environments
 **/.venv/
 **/.venv*/

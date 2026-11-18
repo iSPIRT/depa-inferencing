@@ -30,7 +30,13 @@ variable "github_repository" {
 
 variable "github_branch" {
   type        = string
-  description = "GitHub branch name for federated credential. Only used if github_repository is set."
+  description = "GitHub branch name for federated credential. Only used if github_repository is set. Leave empty to skip the branch credential."
   default     = ""
+}
+
+variable "github_environments" {
+  type        = list(string)
+  description = "GitHub Environments that get a federated credential (subject repo:<repo>:environment:<name>). Only used if github_repository is set."
+  default     = []
 }
 
